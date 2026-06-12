@@ -47,7 +47,8 @@ describe("renderApprovalBlocks", () => {
     expect(block).toMatchObject({
       element: { type: "plain_text_input", multiline: true },
     });
-    expect((block as { element: { initial_value?: string } }).element.initial_value).toBeUndefined();
+    const element = (block as unknown as { element: { initial_value?: string } }).element;
+    expect(element.initial_value).toBeUndefined();
   });
 
   it("renders a select as a static_select with the default preselected", () => {
@@ -59,7 +60,7 @@ describe("renderApprovalBlocks", () => {
         initial_option: { value: "high" },
       },
     });
-    const element = (block as { element: { options: { value: string }[] } }).element;
+    const element = (block as unknown as { element: { options: { value: string }[] } }).element;
     expect(element.options.map((o) => o.value)).toEqual(["low", "high"]);
   });
 
