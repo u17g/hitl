@@ -262,11 +262,34 @@ Switching engines means switching one import (`@hitldev/vercel-workflow` → `@h
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
-- hitldev needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@hitldev/store-postgres` store (call `await store.ensureSchema()` once at startup, or apply the exported `schemaSql()` via your migrations) or a `@hitldev/store-sqlite` store (schema is created in the constructor) for persistence. With Postgres, setup is one command, which also runs WDK's world migrations when self-hosting:
+- hitldev needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@hitldev/store-postgres` or `@hitldev/store-sqlite` store for persistence.
+- **SQLite** — schema is created automatically in the constructor; no extra step:
+
+```ts
+import { DatabaseSync } from "node:sqlite";
+import { SqliteStore } from "@hitldev/store-sqlite";
+
+const store = new SqliteStore(new DatabaseSync("hitldev.db"));
+```
+
+- **Postgres** — call `ensureSchema()` once at startup, or apply the exported `schemaSql()` through your own migration tool:
+
+```ts
+import pg from "pg";
+import { PostgresStore } from "@hitldev/store-postgres";
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const store = new PostgresStore(pool);
+await store.ensureSchema();
+```
+
+- **Self-hosted Postgres** — one command creates the hitldev approvals table and runs WDK world migrations (when `@workflow/world-postgres` is installed):
 
 ```bash
 DATABASE_URL=postgres://... npx hitldev setup
 ```
+
+  Use `npx hitldev schema` to print idempotent DDL for your migration pipeline (`--dialect postgres|sqlite`, `--table hitldev.approvals`).
 
 - Local dev: the `webui()` plugin works with zero external services — approve from a local inbox page, no Slack required.
 
@@ -278,6 +301,7 @@ DATABASE_URL=postgres://... npx hitldev setup
 | `@hitldev/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
+| `@hitldev/cli` | `hitldev setup` / `hitldev schema` — Postgres setup and DDL export |
 | `@hitldev/slack` | `slackHitl()` |
 | `@hitldev/teams` | `teamsHitl()` |
 | `@hitldev/ui` | Inbox React components |
@@ -299,6 +323,7 @@ packages/
   vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit engine binding)
   store-postgres/   # @hitldev/store-postgres (PostgresStore)
   store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)
+  cli/              # @hitldev/cli (hitldev setup / schema)
   slack/            # @hitldev/slack
   ...               # @hitldev/teams, @hitldev/ui follow as they are implemented
 ```
