@@ -224,7 +224,7 @@ What openhitl **owns** (all thin, bounded pieces):
 | Engine bindings | One small package per engine (`@openhitl/vercel-workflow`, ...) implementing `EngineBinding` |
 | Plugins | Slack / Teams / webui renderers and callback parsers |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
-| Approval store | One small Postgres table for pending/resolved requests (powers the inbox and audit) |
+| Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@openhitl/store-postgres` and `@openhitl/store-sqlite` for persistence |
 
 What it **deliberately does not own**:
 
@@ -262,7 +262,7 @@ Switching engines means switching one import (`@openhitl/vercel-workflow` → `@
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
-- openhitl needs one Postgres table for the approval store. Setup is one command, which also runs WDK's world migrations when self-hosting:
+- openhitl needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@openhitl/store-postgres` store (call `await store.ensureSchema()` once at startup, or apply the exported `schemaSql()` via your migrations) or a `@openhitl/store-sqlite` store (schema is created in the constructor) for persistence. With Postgres, setup is one command, which also runs WDK's world migrations when self-hosting:
 
 ```bash
 DATABASE_URL=postgres://... npx openhitl setup
@@ -274,8 +274,10 @@ DATABASE_URL=postgres://... npx openhitl setup
 
 | Package | Contents |
 |---|---|
-| `@openhitl/sdk` | Core: `waitForApproval`, `notify`, `hitl.*` field builders, `createHitl`, `webui()` plugin, inbox API |
+| `@openhitl/sdk` | Core: `waitForApproval`, `notify`, `hitl.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
 | `@openhitl/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
+| `@openhitl/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
+| `@openhitl/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
 | `@openhitl/slack` | `slackHitl()` |
 | `@openhitl/teams` | `teamsHitl()` |
 | `@openhitl/ui` | Inbox React components |
@@ -295,6 +297,8 @@ DATABASE_URL=postgres://... npx openhitl setup
 packages/
   sdk/              # @openhitl/sdk (core: waitForApproval, notify, field builders, createHitl, webui)
   vercel-workflow/  # @openhitl/vercel-workflow (Workflow DevKit engine binding)
+  store-postgres/   # @openhitl/store-postgres (PostgresStore)
+  store-sqlite/     # @openhitl/store-sqlite (SqliteStore on node:sqlite)
   slack/            # @openhitl/slack
   ...               # @openhitl/teams, @openhitl/ui follow as they are implemented
 ```
