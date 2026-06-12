@@ -1,53 +1,21 @@
 import type { ApprovalRecord, ApprovalResult, NewApprovalRecord, Store } from "@hitldev/sdk";
+import { applyMigrations, type PgQueryable } from "./migrate.js";
+import { schemaSql as buildSchemaSql } from "./schema-sql.js";
+import { DEFAULT_TABLE, resolveTableName } from "./table.js";
 
-/**
- * Structural subset of `pg.Pool` / `pg.Client`. Pass a real node-postgres
- * pool (or anything query-compatible, e.g. a pg-mem adapter) — this package
- * has no runtime dependency on a driver.
- */
-export interface PgQueryable {
-  query(text: string, values?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
-}
+export type { PgQueryable } from "./migrate.js";
+export { DEFAULT_TABLE } from "./table.js";
+export { SCHEMA_VERSION } from "./migrations/index.js";
+export { migrationSql } from "./schema-sql.js";
 
 export interface PostgresStoreOptions {
   /** Defaults to `hitldev.approvals`. */
   tableName?: string;
 }
 
-const DEFAULT_TABLE = "hitldev.approvals";
-const IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-const QUALIFIED = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/;
-
-interface ResolvedTable {
-  /** SQL fragment for FROM/INTO/UPDATE clauses */
-  sql: string;
-  indexName: string;
-  schema?: string;
-  table: string;
-}
-
 /** Idempotent DDL for the approvals table; also used by `ensureSchema()`. */
 export function schemaSql(tableName = DEFAULT_TABLE): string {
-  const resolved = resolveTableName(tableName);
-  const schemaDdl = resolved.schema
-    ? `CREATE SCHEMA IF NOT EXISTS ${resolved.schema};\n`
-    : "";
-  return `
-    ${schemaDdl}CREATE TABLE IF NOT EXISTS ${resolved.sql} (
-      id          TEXT PRIMARY KEY,
-      token       TEXT NOT NULL,
-      channel     TEXT NOT NULL,
-      message     TEXT NOT NULL,
-      fields      JSONB NOT NULL,
-      status      TEXT NOT NULL,
-      external_id TEXT,
-      result      JSONB,
-      created_at  TEXT NOT NULL,
-      resolved_at TEXT
-    );
-    CREATE INDEX IF NOT EXISTS ${resolved.indexName}
-      ON ${resolved.sql} (external_id);
-  `;
+  return buildSchemaSql(tableName);
 }
 
 interface ApprovalRow {
@@ -71,21 +39,17 @@ interface ApprovalRow {
  */
 export class PostgresStore implements Store {
   private readonly pool: PgQueryable;
-  private readonly table: ResolvedTable;
+  private readonly table: ReturnType<typeof resolveTableName>;
+  private readonly tableName: string;
 
   constructor(pool: PgQueryable, options?: PostgresStoreOptions) {
     this.pool = pool;
-    this.table = resolveTableName(options?.tableName ?? DEFAULT_TABLE);
+    this.tableName = options?.tableName ?? DEFAULT_TABLE;
+    this.table = resolveTableName(this.tableName);
   }
 
   async ensureSchema(): Promise<void> {
-    try {
-      await this.pool.query(`SELECT 1 FROM ${this.table.sql} LIMIT 0`);
-      return;
-    } catch {
-      // Table or schema missing — apply DDL below.
-    }
-    await this.pool.query(schemaSql(qualifiedTableName(this.table)));
+    await applyMigrations(this.pool, this.tableName);
   }
 
   async create(record: NewApprovalRecord): Promise<void> {
@@ -142,44 +106,6 @@ export class PostgresStore implements Store {
       ? await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE status = $1`, [filter.status])
       : await this.pool.query(`SELECT * FROM ${this.table.sql}`);
     return rows.map(rowToRecord);
-  }
-}
-
-function resolveTableName(tableName: string): ResolvedTable {
-  if (!QUALIFIED.test(tableName)) {
-    throw new Error(`Invalid table name "${tableName}"`);
-  }
-  if (tableName.includes(".")) {
-    const parts = tableName.split(".");
-    const schema = parts[0];
-    const table = parts[1];
-    if (!schema || !table || parts.length !== 2) {
-      throw new Error(`Invalid table name "${tableName}"`);
-    }
-    assertIdentifier(schema);
-    assertIdentifier(table);
-    return {
-      sql: `${schema}.${table}`,
-      indexName: `${schema}_${table}_external_id_idx`,
-      schema,
-      table,
-    };
-  }
-  assertIdentifier(tableName);
-  return {
-    sql: tableName,
-    indexName: `${tableName}_external_id_idx`,
-    table: tableName,
-  };
-}
-
-function qualifiedTableName(resolved: ResolvedTable): string {
-  return resolved.schema ? `${resolved.schema}.${resolved.table}` : resolved.table;
-}
-
-function assertIdentifier(name: string): void {
-  if (!IDENTIFIER.test(name)) {
-    throw new Error(`Invalid table name "${name}"`);
   }
 }
 
