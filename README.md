@@ -88,6 +88,7 @@ Wire the plugins once, at the app edge:
 ```ts
 // hitl.ts
 import { createHitl } from "@hitldev/sdk";
+import { discordHitl } from "@hitldev/discord";
 import { slackHitl } from "@hitldev/slack";
 import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
 
@@ -99,10 +100,16 @@ export const hitlApp = createHitl({
       channel: "#inbound-leads",
       token: process.env.SLACK_BOT_TOKEN,
     }),
+    discordHitl({
+      id: "discord-approvals",
+      channelId: process.env.DISCORD_CHANNEL_ID!,
+      token: process.env.DISCORD_BOT_TOKEN,
+      publicKey: process.env.DISCORD_PUBLIC_KEY,
+    }),
   ],
 });
 
-// Mount the callback handler (Slack interactivity, webui inbox API) into your app:
+// Mount the callback handler (Slack interactivity, Discord interactions, webui inbox API) into your app:
 // Express:  app.use("/hitl", hitlApp.handler)
 // Hono:     app.route("/hitl", hitlApp.hono)
 // Next.js:  export const { GET, POST } = hitlApp.routeHandlers
@@ -178,6 +185,7 @@ Official plugins:
 | Plugin | Package | Renders as |
 |---|---|---|
 | `slackHitl()` | `@hitldev/slack` | Block Kit message with input fields and approve/deny buttons |
+| `discordHitl()` | `@hitldev/discord` | Embed message with approve/deny buttons; feedback fields open in a Modal |
 | `teamsHitl()` | `@hitldev/teams` | Adaptive Card |
 | `webui()` | built into `hitldev` | Approval inbox (React components from `@hitldev/ui`) |
 
@@ -293,6 +301,16 @@ DATABASE_URL=postgres://... npx hitldev setup
 
 - Local dev: the `webui()` plugin works with zero external services — approve from a local inbox page, no Slack required.
 
+### Discord setup
+
+1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications) and add a bot.
+2. Enable **Send Messages** and **Message Content Intent** (if reading message content).
+3. Copy the bot token to `DISCORD_BOT_TOKEN` and the application **Public Key** to `DISCORD_PUBLIC_KEY`.
+4. Set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/hitl`). Discord sends a PING on save; `@hitldev/discord` responds automatically.
+5. Invite the bot to your server and pass the target channel id as `channelId`.
+
+When a reviewer clicks **Approve** and the request has feedback fields, Discord opens a Modal to collect edits before resolving the approval.
+
 ## Packages
 
 | Package | Contents |
@@ -303,12 +321,13 @@ DATABASE_URL=postgres://... npx hitldev setup
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
 | `@hitldev/cli` | `hitldev setup` / `hitldev schema` — Postgres setup and DDL export |
 | `@hitldev/slack` | `slackHitl()` |
+| `@hitldev/discord` | `discordHitl()` |
 | `@hitldev/teams` | `teamsHitl()` |
 | `@hitldev/ui` | Inbox React components |
 
 ## Roadmap
 
-- **More channels** — email (approve via magic link), Discord
+- **More channels** — email (approve via magic link)
 - **Engine bindings** — `@hitldev/temporal`, `@hitldev/inngest`, `@hitldev/restate`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
 - **Approval policies** — multi-approver, quorum, role routing, auto-approve rules
 - **Escalation** — SLA timers, reminder nudges, fallback channels
@@ -325,5 +344,6 @@ packages/
   store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)
   cli/              # @hitldev/cli (hitldev setup / schema)
   slack/            # @hitldev/slack
+  discord/          # @hitldev/discord
   ...               # @hitldev/teams, @hitldev/ui follow as they are implemented
 ```
