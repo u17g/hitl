@@ -183,6 +183,76 @@ describe("teamsHitl update", () => {
   });
 });
 
+describe("teamsHitl batch", () => {
+  const batchRequest = {
+    batchId: "b1",
+    channel: "lead-approvals",
+    title: "Outbound emails",
+    fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+    items: [
+      { id: "b1:0", message: "Email to ACME", defaults: { subject: "Hello ACME" } },
+      { id: "b1:1", message: "Email to Globex", defaults: { subject: "Hi" } },
+    ],
+  };
+
+  function makePlugin(fetchImpl: typeof fetch) {
+    return teamsHitl({
+      id: "lead-approvals",
+      target: { type: "channel", conversationId: "conv-1", serviceUrl: "https://smba.test/teams/" },
+      appId: APP_ID,
+      appPassword: APP_PASSWORD,
+      fetch: fetchImpl,
+    });
+  }
+
+  it("sendBatch posts the batch as one Adaptive Card", async () => {
+    const { calls, fetchImpl } = fakeTeams();
+    const plugin = makePlugin(fetchImpl);
+
+    const { externalId } = await plugin.sendBatch!(batchRequest);
+
+    expect(externalId).toBe("conv-1:act-1");
+    const postCall = calls.find((c) => c.method === "POST" && c.url.includes("/activities"));
+    const json = JSON.stringify(postCall?.body);
+    expect(json).toContain("Email to ACME");
+    expect(json).toContain("batch_submit");
+  });
+
+  it("updateBatch replaces the card with per-item outcomes", async () => {
+    const { calls, fetchImpl } = fakeTeams();
+    const plugin = makePlugin(fetchImpl);
+
+    const { externalId } = await plugin.sendBatch!(batchRequest);
+    await plugin.updateBatch!(externalId, [
+      { type: "APPROVED", id: "b1:0", by: { name: "ryosuke" } },
+      { type: "DENIED", id: "b1:1", reason: "spam" },
+    ]);
+
+    const updateCall = calls.find((c) => c.method === "PUT");
+    expect(updateCall?.url).toContain("/v3/conversations/conv-1/activities/act-1");
+    const json = JSON.stringify(updateCall?.body);
+    expect(json).toContain("Approved by ryosuke");
+    expect(json).toContain("spam");
+  });
+
+  it("canSendBatch rejects cards over the size limit", () => {
+    const { fetchImpl } = fakeTeams();
+    const plugin = makePlugin(fetchImpl);
+
+    expect(plugin.canSendBatch!(batchRequest)).toBe(true);
+
+    const big = {
+      ...batchRequest,
+      items: Array.from({ length: 200 }, (_, i) => ({
+        id: `b1:${i}`,
+        message: `Item ${i}: ${"x".repeat(200)}`,
+        defaults: {},
+      })),
+    };
+    expect(plugin.canSendBatch!(big)).toBe(false);
+  });
+});
+
 describe("teamsHitl notify", () => {
   it("posts a plain message", async () => {
     const { calls, fetchImpl } = fakeTeams();

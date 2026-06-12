@@ -1,4 +1,10 @@
-import type { ApprovalRequest, ApprovalResult, HitlPlugin, Notification } from "@hitldev/sdk";
+import type {
+  ApprovalRequest,
+  ApprovalResult,
+  BatchApprovalRequest,
+  HitlPlugin,
+  Notification,
+} from "@hitldev/sdk";
 import { clearTokenCache, getBotFrameworkToken } from "./auth";
 import { parseTeamsCallback } from "./callback";
 import {
@@ -10,7 +16,13 @@ import {
   sendActivity,
   updateActivity,
 } from "./connector";
-import { renderApprovalCard, renderResultCard } from "./render";
+import {
+  MAX_CARD_BYTES,
+  renderApprovalCard,
+  renderBatchCard,
+  renderBatchResultCard,
+  renderResultCard,
+} from "./render";
 
 export type TeamsTarget =
   | { type: "channel"; teamId: string; channelId: string }
@@ -44,6 +56,8 @@ export function teamsHitl(options: TeamsHitlOptions): HitlPlugin {
   const appId = options.appId ?? "";
   const appPassword = options.appPassword ?? "";
   const sentMessages = new Map<string, string>();
+  // updateBatch re-renders the items; remember the request per delivered batch.
+  const sentBatches = new Map<string, BatchApprovalRequest>();
   const conversationCache = new Map<string, string>();
   let serviceUrl = resolveInitialServiceUrl(options.target);
 
@@ -149,6 +163,47 @@ export function teamsHitl(options: TeamsHitlOptions): HitlPlugin {
       return { externalId };
     },
 
+    async sendBatch(request: BatchApprovalRequest): Promise<{ externalId: string }> {
+      const conversationId = await ensureConversation();
+      const token = await connectorToken();
+      const descriptor = targetDescriptor();
+      const card = renderBatchCard(request);
+      const activity = await sendActivity(
+        {
+          serviceUrl: descriptor.serviceUrl,
+          appId,
+          token,
+          fetch: fetchImpl,
+        },
+        conversationId,
+        card,
+      );
+      if (activity.serviceUrl) {
+        serviceUrl = activity.serviceUrl;
+      }
+      const externalId = `${conversationId}:${activity.id}`;
+      sentBatches.set(externalId, request);
+      return { externalId };
+    },
+
+    canSendBatch(request: BatchApprovalRequest): boolean {
+      return JSON.stringify(renderBatchCard(request)).length <= MAX_CARD_BYTES;
+    },
+
+    async updateBatch(externalId: string, results: ApprovalResult[]): Promise<void> {
+      const request = sentBatches.get(externalId);
+      if (!request) return;
+      const { conversationId, activityId } = splitExternalId(externalId);
+      const token = await connectorToken();
+      await updateActivity(
+        { serviceUrl, appId, token, fetch: fetchImpl },
+        conversationId,
+        activityId,
+        renderBatchResultCard(request, results),
+      );
+      sentBatches.delete(externalId);
+    },
+
     async update(externalId: string, result: ApprovalResult): Promise<void> {
       const { conversationId, activityId } = splitExternalId(externalId);
       const message = sentMessages.get(externalId) ?? "";
@@ -194,7 +249,14 @@ function splitExternalId(externalId: string): { conversationId: string; activity
 }
 
 export { parseTeamsCallback } from "./callback";
-export { renderApprovalCard, renderResultCard, extractFeedbacks } from "./render";
+export {
+  extractBatchDecisions,
+  extractFeedbacks,
+  renderApprovalCard,
+  renderBatchCard,
+  renderBatchResultCard,
+  renderResultCard,
+} from "./render";
 export { verifyTeamsRequest, clearJwksCache, setJwksForTests } from "./verify";
 export { clearTokenCache } from "./auth";
 export type { AdaptiveCard } from "./render";

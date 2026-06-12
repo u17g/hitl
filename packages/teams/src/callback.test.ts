@@ -1,4 +1,5 @@
 import { generateKeyPairSync, createSign, type KeyObject } from "node:crypto";
+import type { HitlCallback } from "@hitldev/sdk";
 import { beforeEach, describe, expect, it } from "vitest";
 import { parseTeamsCallback } from "./callback";
 import { setJwksForTests, clearJwksCache } from "./verify";
@@ -103,7 +104,42 @@ describe("parseTeamsCallback", () => {
     );
 
     expect(callback).toMatchObject({ requestId: "req-1", decision: "deny" });
-    expect(callback?.feedbacks).toBeUndefined();
+    expect((callback as HitlCallback).feedbacks).toBeUndefined();
+  });
+
+  it("parses a batch submit into per-item decisions", async () => {
+    const callback = await parseTeamsCallback(
+      teamsRequest(
+        {
+          type: "message",
+          from: { id: "29:u1", name: "ryosuke", aadObjectId: "aad-1" },
+          value: {
+            hitldev_action: "batch_submit",
+            batchId: "b1",
+            "item:b1:0:decision": "approve",
+            "item:b1:0:field:subject": "Edited",
+            "item:b1:1:decision": "deny",
+            "item:b1:1:field:subject": "Hi",
+          },
+        },
+        authHeader(privateKey, APP_ID),
+      ),
+      { appId: APP_ID },
+    );
+
+    expect(callback).toMatchObject({
+      batchId: "b1",
+      by: { id: "aad-1", name: "ryosuke" },
+    });
+    const decisions = (callback as { decisions: unknown[] }).decisions;
+    expect(decisions).toEqual(
+      expect.arrayContaining([
+        { requestId: "b1:0", decision: "approve", feedbacks: { subject: "Edited" } },
+        { requestId: "b1:1", decision: "deny" },
+      ]),
+    );
+    expect(decisions).toHaveLength(2);
+    expect(callback?.response?.status).toBe(200);
   });
 
   it("rejects invalid JWT with ackOnly 401", async () => {

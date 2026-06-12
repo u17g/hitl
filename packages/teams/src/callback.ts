@@ -1,7 +1,10 @@
-import type { HitlCallback } from "@hitldev/sdk";
+import type { HitlBatchCallback, HitlCallback } from "@hitldev/sdk";
 import {
   APPROVE_ACTION,
+  BATCH_ID_KEY,
+  BATCH_SUBMIT_ACTION,
   DENY_ACTION,
+  extractBatchDecisions,
   extractFeedbacks,
   HITLDEV_ACTION_KEY,
   REQUEST_ID_KEY,
@@ -48,7 +51,7 @@ function reviewerFrom(from: TeamsActivityFrom | undefined) {
 export async function parseTeamsCallback(
   req: Request,
   options: ParseTeamsCallbackOptions,
-): Promise<HitlCallback | null> {
+): Promise<HitlCallback | HitlBatchCallback | null> {
   if (req.method !== "POST") return null;
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return null;
@@ -77,6 +80,18 @@ export async function parseTeamsCallback(
   if (!value || typeof value !== "object") return null;
 
   const action = value[HITLDEV_ACTION_KEY];
+
+  if (action === BATCH_SUBMIT_ACTION) {
+    const batchId = value[BATCH_ID_KEY];
+    if (typeof batchId !== "string" || !batchId) return null;
+    return {
+      batchId,
+      decisions: extractBatchDecisions(value),
+      by: reviewerFrom(activity.from),
+      response: jsonResponse({}),
+    };
+  }
+
   if (action !== APPROVE_ACTION && action !== DENY_ACTION) return null;
 
   const requestId = value[REQUEST_ID_KEY];

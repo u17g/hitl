@@ -1,6 +1,17 @@
-import { field, type ApprovalRequest, type ApprovalResult } from "@hitldev/sdk";
+import {
+  field,
+  type ApprovalRequest,
+  type ApprovalResult,
+  type BatchApprovalRequest,
+} from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
-import { renderApprovalCard, renderResultCard } from "./render";
+import {
+  extractBatchDecisions,
+  renderApprovalCard,
+  renderBatchCard,
+  renderBatchResultCard,
+  renderResultCard,
+} from "./render";
 
 // Test list:
 // - message renders as a TextBlock
@@ -75,6 +86,93 @@ describe("renderApprovalCard", () => {
         data: { hitldev_action: "deny", requestId: "req-1" },
       }),
     ]);
+  });
+});
+
+const batchRequest: BatchApprovalRequest = {
+  batchId: "b1",
+  channel: "lead-approvals",
+  title: "Outbound emails",
+  fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+  items: [
+    { id: "b1:0", message: "Email to ACME", defaults: { subject: "Hello ACME" } },
+    { id: "b1:1", message: "Email to Globex", defaults: { subject: "Hi" } },
+  ],
+};
+
+describe("renderBatchCard", () => {
+  const card = renderBatchCard(batchRequest);
+  const body = card.body as { type: string; id?: string; text?: string; value?: string }[];
+
+  it("starts with the title", () => {
+    expect(body[0]).toMatchObject({ type: "TextBlock", text: "Outbound emails" });
+  });
+
+  it("renders each item message", () => {
+    const texts = body.filter((b) => b.type === "TextBlock").map((b) => b.text);
+    expect(texts).toContain("Email to ACME");
+    expect(texts).toContain("Email to Globex");
+  });
+
+  it("renders the shared field per item with the item's defaults", () => {
+    const first = body.find((b) => b.id === "item:b1:0:field:subject");
+    expect(first).toMatchObject({ type: "Input.Text", value: "Hello ACME" });
+    const second = body.find((b) => b.id === "item:b1:1:field:subject");
+    expect(second).toMatchObject({ value: "Hi" });
+  });
+
+  it("renders an approve/deny decision per item, defaulting to approve", () => {
+    const decision = body.find((b) => b.id === "item:b1:0:decision") as
+      | { choices?: { value: string }[]; value?: string }
+      | undefined;
+    expect(decision).toMatchObject({ type: "Input.ChoiceSet", value: "approve" });
+    expect(decision?.choices?.map((c) => c.value)).toEqual(["approve", "deny"]);
+  });
+
+  it("ends with a single submit action carrying the batch id", () => {
+    const actions = card.actions as { title: string; data: Record<string, string> }[];
+    expect(actions).toEqual([
+      expect.objectContaining({
+        title: "Submit",
+        data: { hitldev_action: "batch_submit", batchId: "b1" },
+      }),
+    ]);
+  });
+});
+
+describe("renderBatchResultCard", () => {
+  it("shows each item with its outcome and no inputs", () => {
+    const card = renderBatchResultCard(batchRequest, [
+      { type: "APPROVED", id: "b1:0", by: { name: "ryosuke" } },
+      { type: "DENIED", id: "b1:1", reason: "spam" },
+    ]);
+    const json = JSON.stringify(card);
+    expect(json).toContain("Email to ACME");
+    expect(json).toContain("Approved by ryosuke");
+    expect(json).toContain("spam");
+    expect(json).not.toContain("Input.Text");
+    expect(json).not.toContain("batch_submit");
+  });
+});
+
+describe("extractBatchDecisions", () => {
+  it("groups submit values into per-item decisions", () => {
+    const decisions = extractBatchDecisions({
+      hitldev_action: "batch_submit",
+      batchId: "b1",
+      "item:b1:0:decision": "approve",
+      "item:b1:0:field:subject": "Edited",
+      "item:b1:1:decision": "deny",
+      "item:b1:1:field:subject": "Hi",
+    });
+
+    expect(decisions).toEqual(
+      expect.arrayContaining([
+        { requestId: "b1:0", decision: "approve", feedbacks: { subject: "Edited" } },
+        { requestId: "b1:1", decision: "deny" },
+      ]),
+    );
+    expect(decisions).toHaveLength(2);
   });
 });
 
