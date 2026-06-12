@@ -29,6 +29,10 @@ class ImmediateBinding implements EngineBinding {
   sleep(): Promise<void> {
     return new Promise(() => {});
   }
+
+  async run<T>(_label: string, fn: () => Promise<T>): Promise<T> {
+    return fn();
+  }
 }
 
 describe("public API", () => {

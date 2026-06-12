@@ -10,12 +10,12 @@ import type { ApprovalResult, Notification } from "./types";
 export async function waitForApproval<F extends Record<string, HitlField>>(
   opts: ApprovalOptions<F>,
 ): Promise<ApprovalResult<FeedbackValues<F>>> {
-  return requestApproval(await getRuntime(), opts);
+  return requestApproval(getRuntime(), opts);
 }
 
 /** Fire-and-forget progress updates and threaded context. */
 export async function notify(notification: Notification): Promise<void> {
-  return notifyVia(await getRuntime(), notification);
+  return notifyVia(getRuntime(), notification);
 }
 
 export { hitl } from "./fields";
@@ -28,8 +28,13 @@ export type {
   TextField,
 } from "./fields";
 
-export { createHitl } from "./create-hitl";
+export { createHitl, getRuntime } from "./create-hitl";
 export type { CreateHitlOptions, HitlApp } from "./create-hitl";
+
+// Building blocks for engine packages that ship their own workflow-side
+// entrypoint (e.g. an Inngest `waitForApproval(step, opts)`).
+export { notifyVia, requestApproval } from "./core";
+export type { HitlRuntime } from "./core";
 
 export { webui } from "./webui";
 export type { WebuiOptions } from "./webui";

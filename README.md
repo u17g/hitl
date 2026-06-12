@@ -33,7 +33,7 @@ openhitl is the missing library: open source, typed end-to-end, native to a dura
 
 1. **One primitive, done well.** `waitForApproval` and `notify`. No agent abstraction, no workflow engine, no triggers, no deploy story. Compose it with what you already use.
 2. **Typed feedbacks.** Field builders define what a reviewer can edit; `REVIEWED` results carry the edited values, typed by inference. The reviewer's edit is data, not a comment.
-3. **Durable by construction.** Built on Workflow DevKit hooks: suspension is event-sourced, resumption survives restarts and deploys. openhitl adds no runtime of its own.
+3. **Durable by construction.** Built on the engine's native suspension via a thin binding (Workflow DevKit hooks in v0): suspension is event-sourced, resumption survives restarts and deploys. openhitl adds no runtime of its own.
 4. **Channel-agnostic.** Workflow code declares *what* needs review. Plugins — explicit instances with an `id` and their own token — decide *where* it renders and *how* it comes back.
 5. **Thin by design.** A library, a few channel plugins, an inbox UI. No platform, no vault, no control plane. Nothing to operate beyond what you already run.
 
@@ -89,8 +89,10 @@ Wire the plugins once, at the app edge:
 // hitl.ts
 import { createHitl } from "@openhitl/sdk";
 import { slackHitl } from "@openhitl/slack";
+import { vercelWorkflowBinding } from "@openhitl/vercel-workflow";
 
 export const hitlApp = createHitl({
+  binding: vercelWorkflowBinding(),
   plugins: [
     slackHitl({
       id: "lead-approvals",
@@ -106,7 +108,7 @@ export const hitlApp = createHitl({
 // Next.js:  export const { GET, POST } = hitlApp.routeHandlers
 ```
 
-Plugins are explicit instances: secrets are plain `process.env` references passed right here, and the same platform can be wired multiple times (two Slack workspaces, an approvals channel and an alerts channel, ...). Workflow code refers to plugins only by `id`. No other configuration exists.
+Plugins are explicit instances: secrets are plain `process.env` references passed right here, and the same platform can be wired multiple times (two Slack workspaces, an approvals channel and an alerts channel, ...). Workflow code refers to plugins only by `id`. The `binding` picks the durable execution engine (see [Engine bindings](#engine-bindings)). No other configuration exists.
 
 ## API
 
@@ -218,7 +220,8 @@ What openhitl **owns** (all thin, bounded pieces):
 
 | Piece | What it is |
 |---|---|
-| `hitl` core | `waitForApproval` / `notify` / field builders / result types, on top of WDK hooks |
+| `hitl` core | `waitForApproval` / `notify` / field builders / result types, on top of the engine binding |
+| Engine bindings | One small package per engine (`@openhitl/vercel-workflow`, ...) implementing `EngineBinding` |
 | Plugins | Slack / Teams / webui renderers and callback parsers |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
 | Approval store | One small Postgres table for pending/resolved requests (powers the inbox and audit) |
@@ -231,29 +234,30 @@ What it **deliberately does not own**:
 
 ## Engine bindings
 
-openhitl asks very little of the execution engine — exactly three things:
+openhitl asks very little of the execution engine — exactly four things:
 
 1. **Suspend with a token** (workflow side): create a durable wait and obtain an opaque resume token
 2. **Resolve by token** (callback side): an external process resumes the wait with a payload
 3. **A durable timer** (for `timeout`)
+4. **A durable step** (workflow side): run non-deterministic IO (record the request, `plugin.send`) memoized across replays
 
-Every major durable execution engine has native primitives for all three:
+Every major durable execution engine has native primitives for all four:
 
-| Engine | Suspend | Resume | Timeout |
-|---|---|---|---|
-| Workflow DevKit (v0) | `createHook()` | `resolveHook(token, payload)` | `sleep()` + race |
-| Temporal | signal + `condition()` | `handle.signal(workflowId, payload)` | `condition(pred, timeout)` |
-| Inngest | `step.waitForEvent(...)` | `inngest.send(event)` with correlation | built-in (null → `TIMED_OUT`) |
-| Restate | `ctx.awakeable()` | `resolveAwakeable(id, payload)` | `ctx.sleep` + race |
+| Engine | Suspend | Resume | Timeout | Step |
+|---|---|---|---|---|
+| Workflow DevKit (v0) | `createHook()` | `resolveHook(token, payload)` | `sleep()` + race | pass-through (workflow code may do IO) |
+| Temporal | signal + `condition()` | `handle.signal(workflowId, payload)` | `condition(pred, timeout)` | activity |
+| Inngest | `step.waitForEvent(...)` | `inngest.send(event)` with correlation | built-in (null → `TIMED_OUT`) | `step.run` |
+| Restate | `ctx.awakeable()` | `resolveAwakeable(id, payload)` | `ctx.sleep` + race | `ctx.run` |
 
 The architecture is split along that contract:
 
-- **Core (engine-agnostic):** approval store, field builders, `ApprovalResult` typing and validation, plugin interface, `createHitl` callback handling. The bulk of the code; knows nothing about engines.
-- **Binding (per engine, thin):** two halves. The *workflow side* implements that engine's `waitForApproval` — create the engine-native wait, record the request and run `plugin.send` as durable steps (WDK step / Temporal activity / Inngest `step.run` / Restate `ctx.run`), await resolution. The *resolver side* is one function, `resolve(token, result)`, called by `createHitl` when a callback arrives — `resolveHook` for WDK, a signal for Temporal, an event for Inngest, `resolveAwakeable` for Restate.
+- **Core (engine-agnostic):** approval store, field builders, `ApprovalResult` typing and validation, plugin interface, `createHitl` callback handling, and the approval flow itself (`requestApproval`), which performs all IO through the binding's step primitive. The bulk of the code; knows nothing about engines.
+- **Binding (per engine, thin):** the `EngineBinding` interface, implemented by a dedicated package and passed to `createHitl({ binding })`. The *workflow side* is `suspend` / `sleep` / `run` — create the engine-native wait, run IO as durable steps. The *resolver side* is one function, `resolve(token, result)`, called by `createHitl` when a callback arrives — `resumeHook` for WDK, a signal for Temporal, an event for Inngest, `resolveAwakeable` for Restate.
 
-The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back. Differences that can't be absorbed surface honestly in the API — e.g. Inngest has no ambient workflow context, so its binding takes the step: `waitForApproval(step, opts)`.
+The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back. Differences that can't be absorbed surface honestly in the API — e.g. Inngest has no ambient workflow context, so its package ships its own entrypoint taking the step (`waitForApproval(step, opts)`), built from the exported `requestApproval` + `getRuntime`.
 
-Switching engines means switching one import (`openhitl` → `@openhitl/temporal`) and the engine entry in `createHitl`. Plugins, the approval store, the inbox — all shared. v0 ships the Workflow DevKit binding only; the binding interface exists from day one so the others stay an honest estimate of 50–100 lines each.
+Switching engines means switching one import (`@openhitl/vercel-workflow` → `@openhitl/temporal`) and the `binding` entry in `createHitl`. Plugins, the approval store, the inbox — all shared. v0 ships the Workflow DevKit binding (`@openhitl/vercel-workflow`) only; the binding interface exists from day one so the others stay an honest estimate of 50–100 lines each.
 
 ## Requirements and setup
 
@@ -271,6 +275,7 @@ DATABASE_URL=postgres://... npx openhitl setup
 | Package | Contents |
 |---|---|
 | `@openhitl/sdk` | Core: `waitForApproval`, `notify`, `hitl.*` field builders, `createHitl`, `webui()` plugin, inbox API |
+| `@openhitl/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
 | `@openhitl/slack` | `slackHitl()` |
 | `@openhitl/teams` | `teamsHitl()` |
 | `@openhitl/ui` | Inbox React components |
@@ -288,7 +293,8 @@ DATABASE_URL=postgres://... npx openhitl setup
 
 ```
 packages/
-  sdk/      # @openhitl/sdk (core: waitForApproval, notify, field builders, createHitl, webui, WDK binding)
-  slack/    # @openhitl/slack
-  ...       # @openhitl/teams, @openhitl/ui follow as they are implemented
+  sdk/              # @openhitl/sdk (core: waitForApproval, notify, field builders, createHitl, webui)
+  vercel-workflow/  # @openhitl/vercel-workflow (Workflow DevKit engine binding)
+  slack/            # @openhitl/slack
+  ...               # @openhitl/teams, @openhitl/ui follow as they are implemented
 ```

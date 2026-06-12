@@ -26,9 +26,6 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@25.9.3)(jiti@2.7.0)
-      workflow:
-        specifier: latest
-        version: 4.4.0(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.26(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(typescript@5.9.3)
 
   packages/slack:
     dependencies:
@@ -42,6 +39,21 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@25.9.3)(jiti@2.7.0)
+
+  packages/vercel-workflow:
+    devDependencies:
+      '@openhitl/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@25.9.3)(jiti@2.7.0)
+      workflow:
+        specifier: latest
+        version: 4.4.0(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.26(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(typescript@5.9.3)
 
 packages:
 
@@ -3090,7 +3102,7 @@ snapshots:
     dependencies:
       async-listen: 3.0.0
       open: 8.4.0
-      xdg-app-paths: 5.1.0
+      xdg-app-paths: 5.5.1
       zod: 4.1.11
 
   '@vercel/cli-config@0.2.0':

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EngineBinding, EngineSuspension } from "./binding";
+import { requestApproval } from "./core";
 import { createHitl, getRuntime, resetRuntime } from "./create-hitl";
 import { hitl } from "./fields";
 import type { HitlCallback, HitlPlugin } from "./types";
@@ -31,6 +32,10 @@ class FakeBinding implements EngineBinding {
   }
 
   async sleep(): Promise<void> {}
+
+  async run<T>(_label: string, fn: () => Promise<T>): Promise<T> {
+    return fn();
+  }
 }
 
 /** A plugin whose callback parser accepts JSON bodies with a matching pluginId. */
@@ -54,14 +59,10 @@ function jsonPlugin(id: string): HitlPlugin {
 }
 
 async function startApproval(app: ReturnType<typeof createHitl>, _binding: FakeBinding) {
-  const promise = getRuntime().then((runtime) =>
-    import("./core").then(({ requestApproval }) =>
-      requestApproval(runtime, {
-        message: "Approve?",
-        feedbacks: { subject: hitl.textField({ label: "Subject", default: "Hi" }) },
-      }),
-    ),
-  );
+  const promise = requestApproval(getRuntime(), {
+    message: "Approve?",
+    feedbacks: { subject: hitl.textField({ label: "Subject", default: "Hi" }) },
+  });
   const requestId = await vi.waitFor(async () => {
     const [record] = await app.store.list({ status: "pending" });
     expect(record).toBeTruthy();

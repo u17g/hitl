@@ -35,6 +35,10 @@ class FakeBinding implements EngineBinding {
   }
 
   sleep = vi.fn((ms: number) => new Promise<void>(() => {}));
+
+  async run<T>(_label: string, fn: () => Promise<T>): Promise<T> {
+    return fn();
+  }
 }
 
 function fakePlugin(id: string): HitlPlugin & {

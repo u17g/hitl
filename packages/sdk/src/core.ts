@@ -48,20 +48,28 @@ export async function requestApproval<F extends Record<string, HitlField>>(
   opts: ApprovalOptions<F>,
 ): Promise<ApprovalResult<FeedbackValues<F>>> {
   const plugin = pickPlugin(runtime.plugins, opts.channel);
-  const id = crypto.randomUUID();
   const fields = opts.feedbacks ?? {};
 
+  // UUID generation is non-deterministic, so it runs as a step too.
+  const id = await runtime.binding.run("openhitl:create-id", async () => crypto.randomUUID());
   const suspension = runtime.binding.suspend<ApprovalResult<FeedbackValues<F>>>();
-  await runtime.store.create({
-    id,
-    token: suspension.token,
-    channel: plugin.id,
-    message: opts.message,
-    fields,
-  });
+  await runtime.binding.run("openhitl:record-request", () =>
+    runtime.store.create({
+      id,
+      token: suspension.token,
+      channel: plugin.id,
+      message: opts.message,
+      fields,
+    }),
+  );
 
-  const { externalId } = await plugin.send({ id, channel: plugin.id, message: opts.message, fields });
-  await runtime.store.setExternalId(id, externalId);
+  // Delivery is its own step: a retry of setExternalId must not re-send the message.
+  const { externalId } = await runtime.binding.run("openhitl:deliver", () =>
+    plugin.send({ id, channel: plugin.id, message: opts.message, fields }),
+  );
+  await runtime.binding.run("openhitl:store-external-id", () =>
+    runtime.store.setExternalId(id, externalId),
+  );
 
   if (opts.timeout === undefined) return suspension.promise;
 
@@ -74,14 +82,21 @@ export async function requestApproval<F extends Record<string, HitlField>>(
   if (winner !== TIMED_OUT) return winner as ApprovalResult<FeedbackValues<F>>;
 
   // The callback may have won a near-simultaneous race; prefer its result.
-  const record = await runtime.store.get(id);
+  const record = await runtime.binding.run("openhitl:check-resolution", () =>
+    runtime.store.get(id),
+  );
   if (record?.status === "resolved" && record.result) {
     return record.result as ApprovalResult<FeedbackValues<F>>;
   }
 
   const result: ApprovalResult<FeedbackValues<F>> = { type: "TIMED_OUT", id };
-  await runtime.store.resolve(id, result);
-  if (record?.externalId) await plugin.update?.(record.externalId, result);
+  await runtime.binding.run("openhitl:record-timeout", () => runtime.store.resolve(id, result));
+  const externalIdToUpdate = record?.externalId;
+  if (externalIdToUpdate && plugin.update) {
+    await runtime.binding.run("openhitl:update-channel", () =>
+      plugin.update!(externalIdToUpdate, result),
+    );
+  }
   return result;
 }
 
@@ -140,10 +155,12 @@ export async function notifyVia(
   notification: Notification,
 ): Promise<void> {
   const plugin = pickPlugin(runtime.plugins, notification.channel);
-  const enriched: Notification = { ...notification };
-  if (notification.parent) {
-    const parent = await runtime.store.get(notification.parent);
-    if (parent?.externalId) enriched.parentExternalId = parent.externalId;
-  }
-  await plugin.notify(enriched);
+  await runtime.binding.run("openhitl:notify", async () => {
+    const enriched: Notification = { ...notification };
+    if (notification.parent) {
+      const parent = await runtime.store.get(notification.parent);
+      if (parent?.externalId) enriched.parentExternalId = parent.externalId;
+    }
+    await plugin.notify(enriched);
+  });
 }

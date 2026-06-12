@@ -1,7 +1,7 @@
 {
-  "name": "@openhitl/sdk",
+  "name": "@openhitl/vercel-workflow",
   "version": "0.0.0",
-  "description": "Human-in-the-loop as a typed, durable primitive for TypeScript workflows.",
+  "description": "Workflow DevKit (Vercel) engine binding for openhitl.",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -14,9 +14,14 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "@openhitl/sdk": "workspace:*",
+    "workflow": "*"
+  },
   "devDependencies": {
-    "@types/node": "^25.9.3",
+    "@openhitl/sdk": "workspace:*",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "workflow": "latest"
   }
 }

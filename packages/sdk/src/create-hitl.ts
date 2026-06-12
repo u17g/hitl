@@ -9,8 +9,8 @@ export interface CreateHitlOptions {
   plugins: HitlPlugin[];
   /** Defaults to the in-memory store. Swap for Postgres in production. */
   store?: ApprovalStore;
-  /** Defaults to the Workflow DevKit binding, loaded lazily. */
-  binding?: EngineBinding;
+  /** Engine binding from an engine package, e.g. `vercelWorkflowBinding()` from `@openhitl/vercel-workflow`. */
+  binding: EngineBinding;
 }
 
 export interface HitlApp {
@@ -27,27 +27,14 @@ export interface HitlApp {
   plugins: HitlPlugin[];
 }
 
-interface Registry {
-  plugins: HitlPlugin[];
-  store: ApprovalStore;
-  binding?: EngineBinding;
-}
+let registry: HitlRuntime | null = null;
 
-let registry: Registry | null = null;
-
-/**
- * The runtime `waitForApproval` / `notify` operate against. Loads the WDK
- * binding lazily so other-engine users never import `workflow`.
- */
-export async function getRuntime(): Promise<HitlRuntime> {
+/** The runtime `waitForApproval` / `notify` operate against. */
+export function getRuntime(): HitlRuntime {
   if (!registry) {
     throw new Error("openhitl is not configured. Call createHitl() at your app edge first.");
   }
-  if (!registry.binding) {
-    const { wdkBinding } = await import("./wdk");
-    registry.binding = wdkBinding;
-  }
-  return registry as HitlRuntime;
+  return registry;
 }
 
 /** Test seam: clears the module-level registry. */
@@ -62,7 +49,7 @@ export function createHitl(options: CreateHitlOptions): HitlApp {
   registry = { plugins, store, binding: options.binding };
 
   const fetchHandler = async (req: Request): Promise<Response> => {
-    const runtime = await getRuntime();
+    const runtime = getRuntime();
     const segments = new URL(req.url).pathname.split("/").filter(Boolean);
 
     if (req.method === "GET") {
