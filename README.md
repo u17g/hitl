@@ -90,6 +90,7 @@ Wire the plugins once, at the app edge:
 import { createHitl } from "@hitldev/sdk";
 import { discordHitl } from "@hitldev/discord";
 import { slackHitl } from "@hitldev/slack";
+import { teamsHitl } from "@hitldev/teams";
 import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
 
 export const hitlApp = createHitl({
@@ -100,6 +101,13 @@ export const hitlApp = createHitl({
       channel: "#inbound-leads",
       token: process.env.SLACK_BOT_TOKEN,
     }),
+    teamsHitl({
+      id: "teams-approvals",
+      target: { type: "channel", teamId: process.env.TEAMS_TEAM_ID!, channelId: process.env.TEAMS_CHANNEL_ID! },
+      appId: process.env.MICROSOFT_APP_ID,
+      appPassword: process.env.MICROSOFT_APP_PASSWORD,
+      tenantId: process.env.MICROSOFT_APP_TENANT_ID,
+    }),
     discordHitl({
       id: "discord-approvals",
       channelId: process.env.DISCORD_CHANNEL_ID!,
@@ -109,7 +117,7 @@ export const hitlApp = createHitl({
   ],
 });
 
-// Mount the callback handler (Slack interactivity, Discord interactions, webui inbox API) into your app:
+// Mount the callback handler (Slack interactivity, Teams Bot Framework, Discord interactions, webui inbox API) into your app:
 // Express:  app.use("/hitl", hitlApp.handler)
 // Hono:     app.route("/hitl", hitlApp.hono)
 // Next.js:  export const { GET, POST } = hitlApp.routeHandlers
@@ -186,7 +194,7 @@ Official plugins:
 |---|---|---|
 | `slackHitl()` | `@hitldev/slack` | Block Kit message with input fields and approve/deny buttons |
 | `discordHitl()` | `@hitldev/discord` | Embed message with approve/deny buttons; feedback fields open in a Modal |
-| `teamsHitl()` | `@hitldev/teams` | Adaptive Card |
+| `teamsHitl()` | `@hitldev/teams` | Adaptive Card with input fields and approve/deny actions |
 | `webui()` | built into `hitldev` | Approval inbox (React components from `@hitldev/ui`) |
 
 One package per channel — install only what you use. Writing your own plugin is implementing the interface above.
@@ -311,6 +319,16 @@ DATABASE_URL=postgres://... npx hitldev setup
 
 When a reviewer clicks **Approve** and the request has feedback fields, Discord opens a Modal to collect edits before resolving the approval.
 
+### Teams setup
+
+1. Register a bot in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) and enable the **Microsoft Teams** channel.
+2. Copy the **Microsoft App ID** and a client secret to `MICROSOFT_APP_ID` / `MICROSOFT_APP_PASSWORD`.
+3. Set the **Messaging endpoint** to your mounted hitl handler (e.g. `https://your-app.example/hitl`).
+4. Package and install the Teams app (see [packages/teams/manifest.json](packages/teams/manifest.json)) in the target team and/or for individual reviewers.
+5. Pass `teamId` + `channelId` for channel approvals, or a reviewer's Azure AD object id for 1:1 DM approvals.
+
+Teams renders feedback fields inline in the Adaptive Card — no modal step is needed.
+
 ## Packages
 
 | Package | Contents |
@@ -345,5 +363,6 @@ packages/
   cli/              # @hitldev/cli (hitldev setup / schema)
   slack/            # @hitldev/slack
   discord/          # @hitldev/discord
-  ...               # @hitldev/teams, @hitldev/ui follow as they are implemented
+  teams/            # @hitldev/teams
+  ...               # @hitldev/ui follows as it is implemented
 ```

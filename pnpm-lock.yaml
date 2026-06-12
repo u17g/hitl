@@ -121,6 +121,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
 
+  packages/teams:
+    dependencies:
+      '@hitldev/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
+
   packages/vercel-workflow:
     devDependencies:
       '@hitldev/sdk':

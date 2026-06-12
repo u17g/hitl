@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "00000000-0000-0000-0000-000000000001",
+  "developer": {
+    "name": "hitldev",
+    "websiteUrl": "https://github.com/hitldev/hitldev",
+    "privacyUrl": "https://github.com/hitldev/hitldev",
+    "termsOfUseUrl": "https://github.com/hitldev/hitldev"
+  },
+  "name": {
+    "short": "hitldev",
+    "full": "hitldev approvals"
+  },
+  "description": {
+    "short": "Human-in-the-loop approval messages for workflows.",
+    "full": "Adaptive Card approval forms with inline fields and Approve/Deny buttons for durable workflow human review."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#6264A7",
+  "bots": [
+    {
+      "botId": "00000000-0000-0000-0000-000000000002",
+      "scopes": ["team", "personal"],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["example.com"]
+}
