@@ -18,7 +18,7 @@ export async function notify(notification: Notification): Promise<void> {
   return notifyVia(getRuntime(), notification);
 }
 
-export { hitl } from "./fields";
+export { field } from "./fields";
 export type {
   ConfirmField,
   FeedbackValues,

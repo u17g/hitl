@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hitl } from "./fields";
+import { field } from "./fields";
 import type { ApprovalRequest } from "./types";
 import { webui } from "./webui";
 
@@ -14,7 +14,7 @@ const request: ApprovalRequest = {
   id: "req-1",
   channel: "webui",
   message: "Approve?",
-  fields: { subject: hitl.textField({ label: "Subject" }) },
+  fields: { subject: field.textField({ label: "Subject" }) },
 };
 
 describe("webui plugin", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { hitl, type FeedbackValues, type HitlField } from "./fields";
+import { field, type FeedbackValues, type HitlField } from "./fields";
 
 // Test list:
 // - textField / textArea / select / confirm carry kind, label, default
@@ -9,7 +9,7 @@ import { hitl, type FeedbackValues, type HitlField } from "./fields";
 
 describe("field builders", () => {
   it("textField carries label and default", () => {
-    expect(hitl.textField({ label: "Subject", default: "Hello" })).toEqual({
+    expect(field.textField({ label: "Subject", default: "Hello" })).toEqual({
       kind: "text",
       label: "Subject",
       default: "Hello",
@@ -17,7 +17,7 @@ describe("field builders", () => {
   });
 
   it("textArea carries label and default", () => {
-    expect(hitl.textArea({ label: "Body" })).toEqual({
+    expect(field.textArea({ label: "Body" })).toEqual({
       kind: "textarea",
       label: "Body",
       default: undefined,
@@ -26,7 +26,7 @@ describe("field builders", () => {
 
   it("select carries options and default", () => {
     expect(
-      hitl.select({ label: "Priority", options: ["low", "high"], default: "low" }),
+      field.select({ label: "Priority", options: ["low", "high"], default: "low" }),
     ).toEqual({
       kind: "select",
       label: "Priority",
@@ -36,7 +36,7 @@ describe("field builders", () => {
   });
 
   it("confirm carries label and default", () => {
-    expect(hitl.confirm({ label: "CC sales?", default: true })).toEqual({
+    expect(field.confirm({ label: "CC sales?", default: true })).toEqual({
       kind: "confirm",
       label: "CC sales?",
       default: true,
@@ -47,10 +47,10 @@ describe("field builders", () => {
 describe("FeedbackValues type inference", () => {
   it("infers value types per field kind", () => {
     const fields = {
-      subject: hitl.textField({ label: "Subject" }),
-      body: hitl.textArea({ label: "Body" }),
-      priority: hitl.select({ label: "Priority", options: ["low", "high"] }),
-      ccSales: hitl.confirm({ label: "CC sales?" }),
+      subject: field.textField({ label: "Subject" }),
+      body: field.textArea({ label: "Body" }),
+      priority: field.select({ label: "Priority", options: ["low", "high"] }),
+      ccSales: field.confirm({ label: "CC sales?" }),
     };
 
     expectTypeOf<FeedbackValues<typeof fields>>().toEqualTypeOf<{
@@ -62,9 +62,9 @@ describe("FeedbackValues type inference", () => {
   });
 
   it("every builder result is assignable to HitlField", () => {
-    expectTypeOf(hitl.textField({ label: "x" })).toMatchTypeOf<HitlField>();
-    expectTypeOf(hitl.textArea({ label: "x" })).toMatchTypeOf<HitlField>();
-    expectTypeOf(hitl.select({ label: "x", options: ["a"] })).toMatchTypeOf<HitlField>();
-    expectTypeOf(hitl.confirm({ label: "x" })).toMatchTypeOf<HitlField>();
+    expectTypeOf(field.textField({ label: "x" })).toMatchTypeOf<HitlField>();
+    expectTypeOf(field.textArea({ label: "x" })).toMatchTypeOf<HitlField>();
+    expectTypeOf(field.select({ label: "x", options: ["a"] })).toMatchTypeOf<HitlField>();
+    expectTypeOf(field.confirm({ label: "x" })).toMatchTypeOf<HitlField>();
   });
 });

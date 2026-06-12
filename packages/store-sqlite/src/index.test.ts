@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { hitl, type NewApprovalRecord } from "@hitldev/sdk";
+import { field, type NewApprovalRecord } from "@hitldev/sdk";
 import { describeStoreContract } from "@hitldev/sdk/store-contract";
 import { SqliteStore, schemaSql } from "./index";
 
@@ -16,7 +16,7 @@ function newRecord(id: string): NewApprovalRecord {
     token: `tok_${id}`,
     channel: "lead-approvals",
     message: "Inbound lead",
-    fields: { subject: hitl.textField({ label: "Subject" }) },
+    fields: { subject: field.textField({ label: "Subject" }) },
   };
 }
 
@@ -50,9 +50,9 @@ describe("SqliteStore specifics", () => {
   it("round-trips nested field definitions through JSON", async () => {
     const store = new SqliteStore(new DatabaseSync(":memory:"));
     const fields = {
-      subject: hitl.textField({ label: "Subject", default: "Hello" }),
-      tier: hitl.select({ label: "Tier", options: ["gold", "silver"], default: "silver" }),
-      confirmed: hitl.confirm({ label: "Confirm?" }),
+      subject: field.textField({ label: "Subject", default: "Hello" }),
+      tier: field.select({ label: "Tier", options: ["gold", "silver"], default: "silver" }),
+      confirmed: field.confirm({ label: "Confirm?" }),
     };
     await store.create({ ...newRecord("a1"), fields });
 

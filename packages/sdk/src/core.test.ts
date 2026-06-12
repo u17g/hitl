@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EngineBinding, EngineSuspension } from "./binding";
 import { notifyVia, requestApproval, resolveApproval, type HitlRuntime } from "./core";
-import { hitl } from "./fields";
+import { field } from "./fields";
 import { InMemoryStore } from "./store";
 import type { ApprovalRequest, HitlPlugin, Notification } from "./types";
 
@@ -75,16 +75,16 @@ function makeRuntime(pluginIds: string[] = ["lead-approvals"]) {
   return { binding, store, plugins, runtime };
 }
 
-const feedbacks = {
-  subject: hitl.textField({ label: "Subject", default: "Hi" }),
-  body: hitl.textArea({ label: "Body", default: "Hello there" }),
+const fields = {
+  subject: field.textField({ label: "Subject", default: "Hi" }),
+  body: field.textArea({ label: "Body", default: "Hello there" }),
 };
 
 describe("requestApproval", () => {
   it("records the request, sends via the default plugin, and stores the externalId", async () => {
     const { runtime, store, plugins } = makeRuntime(["a", "b"]);
 
-    const pending = requestApproval(runtime, { message: "Approve?", feedbacks });
+    const pending = requestApproval(runtime, { message: "Approve?", fields });
     await vi.waitFor(async () => {
       expect(plugins[0]!.sent).toHaveLength(1);
     });
@@ -146,7 +146,7 @@ describe("requestApproval", () => {
 
 describe("resolveApproval", () => {
   async function startApproval(runtime: HitlRuntime, plugin: ReturnType<typeof fakePlugin>) {
-    const pending = requestApproval(runtime, { message: "m", feedbacks });
+    const pending = requestApproval(runtime, { message: "m", fields });
     await vi.waitFor(() => expect(plugin.sent).toHaveLength(1));
     return { pending, requestId: plugin.sent[0]!.id };
   }

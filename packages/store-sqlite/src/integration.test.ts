@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import {
   createHitl,
-  hitl,
+  field,
   waitForApproval,
   type EngineBinding,
   type EngineSuspension,
@@ -64,7 +64,7 @@ describe("createHitl with SqliteStore", () => {
 
     const promise = waitForApproval({
       message: "Approve?",
-      feedbacks: { subject: hitl.textField({ label: "Subject", default: "Hi" }) },
+      fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
     });
     const requestId = await vi.waitFor(async () => {
       const [record] = await app.store.list({ status: "pending" });

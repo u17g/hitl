@@ -1,4 +1,4 @@
-import { hitl } from "./fields";
+import { field } from "./fields";
 import type { NewApprovalRecord, Store } from "./store";
 
 /**
@@ -29,7 +29,7 @@ export function describeStoreContract(
       token: `tok_${id}`,
       channel: "lead-approvals",
       message: "Inbound lead",
-      fields: { subject: hitl.textField({ label: "Subject" }) },
+      fields: { subject: field.textField({ label: "Subject" }) },
     };
   }
 

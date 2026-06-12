@@ -1,4 +1,4 @@
-import { hitl } from "@hitldev/sdk";
+import { field } from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
 import { parseDiscordCallback, RESPONSE_MODAL } from "./callback";
 import {
@@ -14,7 +14,7 @@ describe("parseDiscordCallback", () => {
   const pendingFields = new Map([
     [
       "req-1",
-      { subject: hitl.textField({ label: "Subject", default: "Hi" }) },
+      { subject: field.textField({ label: "Subject", default: "Hi" }) },
     ],
   ]);
 

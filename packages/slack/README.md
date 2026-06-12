@@ -39,8 +39,8 @@ Workflow code refers to the plugin by `id`:
 const approval = await waitForApproval({
   channel: "lead-approvals",
   message: "Send this reply?",
-  feedbacks: {
-    subject: hitl.textField({ label: "Subject", default: draft.subject }),
+  fields: {
+    subject: field.textField({ label: "Subject", default: draft.subject }),
   },
 });
 ```
@@ -85,7 +85,7 @@ Unlike Discord, Slack supports inline inputs directly in the message — no moda
 
 ## Field mapping
 
-| `hitl.*` field | Block Kit control |
+| `field.*` field | Block Kit control |
 |---|---|
 | `textField` | `plain_text_input` |
 | `textArea` | `plain_text_input` (multiline) |

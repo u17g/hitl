@@ -36,7 +36,7 @@ export type FeedbackValues<F extends Record<string, HitlField>> = {
       : string;
 };
 
-export const hitl = {
+export const field = {
   textField(opts: { label: string; default?: string }): TextField {
     return { kind: "text", label: opts.label, default: opts.default };
   },

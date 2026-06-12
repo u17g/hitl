@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hitl } from "./fields";
+import { field } from "./fields";
 import { validateFeedbacks } from "./validate";
 
 // Test list:
@@ -12,10 +12,10 @@ import { validateFeedbacks } from "./validate";
 // - non-string value for a text field throws
 
 const fields = {
-  subject: hitl.textField({ label: "Subject", default: "Hi" }),
-  body: hitl.textArea({ label: "Body" }),
-  priority: hitl.select({ label: "Priority", options: ["low", "high"], default: "low" }),
-  ccSales: hitl.confirm({ label: "CC sales?", default: false }),
+  subject: field.textField({ label: "Subject", default: "Hi" }),
+  body: field.textArea({ label: "Body" }),
+  priority: field.select({ label: "Priority", options: ["low", "high"], default: "low" }),
+  ccSales: field.confirm({ label: "CC sales?", default: false }),
 };
 
 describe("validateFeedbacks", () => {
@@ -36,7 +36,7 @@ describe("validateFeedbacks", () => {
 
   it("coerces confirm string values to boolean", () => {
     const result = validateFeedbacks(
-      { ok: hitl.confirm({ label: "OK?" }) },
+      { ok: field.confirm({ label: "OK?" }) },
       { ok: "true" },
     );
     expect(result.ok).toBe(true);

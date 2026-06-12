@@ -1,4 +1,4 @@
-import { hitl, type ApprovalRequest } from "@hitldev/sdk";
+import { field, type ApprovalRequest } from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
 import {
   approveCustomId,
@@ -15,10 +15,10 @@ const request: ApprovalRequest = {
   channel: "lead-approvals",
   message: "Inbound lead: a@b.com",
   fields: {
-    subject: hitl.textField({ label: "Subject", default: "Hi" }),
-    notes: hitl.textArea({ label: "Notes" }),
-    tier: hitl.select({ label: "Tier", options: ["A", "B"] as const }),
-    urgent: hitl.confirm({ label: "Urgent?", default: false }),
+    subject: field.textField({ label: "Subject", default: "Hi" }),
+    notes: field.textArea({ label: "Notes" }),
+    tier: field.select({ label: "Tier", options: ["A", "B"] as const }),
+    urgent: field.confirm({ label: "Urgent?", default: false }),
   },
 };
 

@@ -1,4 +1,4 @@
-import { hitl, type ApprovalRequest } from "@hitldev/sdk";
+import { field, type ApprovalRequest } from "@hitldev/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { slackHitl } from "./index";
 
@@ -40,7 +40,7 @@ const request: ApprovalRequest = {
   id: "req-1",
   channel: "lead-approvals",
   message: "Inbound lead: a@b.com",
-  fields: { subject: hitl.textField({ label: "Subject", default: "Hi" }) },
+  fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
 };
 
 function makePlugin(fetchImpl: typeof fetch) {

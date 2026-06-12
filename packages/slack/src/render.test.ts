@@ -1,4 +1,4 @@
-import { hitl, type ApprovalRequest, type ApprovalResult } from "@hitldev/sdk";
+import { field, type ApprovalRequest, type ApprovalResult } from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
 import { renderApprovalBlocks, renderResultBlocks } from "./render";
 
@@ -16,10 +16,10 @@ const request: ApprovalRequest = {
   channel: "lead-approvals",
   message: "Inbound lead: a@b.com",
   fields: {
-    subject: hitl.textField({ label: "Subject", default: "Hi" }),
-    body: hitl.textArea({ label: "Body" }),
-    priority: hitl.select({ label: "Priority", options: ["low", "high"], default: "high" }),
-    ccSales: hitl.confirm({ label: "CC sales?", default: true }),
+    subject: field.textField({ label: "Subject", default: "Hi" }),
+    body: field.textArea({ label: "Body" }),
+    priority: field.select({ label: "Priority", options: ["low", "high"], default: "high" }),
+    ccSales: field.confirm({ label: "CC sales?", default: true }),
   },
 };
 

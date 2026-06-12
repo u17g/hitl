@@ -19,7 +19,7 @@ export interface HitlRuntime {
 
 export interface ApprovalOptions<F extends Record<string, HitlField>> {
   message: string;
-  feedbacks?: F;
+  fields?: F;
   /** Plugin id; defaults to the first configured plugin. */
   channel?: string;
   /** e.g. "72h"; resolves as { type: "TIMED_OUT" }. */
@@ -48,7 +48,7 @@ export async function requestApproval<F extends Record<string, HitlField>>(
   opts: ApprovalOptions<F>,
 ): Promise<ApprovalResult<FeedbackValues<F>>> {
   const plugin = pickPlugin(runtime.plugins, opts.channel);
-  const fields = opts.feedbacks ?? {};
+  const fields = opts.fields ?? {};
 
   // UUID generation is non-deterministic, so it runs as a step too.
   const id = await runtime.binding.run("hitldev:create-id", async () => crypto.randomUUID());

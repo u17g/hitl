@@ -5,9 +5,9 @@
 ```ts
 const approval = await waitForApproval({
   message: `Send this reply to ${input.email}?`,
-  feedbacks: {
-    subject: hitl.textField({ label: "Subject", default: draft.subject }),
-    body: hitl.textArea({ label: "Body", default: draft.body }),
+  fields: {
+    subject: field.textField({ label: "Subject", default: draft.subject }),
+    body: field.textArea({ label: "Body", default: draft.body }),
   },
 });
 ```
@@ -45,7 +45,7 @@ A Workflow DevKit workflow using the plain AI SDK for drafting and hitldev for t
 // workflows/inbound-lead.ts
 import { z } from "zod";
 import { generateObject } from "ai";
-import { hitl, notify, waitForApproval } from "@hitldev/sdk";
+import { field, notify, waitForApproval } from "@hitldev/sdk";
 import { sendEmail } from "../lib/email";
 
 export async function inboundLead(input: { email: string; message: string }) {
@@ -61,9 +61,9 @@ export async function inboundLead(input: { email: string; message: string }) {
   const approval = await waitForApproval({
     channel: "lead-approvals",            // plugin id; defaults to the first configured plugin
     message: `Inbound lead: ${input.email}`,
-    feedbacks: {
-      subject: hitl.textField({ label: "Subject", default: draft.subject }),
-      body: hitl.textArea({ label: "Body", default: draft.body }),
+    fields: {
+      subject: field.textField({ label: "Subject", default: draft.subject }),
+      body: field.textArea({ label: "Body", default: draft.body }),
     },
     timeout: "72h",
   });
@@ -124,7 +124,7 @@ Plugins are explicit instances: secrets are plain `process.env` references passe
 ```ts
 const approval = await waitForApproval({
   message: string,
-  feedbacks?: Record<string, HitlField>,  // fields the reviewer can edit
+  fields?: Record<string, HitlField>,  // fields the reviewer can edit
   channel?: string,                       // plugin id; defaults to the first configured plugin
   timeout?: Duration,                     // e.g. "72h"; resolves as { type: "TIMED_OUT" }
 });
@@ -145,10 +145,10 @@ Under the hood, `waitForApproval` is a Workflow DevKit hook: the workflow suspen
 ### Field builders
 
 ```ts
-hitl.textField({ label, default? })
-hitl.textArea({ label, default? })
-hitl.select({ label, options, default? })
-hitl.confirm({ label, default? })
+field.textField({ label, default? })
+field.textArea({ label, default? })
+field.select({ label, options, default? })
+field.confirm({ label, default? })
 ```
 
 Each field renders natively per channel (Slack Block Kit inputs, Teams Adaptive Card fields, web form controls) and contributes its type to `feedbacks`.
@@ -315,7 +315,7 @@ When a reviewer clicks **Approve** and the request has feedback fields, Discord 
 
 | Package | Contents |
 |---|---|
-| `@hitldev/sdk` | Core: `waitForApproval`, `notify`, `hitl.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
+| `@hitldev/sdk` | Core: `waitForApproval`, `notify`, `field.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
 | `@hitldev/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |

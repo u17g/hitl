@@ -40,8 +40,8 @@ Workflow code refers to the plugin by `id`:
 const approval = await waitForApproval({
   channel: "discord-approvals",
   message: "Send this reply?",
-  feedbacks: {
-    subject: hitl.textField({ label: "Subject", default: draft.subject }),
+  fields: {
+    subject: field.textField({ label: "Subject", default: draft.subject }),
   },
 });
 ```
@@ -79,7 +79,7 @@ Interaction requests are verified with Ed25519 (`X-Signature-Ed25519`, `X-Signat
 
 ## Field mapping
 
-| `hitl.*` field | Modal control |
+| `field.*` field | Modal control |
 |---|---|
 | `textField` | Text input (short) |
 | `textArea` | Text input (paragraph) |

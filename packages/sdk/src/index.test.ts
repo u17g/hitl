@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { EngineBinding, EngineSuspension } from "./binding";
-import { createHitl, hitl, notify, waitForApproval, webui } from "./index";
+import { createHitl, field, notify, waitForApproval, webui } from "./index";
 import { resetRuntime } from "./create-hitl";
 
 // Test list:
@@ -47,9 +47,9 @@ describe("public API", () => {
 
     const pending = waitForApproval({
       message: "Send this reply?",
-      feedbacks: {
-        subject: hitl.textField({ label: "Subject", default: "Hi" }),
-        body: hitl.textArea({ label: "Body", default: "Hello" }),
+      fields: {
+        subject: field.textField({ label: "Subject", default: "Hi" }),
+        body: field.textArea({ label: "Body", default: "Hello" }),
       },
       timeout: "72h",
     });
