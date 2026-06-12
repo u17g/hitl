@@ -8,6 +8,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./store-contract": {
+      "types": "./src/store-contract.ts",
+      "default": "./src/store-contract.ts"
     }
   },
   "scripts": {
