@@ -1,7 +1,7 @@
 import type { EngineBinding } from "./binding";
 import { parseDuration, type Duration } from "./duration";
 import type { FeedbackValues, HitlField } from "./fields";
-import type { ApprovalStore } from "./store";
+import type { Store } from "./store";
 import type {
   ApprovalResult,
   HitlCallback,
@@ -13,7 +13,7 @@ import { validateFeedbacks } from "./validate";
 /** Everything the engine-agnostic core needs to operate. Assembled by `createHitl` plus a binding. */
 export interface HitlRuntime {
   binding: EngineBinding;
-  store: ApprovalStore;
+  store: Store;
   plugins: HitlPlugin[];
 }
 

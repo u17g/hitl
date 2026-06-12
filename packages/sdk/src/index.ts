@@ -49,8 +49,8 @@ export type {
   Reviewer,
 } from "./types";
 
-export { InMemoryApprovalStore } from "./store";
-export type { ApprovalRecord, ApprovalStore, NewApprovalRecord } from "./store";
+export { InMemoryStore } from "./store";
+export type { ApprovalRecord, Store, NewApprovalRecord } from "./store";
 
 export type { EngineBinding, EngineSuspension } from "./binding";
 export type { Duration } from "./duration";

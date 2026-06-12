@@ -20,7 +20,7 @@ export interface ApprovalRecord extends NewApprovalRecord {
 }
 
 /** Persistence for pending/resolved approvals; powers the inbox and audit. */
-export interface ApprovalStore {
+export interface Store {
   create(record: NewApprovalRecord): Promise<void>;
   get(id: string): Promise<ApprovalRecord | null>;
   findByExternalId(externalId: string): Promise<ApprovalRecord | null>;
@@ -29,7 +29,7 @@ export interface ApprovalStore {
   list(filter?: { status?: ApprovalRecord["status"] }): Promise<ApprovalRecord[]>;
 }
 
-export class InMemoryApprovalStore implements ApprovalStore {
+export class InMemoryStore implements Store {
   private records = new Map<string, ApprovalRecord>();
 
   async create(record: NewApprovalRecord): Promise<void> {

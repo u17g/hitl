@@ -1,14 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { EngineBinding } from "./binding";
 import { resolveApproval, type HitlRuntime } from "./core";
-import { InMemoryApprovalStore, type ApprovalStore } from "./store";
+import { InMemoryStore, type Store } from "./store";
 import type { HitlPlugin } from "./types";
 import { FeedbackValidationError } from "./validate";
 
 export interface CreateHitlOptions {
   plugins: HitlPlugin[];
-  /** Defaults to the in-memory store. Swap for Postgres in production. */
-  store?: ApprovalStore;
+  /** Defaults to the in-memory store. Swap for `@openhitl/store-postgres` or `@openhitl/store-sqlite` in production. */
+  store?: Store;
   /** Engine binding from an engine package, e.g. `vercelWorkflowBinding()` from `@openhitl/vercel-workflow`. */
   binding: EngineBinding;
 }
@@ -23,7 +23,7 @@ export interface HitlApp {
     GET(req: Request): Promise<Response>;
     POST(req: Request): Promise<Response>;
   };
-  store: ApprovalStore;
+  store: Store;
   plugins: HitlPlugin[];
 }
 
@@ -43,7 +43,7 @@ export function resetRuntime(): void {
 }
 
 export function createHitl(options: CreateHitlOptions): HitlApp {
-  const store = options.store ?? new InMemoryApprovalStore();
+  const store = options.store ?? new InMemoryStore();
   const { plugins } = options;
 
   registry = { plugins, store, binding: options.binding };
@@ -71,7 +71,7 @@ export function createHitl(options: CreateHitlOptions): HitlApp {
 }
 
 async function handleInboxApi(
-  store: ApprovalStore,
+  store: Store,
   req: Request,
   segments: string[],
 ): Promise<Response> {

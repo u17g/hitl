@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { EngineBinding, EngineSuspension } from "./binding";
 import { notifyVia, requestApproval, resolveApproval, type HitlRuntime } from "./core";
 import { hitl } from "./fields";
-import { InMemoryApprovalStore } from "./store";
+import { InMemoryStore } from "./store";
 import type { ApprovalRequest, HitlPlugin, Notification } from "./types";
 
 // Test list:
@@ -69,7 +69,7 @@ function fakePlugin(id: string): HitlPlugin & {
 
 function makeRuntime(pluginIds: string[] = ["lead-approvals"]) {
   const binding = new FakeBinding();
-  const store = new InMemoryApprovalStore();
+  const store = new InMemoryStore();
   const plugins = pluginIds.map(fakePlugin);
   const runtime: HitlRuntime = { binding, store, plugins };
   return { binding, store, plugins, runtime };

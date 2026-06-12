@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hitl } from "./fields";
-import { InMemoryApprovalStore, type NewApprovalRecord } from "./store";
+import { InMemoryStore, type NewApprovalRecord } from "./store";
 
 // Test list:
 // - create + get round-trips a record with status "pending"
@@ -20,9 +20,9 @@ function newRecord(id: string): NewApprovalRecord {
   };
 }
 
-describe("InMemoryApprovalStore", () => {
+describe("InMemoryStore", () => {
   it("creates and gets a pending record", async () => {
-    const store = new InMemoryApprovalStore();
+    const store = new InMemoryStore();
     await store.create(newRecord("a1"));
 
     const record = await store.get("a1");
@@ -36,12 +36,12 @@ describe("InMemoryApprovalStore", () => {
   });
 
   it("returns null for an unknown id", async () => {
-    const store = new InMemoryApprovalStore();
+    const store = new InMemoryStore();
     expect(await store.get("missing")).toBeNull();
   });
 
   it("attaches an external id", async () => {
-    const store = new InMemoryApprovalStore();
+    const store = new InMemoryStore();
     await store.create(newRecord("a1"));
     await store.setExternalId("a1", "slack-ts-123");
 
@@ -50,7 +50,7 @@ describe("InMemoryApprovalStore", () => {
   });
 
   it("resolves a record with a result", async () => {
-    const store = new InMemoryApprovalStore();
+    const store = new InMemoryStore();
     await store.create(newRecord("a1"));
     await store.resolve("a1", { type: "APPROVED", id: "a1" });
 
@@ -61,7 +61,7 @@ describe("InMemoryApprovalStore", () => {
   });
 
   it("throws when resolving twice", async () => {
-    const store = new InMemoryApprovalStore();
+    const store = new InMemoryStore();
     await store.create(newRecord("a1"));
     await store.resolve("a1", { type: "APPROVED", id: "a1" });
 
@@ -71,7 +71,7 @@ describe("InMemoryApprovalStore", () => {
   });
 
   it("lists pending records only", async () => {
-    const store = new InMemoryApprovalStore();
+    const store = new InMemoryStore();
     await store.create(newRecord("a1"));
     await store.create(newRecord("a2"));
     await store.resolve("a1", { type: "APPROVED", id: "a1" });
