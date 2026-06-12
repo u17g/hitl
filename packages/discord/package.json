@@ -1,0 +1,24 @@
+{
+  "name": "@hitldev/discord",
+  "version": "0.0.0",
+  "description": "Discord channel plugin for hitldev: embed approval messages, modals, and interaction callbacks.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hitldev/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

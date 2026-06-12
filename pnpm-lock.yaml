@@ -50,6 +50,19 @@ importers:
         specifier: ^4.0.0
         version: 4.1.5(@types/pg@8.20.0)(typescript@5.9.3)
 
+  packages/discord:
+    dependencies:
+      '@hitldev/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+    devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
+
   packages/sdk:
     devDependencies:
       '@types/node':
