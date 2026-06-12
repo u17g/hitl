@@ -56,6 +56,6 @@ describe("vercelWorkflowBinding", () => {
   });
 
   it("run passes the function through", async () => {
-    await expect(binding.run("openhitl:deliver", async () => 42)).resolves.toBe(42);
+    await expect(binding.run("hitldev:deliver", async () => 42)).resolves.toBe(42);
   });
 });

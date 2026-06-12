@@ -8,7 +8,7 @@ import {
   type EngineSuspension,
   type HitlCallback,
   type HitlPlugin,
-} from "@openhitl/sdk";
+} from "@hitldev/sdk";
 import { SqliteStore } from "./index";
 
 class FakeBinding implements EngineBinding {

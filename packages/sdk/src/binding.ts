@@ -1,5 +1,5 @@
 /**
- * The contract openhitl asks of a durable execution engine — exactly four things:
+ * The contract hitldev asks of a durable execution engine — exactly four things:
  * suspend with a token, resolve by token, a durable timer, and a durable step.
  *
  * The primitives split into two sides:

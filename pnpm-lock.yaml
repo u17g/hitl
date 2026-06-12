@@ -29,7 +29,7 @@ importers:
 
   packages/slack:
     dependencies:
-      '@openhitl/sdk':
+      '@hitldev/sdk':
         specifier: workspace:*
         version: link:../sdk
     devDependencies:
@@ -42,7 +42,7 @@ importers:
 
   packages/store-postgres:
     devDependencies:
-      '@openhitl/sdk':
+      '@hitldev/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@types/node':
@@ -60,7 +60,7 @@ importers:
 
   packages/store-sqlite:
     devDependencies:
-      '@openhitl/sdk':
+      '@hitldev/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@types/node':
@@ -75,7 +75,7 @@ importers:
 
   packages/vercel-workflow:
     devDependencies:
-      '@openhitl/sdk':
+      '@hitldev/sdk':
         specifier: workspace:*
         version: link:../sdk
       typescript:

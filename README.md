@@ -1,4 +1,4 @@
-# openhitl
+# hitldev
 
 **Human-in-the-loop as a typed, durable primitive for TypeScript workflows.**
 
@@ -14,7 +14,7 @@ const approval = await waitForApproval({
 
 One `await`. The workflow suspends — for hours or days, at zero cost, surviving deploys and crashes. A reviewer gets the request in Slack, Teams, or a web inbox, edits the fields, and clicks approve. The workflow resumes with the edited, fully-typed values.
 
-openhitl is **not an agent framework**. Bring your own — the [AI SDK](https://ai-sdk.dev), Mastra, or anything that runs inside a [Workflow DevKit](https://workflow-sdk.dev) workflow. openhitl does one thing: the human part.
+hitldev is **not an agent framework**. Bring your own — the [AI SDK](https://ai-sdk.dev), Mastra, or anything that runs inside a [Workflow DevKit](https://workflow-sdk.dev) workflow. hitldev does one thing: the human part.
 
 > **Status: design phase.** This README is the design document. The API described here is the target interface; implementation follows it.
 
@@ -27,25 +27,25 @@ Agents that do real work — sending emails, posting messages, issuing refunds �
 - **Reviewers live in Slack and Teams**, not in your admin panel. But your workflow code shouldn't know or care which.
 - **Existing options are a SaaS or DIY.** Hosted approval services own your data and your flow; hand-rolled Slack glue (interactivity endpoints, payload parsing, state correlation) is the code everyone writes badly, twice.
 
-openhitl is the missing library: open source, typed end-to-end, native to a durable execution engine.
+hitldev is the missing library: open source, typed end-to-end, native to a durable execution engine.
 
 ## Design principles
 
 1. **One primitive, done well.** `waitForApproval` and `notify`. No agent abstraction, no workflow engine, no triggers, no deploy story. Compose it with what you already use.
 2. **Typed feedbacks.** Field builders define what a reviewer can edit; `REVIEWED` results carry the edited values, typed by inference. The reviewer's edit is data, not a comment.
-3. **Durable by construction.** Built on the engine's native suspension via a thin binding (Workflow DevKit hooks in v0): suspension is event-sourced, resumption survives restarts and deploys. openhitl adds no runtime of its own.
+3. **Durable by construction.** Built on the engine's native suspension via a thin binding (Workflow DevKit hooks in v0): suspension is event-sourced, resumption survives restarts and deploys. hitldev adds no runtime of its own.
 4. **Channel-agnostic.** Workflow code declares *what* needs review. Plugins — explicit instances with an `id` and their own token — decide *where* it renders and *how* it comes back.
 5. **Thin by design.** A library, a few channel plugins, an inbox UI. No platform, no vault, no control plane. Nothing to operate beyond what you already run.
 
 ## Quick example
 
-A Workflow DevKit workflow using the plain AI SDK for drafting and openhitl for the human step:
+A Workflow DevKit workflow using the plain AI SDK for drafting and hitldev for the human step:
 
 ```ts
 // workflows/inbound-lead.ts
 import { z } from "zod";
 import { generateObject } from "ai";
-import { hitl, notify, waitForApproval } from "@openhitl/sdk";
+import { hitl, notify, waitForApproval } from "@hitldev/sdk";
 import { sendEmail } from "../lib/email";
 
 export async function inboundLead(input: { email: string; message: string }) {
@@ -87,9 +87,9 @@ Wire the plugins once, at the app edge:
 
 ```ts
 // hitl.ts
-import { createHitl } from "@openhitl/sdk";
-import { slackHitl } from "@openhitl/slack";
-import { vercelWorkflowBinding } from "@openhitl/vercel-workflow";
+import { createHitl } from "@hitldev/sdk";
+import { slackHitl } from "@hitldev/slack";
+import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
 
 export const hitlApp = createHitl({
   binding: vercelWorkflowBinding(),
@@ -177,9 +177,9 @@ Official plugins:
 
 | Plugin | Package | Renders as |
 |---|---|---|
-| `slackHitl()` | `@openhitl/slack` | Block Kit message with input fields and approve/deny buttons |
-| `teamsHitl()` | `@openhitl/teams` | Adaptive Card |
-| `webui()` | built into `openhitl` | Approval inbox (React components from `@openhitl/ui`) |
+| `slackHitl()` | `@hitldev/slack` | Block Kit message with input fields and approve/deny buttons |
+| `teamsHitl()` | `@hitldev/teams` | Adaptive Card |
+| `webui()` | built into `hitldev` | Approval inbox (React components from `@hitldev/ui`) |
 
 One package per channel — install only what you use. Writing your own plugin is implementing the interface above.
 
@@ -202,7 +202,7 @@ The handler serves: channel callbacks (e.g. Slack interactivity), the inbox API 
 ```mermaid
 sequenceDiagram
   participant W as Workflow (WDK run)
-  participant A as openhitl
+  participant A as hitldev
   participant S as Slack
   participant R as Reviewer
   W->>A: waitForApproval(fields)
@@ -216,15 +216,15 @@ sequenceDiagram
   A->>S: plugin.update - "Approved by @ryosuke"
 ```
 
-What openhitl **owns** (all thin, bounded pieces):
+What hitldev **owns** (all thin, bounded pieces):
 
 | Piece | What it is |
 |---|---|
 | `hitl` core | `waitForApproval` / `notify` / field builders / result types, on top of the engine binding |
-| Engine bindings | One small package per engine (`@openhitl/vercel-workflow`, ...) implementing `EngineBinding` |
+| Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `EngineBinding` |
 | Plugins | Slack / Teams / webui renderers and callback parsers |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
-| Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@openhitl/store-postgres` and `@openhitl/store-sqlite` for persistence |
+| Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitldev/store-postgres` and `@hitldev/store-sqlite` for persistence |
 
 What it **deliberately does not own**:
 
@@ -234,7 +234,7 @@ What it **deliberately does not own**:
 
 ## Engine bindings
 
-openhitl asks very little of the execution engine — exactly four things:
+hitldev asks very little of the execution engine — exactly four things:
 
 1. **Suspend with a token** (workflow side): create a durable wait and obtain an opaque resume token
 2. **Resolve by token** (callback side): an external process resumes the wait with a payload
@@ -257,15 +257,15 @@ The architecture is split along that contract:
 
 The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back. Differences that can't be absorbed surface honestly in the API — e.g. Inngest has no ambient workflow context, so its package ships its own entrypoint taking the step (`waitForApproval(step, opts)`), built from the exported `requestApproval` + `getRuntime`.
 
-Switching engines means switching one import (`@openhitl/vercel-workflow` → `@openhitl/temporal`) and the `binding` entry in `createHitl`. Plugins, the approval store, the inbox — all shared. v0 ships the Workflow DevKit binding (`@openhitl/vercel-workflow`) only; the binding interface exists from day one so the others stay an honest estimate of 50–100 lines each.
+Switching engines means switching one import (`@hitldev/vercel-workflow` → `@hitldev/temporal`) and the `binding` entry in `createHitl`. Plugins, the approval store, the inbox — all shared. v0 ships the Workflow DevKit binding (`@hitldev/vercel-workflow`) only; the binding interface exists from day one so the others stay an honest estimate of 50–100 lines each.
 
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
-- openhitl needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@openhitl/store-postgres` store (call `await store.ensureSchema()` once at startup, or apply the exported `schemaSql()` via your migrations) or a `@openhitl/store-sqlite` store (schema is created in the constructor) for persistence. With Postgres, setup is one command, which also runs WDK's world migrations when self-hosting:
+- hitldev needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@hitldev/store-postgres` store (call `await store.ensureSchema()` once at startup, or apply the exported `schemaSql()` via your migrations) or a `@hitldev/store-sqlite` store (schema is created in the constructor) for persistence. With Postgres, setup is one command, which also runs WDK's world migrations when self-hosting:
 
 ```bash
-DATABASE_URL=postgres://... npx openhitl setup
+DATABASE_URL=postgres://... npx hitldev setup
 ```
 
 - Local dev: the `webui()` plugin works with zero external services — approve from a local inbox page, no Slack required.
@@ -274,31 +274,31 @@ DATABASE_URL=postgres://... npx openhitl setup
 
 | Package | Contents |
 |---|---|
-| `@openhitl/sdk` | Core: `waitForApproval`, `notify`, `hitl.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
-| `@openhitl/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
-| `@openhitl/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
-| `@openhitl/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
-| `@openhitl/slack` | `slackHitl()` |
-| `@openhitl/teams` | `teamsHitl()` |
-| `@openhitl/ui` | Inbox React components |
+| `@hitldev/sdk` | Core: `waitForApproval`, `notify`, `hitl.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
+| `@hitldev/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
+| `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
+| `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
+| `@hitldev/slack` | `slackHitl()` |
+| `@hitldev/teams` | `teamsHitl()` |
+| `@hitldev/ui` | Inbox React components |
 
 ## Roadmap
 
 - **More channels** — email (approve via magic link), Discord
-- **Engine bindings** — `@openhitl/temporal`, `@openhitl/inngest`, `@openhitl/restate`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
+- **Engine bindings** — `@hitldev/temporal`, `@hitldev/inngest`, `@hitldev/restate`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
 - **Approval policies** — multi-approver, quorum, role routing, auto-approve rules
 - **Escalation** — SLA timers, reminder nudges, fallback channels
 - **Audit export** — approval history as structured logs
-- **openhitl Cloud (hosted relay)** — a hosted server that owns the platform integrations, replacing per-platform setup with one `cloud({ apiKey })` plugin. One-click OAuth installs instead of hand-built Slack/Azure/Discord apps; resolutions delivered to your app as normalized, HMAC-signed callbacks at `.well-known/openhitl/v1/webhook/:token`; `openhitl listen` forwards them to localhost during development. Implements the same `HitlPlugin` interface and event schema as the in-process plugins — the relay is an alternative transport, not a fork. Library mode stays primary and fully self-contained.
+- **hitldev Cloud (hosted relay)** — a hosted server that owns the platform integrations, replacing per-platform setup with one `cloud({ apiKey })` plugin. One-click OAuth installs instead of hand-built Slack/Azure/Discord apps; resolutions delivered to your app as normalized, HMAC-signed callbacks at `.well-known/hitldev/v1/webhook/:token`; `hitldev listen` forwards them to localhost during development. Implements the same `HitlPlugin` interface and event schema as the in-process plugins — the relay is an alternative transport, not a fork. Library mode stays primary and fully self-contained.
 
 ## Repository layout
 
 ```
 packages/
-  sdk/              # @openhitl/sdk (core: waitForApproval, notify, field builders, createHitl, webui)
-  vercel-workflow/  # @openhitl/vercel-workflow (Workflow DevKit engine binding)
-  store-postgres/   # @openhitl/store-postgres (PostgresStore)
-  store-sqlite/     # @openhitl/store-sqlite (SqliteStore on node:sqlite)
-  slack/            # @openhitl/slack
-  ...               # @openhitl/teams, @openhitl/ui follow as they are implemented
+  sdk/              # @hitldev/sdk (core: waitForApproval, notify, field builders, createHitl, webui)
+  vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit engine binding)
+  store-postgres/   # @hitldev/store-postgres (PostgresStore)
+  store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)
+  slack/            # @hitldev/slack
+  ...               # @hitldev/teams, @hitldev/ui follow as they are implemented
 ```

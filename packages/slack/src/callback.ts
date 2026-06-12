@@ -1,4 +1,4 @@
-import type { HitlCallback } from "@openhitl/sdk";
+import type { HitlCallback } from "@hitldev/sdk";
 import { APPROVE_ACTION, DENY_ACTION, FIELD_BLOCK_PREFIX } from "./render";
 
 interface BlockActionsPayload {
@@ -16,7 +16,7 @@ interface StateValue {
 
 /**
  * Parse a Slack interactivity callback (form-encoded `payload`).
- * Returns null when the request is not a Slack openhitl interaction.
+ * Returns null when the request is not a Slack hitldev interaction.
  */
 export async function parseSlackCallback(req: Request): Promise<HitlCallback | null> {
   if (req.method !== "POST") return null;

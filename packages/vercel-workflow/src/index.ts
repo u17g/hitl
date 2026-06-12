@@ -1,6 +1,6 @@
 import { createHook, sleep } from "workflow";
 import { resumeHook } from "workflow/api";
-import type { EngineBinding, EngineSuspension } from "@openhitl/sdk";
+import type { EngineBinding, EngineSuspension } from "@hitldev/sdk";
 
 /**
  * Workflow DevKit binding: suspension is a WDK hook (event-sourced, survives

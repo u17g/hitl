@@ -7,9 +7,9 @@ import { FeedbackValidationError } from "./validate";
 
 export interface CreateHitlOptions {
   plugins: HitlPlugin[];
-  /** Defaults to the in-memory store. Swap for `@openhitl/store-postgres` or `@openhitl/store-sqlite` in production. */
+  /** Defaults to the in-memory store. Swap for `@hitldev/store-postgres` or `@hitldev/store-sqlite` in production. */
   store?: Store;
-  /** Engine binding from an engine package, e.g. `vercelWorkflowBinding()` from `@openhitl/vercel-workflow`. */
+  /** Engine binding from an engine package, e.g. `vercelWorkflowBinding()` from `@hitldev/vercel-workflow`. */
   binding: EngineBinding;
 }
 
@@ -32,7 +32,7 @@ let registry: HitlRuntime | null = null;
 /** The runtime `waitForApproval` / `notify` operate against. */
 export function getRuntime(): HitlRuntime {
   if (!registry) {
-    throw new Error("openhitl is not configured. Call createHitl() at your app edge first.");
+    throw new Error("hitldev is not configured. Call createHitl() at your app edge first.");
   }
   return registry;
 }

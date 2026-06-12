@@ -1,7 +1,7 @@
 {
-  "name": "@openhitl/vercel-workflow",
+  "name": "@hitldev/vercel-workflow",
   "version": "0.0.0",
-  "description": "Workflow DevKit (Vercel) engine binding for openhitl.",
+  "description": "Workflow DevKit (Vercel) engine binding for hitldev.",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -15,11 +15,11 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@openhitl/sdk": "workspace:*",
+    "@hitldev/sdk": "workspace:*",
     "workflow": "*"
   },
   "devDependencies": {
-    "@openhitl/sdk": "workspace:*",
+    "@hitldev/sdk": "workspace:*",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
     "workflow": "latest"

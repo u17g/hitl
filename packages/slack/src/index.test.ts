@@ -1,4 +1,4 @@
-import { hitl, type ApprovalRequest } from "@openhitl/sdk";
+import { hitl, type ApprovalRequest } from "@hitldev/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { slackHitl } from "./index";
 
@@ -135,7 +135,7 @@ describe("slackHitl handleCallback", () => {
     const payload = {
       type: "block_actions",
       user: { id: "U1", username: "ryosuke" },
-      actions: [{ action_id: "openhitl_approve", value: "req-1" }],
+      actions: [{ action_id: "hitldev_approve", value: "req-1" }],
       state: {
         values: {
           "field:subject": { value: { type: "plain_text_input", value: "Edited" } },

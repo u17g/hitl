@@ -1,4 +1,4 @@
-import type { ApprovalRequest, ApprovalResult, HitlPlugin, Notification } from "@openhitl/sdk";
+import type { ApprovalRequest, ApprovalResult, HitlPlugin, Notification } from "@hitldev/sdk";
 import { parseSlackCallback } from "./callback";
 import { renderApprovalBlocks, renderResultBlocks, type SlackBlock } from "./render";
 

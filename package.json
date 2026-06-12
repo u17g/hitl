@@ -1,5 +1,5 @@
 {
-  "name": "openhitl",
+  "name": "hitldev",
   "private": true,
   "scripts": {
     "build": "turbo run build",

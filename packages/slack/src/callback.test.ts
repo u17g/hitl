@@ -8,7 +8,7 @@ import { parseSlackCallback } from "./callback";
 // - reviewer mapped from the Slack user
 // - returns an empty 200 ack response (Slack requires a fast ack)
 // - returns null for: non-POST, wrong content type, no payload, non-block_actions,
-//   actions without an openhitl action id
+//   actions without an hitldev action id
 
 function slackRequest(payload: unknown): Request {
   const body = new URLSearchParams({ payload: JSON.stringify(payload) });
@@ -22,7 +22,7 @@ function slackRequest(payload: unknown): Request {
 const approvePayload = {
   type: "block_actions",
   user: { id: "U1", username: "ryosuke" },
-  actions: [{ action_id: "openhitl_approve", value: "req-1" }],
+  actions: [{ action_id: "hitldev_approve", value: "req-1" }],
   state: {
     values: {
       "field:subject": { value: { type: "plain_text_input", value: "Edited" } },
@@ -54,7 +54,7 @@ describe("parseSlackCallback", () => {
       slackRequest({
         type: "block_actions",
         user: { id: "U1", username: "ryosuke" },
-        actions: [{ action_id: "openhitl_deny", value: "req-1" }],
+        actions: [{ action_id: "hitldev_deny", value: "req-1" }],
         state: { values: {} },
       }),
     );
@@ -85,7 +85,7 @@ describe("parseSlackCallback", () => {
     expect(await parseSlackCallback(req)).toBeNull();
   });
 
-  it("ignores interactivity payloads without an openhitl action", async () => {
+  it("ignores interactivity payloads without an hitldev action", async () => {
     const callback = await parseSlackCallback(
       slackRequest({
         type: "block_actions",

@@ -1,4 +1,4 @@
-import type { ApprovalRequest, ApprovalResult, HitlField } from "@openhitl/sdk";
+import type { ApprovalRequest, ApprovalResult, HitlField } from "@hitldev/sdk";
 
 /** Minimal Block Kit shape — only what this plugin emits. */
 export interface SlackBlock {
@@ -7,8 +7,8 @@ export interface SlackBlock {
   [key: string]: unknown;
 }
 
-const APPROVE_ACTION = "openhitl_approve";
-const DENY_ACTION = "openhitl_deny";
+const APPROVE_ACTION = "hitldev_approve";
+const DENY_ACTION = "hitldev_deny";
 const FIELD_BLOCK_PREFIX = "field:";
 const VALUE_ACTION = "value";
 
@@ -78,7 +78,7 @@ export function renderApprovalBlocks(request: ApprovalRequest): SlackBlock[] {
 
   blocks.push({
     type: "actions",
-    block_id: "openhitl_actions",
+    block_id: "hitldev_actions",
     elements: [
       {
         type: "button",

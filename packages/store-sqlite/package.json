@@ -1,7 +1,7 @@
 {
-  "name": "@openhitl/store-sqlite",
+  "name": "@hitldev/store-sqlite",
   "version": "0.0.0",
-  "description": "SQLite store for openhitl, built on node:sqlite with zero dependencies.",
+  "description": "SQLite store for hitldev, built on node:sqlite with zero dependencies.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -18,10 +18,10 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@openhitl/sdk": "workspace:*"
+    "@hitldev/sdk": "workspace:*"
   },
   "devDependencies": {
-    "@openhitl/sdk": "workspace:*",
+    "@hitldev/sdk": "workspace:*",
     "@types/node": "^25.9.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

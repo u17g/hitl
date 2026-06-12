@@ -1,4 +1,4 @@
-import { hitl, type ApprovalRequest, type ApprovalResult } from "@openhitl/sdk";
+import { hitl, type ApprovalRequest, type ApprovalResult } from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
 import { renderApprovalBlocks, renderResultBlocks } from "./render";
 
@@ -82,8 +82,8 @@ describe("renderApprovalBlocks", () => {
     };
     expect(actions.type).toBe("actions");
     expect(actions.elements).toEqual([
-      expect.objectContaining({ action_id: "openhitl_approve", value: "req-1", style: "primary" }),
-      expect.objectContaining({ action_id: "openhitl_deny", value: "req-1", style: "danger" }),
+      expect.objectContaining({ action_id: "hitldev_approve", value: "req-1", style: "primary" }),
+      expect.objectContaining({ action_id: "hitldev_deny", value: "req-1", style: "danger" }),
     ]);
   });
 });
