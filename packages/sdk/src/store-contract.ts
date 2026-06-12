@@ -95,5 +95,34 @@ export function describeStoreContract(
       const all = await store.list();
       expect(all).toHaveLength(2);
     });
+
+    it("lists resolved records only", async () => {
+      const store = await factory();
+      await store.create(newRecord("a1"));
+      await store.create(newRecord("a2"));
+      await store.resolve("a1", { type: "APPROVED", id: "a1" });
+
+      const resolved = await store.list({ status: "resolved" });
+      expect(resolved.map((r) => r.id)).toEqual(["a1"]);
+    });
+
+    it("returns null for an unknown external id", async () => {
+      const store = await factory();
+      expect(await store.findByExternalId("missing")).toBeNull();
+    });
+
+    it("throws when attaching an external id to an unknown approval", async () => {
+      const store = await factory();
+      await expect(store.setExternalId("missing", "slack-ts-123")).rejects.toThrow(
+        /unknown approval/i,
+      );
+    });
+
+    it("throws when resolving an unknown approval", async () => {
+      const store = await factory();
+      await expect(store.resolve("missing", { type: "APPROVED", id: "missing" })).rejects.toThrow(
+        /unknown approval/i,
+      );
+    });
   });
 }
