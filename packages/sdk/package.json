@@ -1,0 +1,30 @@
+{
+  "name": "@openhitl/sdk",
+  "version": "0.0.0",
+  "description": "Human-in-the-loop as a typed, durable primitive for TypeScript workflows.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "workflow": "*"
+  },
+  "peerDependenciesMeta": {
+    "workflow": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4",
+    "workflow": "latest"
+  }
+}
