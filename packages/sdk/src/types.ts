@@ -21,6 +21,21 @@ export interface ApprovalRequest {
   fields: Record<string, HitlField>;
 }
 
+/**
+ * What a plugin receives to render and deliver a batch of approvals as a
+ * single message. The field schema is shared across items; each item carries
+ * its resolved initial values.
+ */
+export interface BatchApprovalRequest {
+  batchId: string;
+  channel: string;
+  title?: string;
+  /** Field schema shared by every item. */
+  fields: Record<string, HitlField>;
+  /** Input order. `defaults` are the shared field defaults overridden per item. */
+  items: Array<{ id: string; message: string; defaults: Record<string, unknown> }>;
+}
+
 export interface Notification {
   message: string;
   /** Approval id to thread under. */
@@ -47,6 +62,26 @@ export interface HitlCallback {
   ackOnly?: boolean;
 }
 
+/**
+ * Parsed inbound batch interaction: one submit carrying a decision for every
+ * item of a batch. Returned by `plugin.handleCallback`.
+ */
+export interface HitlBatchCallback {
+  batchId: string;
+  decisions: Array<{
+    requestId: string;
+    decision: "approve" | "deny";
+    reason?: string;
+    /** Raw edited values. Presence of edits turns an approval into a REVIEWED result. */
+    feedbacks?: Record<string, unknown>;
+  }>;
+  by?: Reviewer;
+  /** Channel-specific ack to return to the caller (e.g. Slack expects a fast 200). */
+  response?: Response;
+  /** When true, return response immediately without resolving the batch. */
+  ackOnly?: boolean;
+}
+
 export interface HitlPlugin {
   /** Routing key used by `waitForApproval({ channel })` / `notify({ channel })`. */
   id: string;
@@ -56,5 +91,14 @@ export interface HitlPlugin {
   update?(externalId: string, result: ApprovalResult): Promise<void>;
   notify(notification: Notification): Promise<void>;
   /** Parse an inbound interaction callback; return null if the request is not for this plugin. */
-  handleCallback?(req: Request): Promise<HitlCallback | null>;
+  handleCallback?(req: Request): Promise<HitlCallback | HitlBatchCallback | null>;
+  /** Render and deliver a batch as a single message. Absent → the core sends items one by one. */
+  sendBatch?(request: BatchApprovalRequest): Promise<{ externalId: string }>;
+  /**
+   * Whether this request fits the channel's batch UI (size limits, field
+   * support). `false` → the core falls back to per-item delivery.
+   */
+  canSendBatch?(request: BatchApprovalRequest): boolean;
+  /** Reflect batch resolution back into the channel. `results` is in item order. */
+  updateBatch?(externalId: string, results: ApprovalResult[]): Promise<void>;
 }

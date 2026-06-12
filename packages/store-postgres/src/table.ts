@@ -7,6 +7,9 @@ export interface ResolvedTable {
   tableName: string;
   sql: string;
   indexName: string;
+  /** Companion table grouping batch items, e.g. `hitldev.approvals_batches`. */
+  batchesSql: string;
+  batchIdIndexName: string;
   schema?: string;
   table: string;
 }
@@ -29,6 +32,8 @@ export function resolveTableName(tableName: string): ResolvedTable {
       tableName,
       sql: `${schema}.${table}`,
       indexName: `${schema}_${table}_external_id_idx`,
+      batchesSql: `${schema}.${table}_batches`,
+      batchIdIndexName: `${schema}_${table}_batch_id_idx`,
       schema,
       table,
     };
@@ -39,6 +44,8 @@ export function resolveTableName(tableName: string): ResolvedTable {
     tableName,
     sql: tableName,
     indexName: `${tableName}_external_id_idx`,
+    batchesSql: `${tableName}_batches`,
+    batchIdIndexName: `${tableName}_batch_id_idx`,
     table: tableName,
   };
 }

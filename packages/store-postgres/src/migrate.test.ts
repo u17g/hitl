@@ -13,7 +13,11 @@ function newPool(): PgQueryable {
 describe("postgres migrations", () => {
   it("tracks the current schema version", () => {
     expect(SCHEMA_VERSION).toBe(MIGRATIONS.length);
-    expect(MIGRATIONS.map((migration) => migration.id)).toEqual(["001_initial", "002_external_ids"]);
+    expect(MIGRATIONS.map((migration) => migration.id)).toEqual([
+      "001_initial",
+      "002_external_ids",
+      "003_batches",
+    ]);
   });
 
   it("prints user-facing DDL without the migration ledger", () => {
@@ -31,6 +35,25 @@ describe("postgres migrations", () => {
     await applyMigrations(pool, DEFAULT_TABLE);
 
     const { rows } = await pool.query("SELECT id FROM hitldev.schema_migrations ORDER BY id");
-    expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids"]);
+    expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids", "003_batches"]);
+  });
+
+  it("upgrades a v2 database in place", async () => {
+    const pool = newPool();
+    await pool.query("CREATE SCHEMA IF NOT EXISTS hitldev");
+    await pool.query(migrationSql("001_initial", DEFAULT_TABLE));
+    await pool.query(migrationSql("002_external_ids", DEFAULT_TABLE));
+    await pool.query(
+      "CREATE TABLE hitldev.schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
+    );
+    await pool.query(
+      "INSERT INTO hitldev.schema_migrations VALUES ('001_initial', 'x'), ('002_external_ids', 'x')",
+    );
+
+    await applyMigrations(pool, DEFAULT_TABLE);
+
+    // batch columns and the batches table now exist
+    await pool.query("SELECT batch_id, batch_index FROM hitldev.approvals LIMIT 0");
+    await pool.query("SELECT id, channel, title FROM hitldev.approvals_batches LIMIT 0");
   });
 });

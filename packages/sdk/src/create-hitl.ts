@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { EngineBinding } from "./binding";
-import { resolveApproval, type HitlRuntime } from "./core";
+import { resolveApproval, resolveBatchApproval, type HitlRuntime } from "./core";
 import { InMemoryStore, type Store } from "./store";
 import type { HitlPlugin } from "./types";
 import { FeedbackValidationError } from "./validate";
@@ -75,6 +75,15 @@ async function handleInboxApi(
   req: Request,
   segments: string[],
 ): Promise<Response> {
+  const batchesIndex = segments.lastIndexOf("batches");
+  if (batchesIndex !== -1) {
+    const id = segments[batchesIndex + 1];
+    if (id === undefined) return json({ error: "Not found" }, 404);
+    const batch = await store.getBatch(id);
+    if (!batch) return json({ error: `Unknown batch "${id}"` }, 404);
+    return json({ batch, items: await store.listByBatch(id) });
+  }
+
   const approvalsIndex = segments.lastIndexOf("approvals");
   if (approvalsIndex === -1) return json({ error: "Not found" }, 404);
 
@@ -100,6 +109,10 @@ async function handleCallback(runtime: HitlRuntime, req: Request): Promise<Respo
     try {
       if (callback.ackOnly) {
         return callback.response ?? new Response(null, { status: 204 });
+      }
+      if ("decisions" in callback) {
+        const results = await resolveBatchApproval(runtime, callback);
+        return callback.response ?? json({ ok: true, results });
       }
       const result = await resolveApproval(runtime, callback);
       return callback.response ?? json({ ok: true, result });

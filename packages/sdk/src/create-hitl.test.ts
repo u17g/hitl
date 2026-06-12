@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EngineBinding, EngineSuspension } from "./binding";
-import { requestApproval } from "./core";
+import { requestApproval, requestBatchApprovals } from "./core";
 import { createHitl, getRuntime, resetRuntime } from "./create-hitl";
 import { field } from "./fields";
-import type { HitlCallback, HitlPlugin } from "./types";
+import type { HitlBatchCallback, HitlCallback, HitlPlugin } from "./types";
 
 // Test list:
 // - createHitl registers a runtime that waitForApproval can resolve
@@ -46,9 +46,15 @@ function jsonPlugin(id: string): HitlPlugin {
       return { externalId: `ext_${request.id}` };
     },
     async notify() {},
-    async handleCallback(req): Promise<HitlCallback | null> {
+    async handleCallback(req): Promise<HitlCallback | HitlBatchCallback | null> {
       const body = (await req.clone().json()) as Record<string, unknown>;
       if (body.pluginId !== id) return null;
+      if (body.batchId !== undefined) {
+        return {
+          batchId: body.batchId as string,
+          decisions: body.decisions as HitlBatchCallback["decisions"],
+        };
+      }
       return {
         requestId: body.requestId as string,
         decision: body.decision as "approve" | "deny",
@@ -159,7 +165,102 @@ describe("createHitl callback dispatch", () => {
   });
 });
 
+async function startBatch(app: ReturnType<typeof createHitl>) {
+  const promise = requestBatchApprovals(getRuntime(), {
+    title: "Outbound emails",
+    fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+    items: [{ message: "Email A" }, { message: "Email B" }],
+  });
+  const batchId = await vi.waitFor(async () => {
+    const records = await app.store.list({ status: "pending" });
+    expect(records).toHaveLength(2);
+    return records[0]!.batchId!;
+  });
+  return { promise, batchId };
+}
+
+describe("createHitl batch callback dispatch", () => {
+  it("dispatches a batch submit and resolves every item", async () => {
+    const { app } = setup();
+    const { promise, batchId } = await startBatch(app);
+
+    const res = await app.fetch(
+      new Request("http://x/hitl/callback", {
+        method: "POST",
+        body: JSON.stringify({
+          pluginId: "a",
+          batchId,
+          decisions: [
+            { requestId: `${batchId}:0`, decision: "approve" },
+            { requestId: `${batchId}:1`, decision: "deny", reason: "no" },
+          ],
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; results: { type: string }[] };
+    expect(body.ok).toBe(true);
+    expect(body.results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
+
+    const results = await promise;
+    expect(results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
+  });
+
+  it("returns 400 on invalid batch feedbacks and leaves every item pending", async () => {
+    const { app } = setup();
+    const { batchId } = await startBatch(app);
+
+    const res = await app.fetch(
+      new Request("http://x/hitl/callback", {
+        method: "POST",
+        body: JSON.stringify({
+          pluginId: "a",
+          batchId,
+          decisions: [
+            { requestId: `${batchId}:0`, decision: "approve", feedbacks: { bogus: "x" } },
+            { requestId: `${batchId}:1`, decision: "approve" },
+          ],
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const records = await app.store.list({ status: "pending" });
+    expect(records).toHaveLength(2);
+  });
+});
+
 describe("inbox API", () => {
+  it("returns a batch with its items", async () => {
+    const { app } = setup();
+    const { promise, batchId } = await startBatch(app);
+
+    const res = await app.fetch(new Request(`http://x/hitl/batches/${batchId}`));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { batch: { id: string }; items: { id: string }[] };
+    expect(body.batch).toMatchObject({ id: batchId, title: "Outbound emails" });
+    expect(body.items.map((i) => i.id)).toEqual([`${batchId}:0`, `${batchId}:1`]);
+
+    const missing = await app.fetch(new Request("http://x/hitl/batches/nope"));
+    expect(missing.status).toBe(404);
+
+    await app.fetch(
+      new Request("http://x/hitl/callback", {
+        method: "POST",
+        body: JSON.stringify({
+          pluginId: "a",
+          batchId,
+          decisions: [
+            { requestId: `${batchId}:0`, decision: "approve" },
+            { requestId: `${batchId}:1`, decision: "approve" },
+          ],
+        }),
+      }),
+    );
+    await promise;
+  });
+
   it("lists approvals, filterable by status", async () => {
     const { app, binding } = setup();
     const { promise, requestId } = await startApproval(app, binding);

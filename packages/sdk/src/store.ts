@@ -8,6 +8,25 @@ export interface NewApprovalRecord {
   channel: string;
   message: string;
   fields: Record<string, HitlField>;
+  /** Set when the approval is one item of a `waitForBatchApprovals` call. */
+  batchId?: string;
+  /** Zero-based position within the batch; orders `listByBatch`. */
+  batchIndex?: number;
+}
+
+export interface NewBatchRecord {
+  id: string;
+  channel: string;
+  title?: string;
+}
+
+/** Groups the items of one `waitForBatchApprovals` call; status derives from its items. */
+export interface BatchRecord extends NewBatchRecord {
+  /** Channel message id of the batch message, set after `plugin.sendBatch`. */
+  externalId?: string;
+  /** Per-plugin delivery ids (e.g. escalation re-deliveries). */
+  externalIds?: Record<string, string>;
+  createdAt: string;
 }
 
 export interface ApprovalRecord extends NewApprovalRecord {
@@ -29,10 +48,16 @@ export interface Store {
   setExternalId(id: string, externalId: string, pluginId?: string): Promise<void>;
   resolve(id: string, result: ApprovalResult): Promise<void>;
   list(filter?: { status?: ApprovalRecord["status"] }): Promise<ApprovalRecord[]>;
+  createBatch(record: NewBatchRecord): Promise<void>;
+  getBatch(id: string): Promise<BatchRecord | null>;
+  setBatchExternalId(id: string, externalId: string, pluginId?: string): Promise<void>;
+  /** Items of a batch, ordered by `batchIndex`. */
+  listByBatch(batchId: string): Promise<ApprovalRecord[]>;
 }
 
 export class InMemoryStore implements Store {
   private records = new Map<string, ApprovalRecord>();
+  private batches = new Map<string, BatchRecord>();
 
   async create(record: NewApprovalRecord): Promise<void> {
     this.records.set(record.id, {
@@ -81,6 +106,33 @@ export class InMemoryStore implements Store {
     const all = [...this.records.values()];
     if (!filter?.status) return all;
     return all.filter((r) => r.status === filter.status);
+  }
+
+  async createBatch(record: NewBatchRecord): Promise<void> {
+    this.batches.set(record.id, {
+      ...record,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  async getBatch(id: string): Promise<BatchRecord | null> {
+    return this.batches.get(id) ?? null;
+  }
+
+  async setBatchExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
+    const batch = this.batches.get(id);
+    if (!batch) throw new Error(`Unknown batch "${id}"`);
+    const key = pluginId ?? batch.channel;
+    batch.externalIds = { ...batch.externalIds, [key]: externalId };
+    if (key === batch.channel) {
+      batch.externalId = externalId;
+    }
+  }
+
+  async listByBatch(batchId: string): Promise<ApprovalRecord[]> {
+    return [...this.records.values()]
+      .filter((r) => r.batchId === batchId)
+      .sort((a, b) => (a.batchIndex ?? 0) - (b.batchIndex ?? 0));
   }
 
   private mustGet(id: string): ApprovalRecord {

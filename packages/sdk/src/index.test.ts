@@ -1,6 +1,14 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { EngineBinding, EngineSuspension } from "./binding";
-import { createHitl, field, notify, waitForApproval, webui } from "./index";
+import {
+  createHitl,
+  field,
+  notify,
+  waitForApproval,
+  waitForBatchApprovals,
+  webui,
+  type ApprovalResult,
+} from "./index";
 import { resetRuntime } from "./create-hitl";
 
 // Test list:
@@ -86,5 +94,50 @@ describe("public API", () => {
     if (approval.type === "REVIEWED") {
       expectTypeOf(approval.feedbacks).toEqualTypeOf<{ subject: string; body: string }>();
     }
+  });
+
+  it("runs the batch loop through the webui plugin with typed results", async () => {
+    resetRuntime();
+    const app = createHitl({ plugins: [webui()], binding: new ImmediateBinding() });
+
+    const pending = waitForBatchApprovals({
+      title: "Outbound emails",
+      fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+      items: [
+        { message: "Email to ACME", defaults: { subject: "Hello ACME" } },
+        { message: "Email to Globex" },
+      ],
+      timeout: "72h",
+    });
+
+    const batchId = await (async () => {
+      for (;;) {
+        const [record] = await app.store.list({ status: "pending" });
+        if (record?.batchId) return record.batchId;
+        await new Promise((r) => setTimeout(r, 1));
+      }
+    })();
+
+    const res = await app.fetch(
+      new Request(`http://x/hitl/webui/batches/${batchId}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          decisions: [
+            { requestId: `${batchId}:0`, decision: "approve" },
+            { requestId: `${batchId}:1`, decision: "approve", feedbacks: { subject: "Edited" } },
+          ],
+          by: { name: "ryosuke" },
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const results = await pending;
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({ type: "APPROVED", by: { name: "ryosuke" } });
+    expect(results[1]).toMatchObject({ type: "REVIEWED", feedbacks: { subject: "Edited" } });
+
+    expectTypeOf(results).toEqualTypeOf<ApprovalResult<{ subject: string }>[]>();
   });
 });
