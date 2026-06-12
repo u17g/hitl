@@ -1,4 +1,4 @@
-import { field, type ApprovalRequest } from "@hitldev/sdk";
+import { field, type ApprovalRequest, type BatchApprovalRequest } from "@hitldev/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { slackHitl } from "./index";
 
@@ -96,6 +96,79 @@ describe("slackHitl update", () => {
     const blocksJson = JSON.stringify(calls[1]!.body.blocks);
     expect(blocksJson).toContain("Inbound lead: a@b.com");
     expect(blocksJson).toContain("Approved by ryosuke");
+  });
+});
+
+const batchRequest: BatchApprovalRequest = {
+  batchId: "b1",
+  channel: "lead-approvals",
+  title: "Outbound emails",
+  fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+  items: [
+    { id: "b1:0", message: "Email to ACME", defaults: { subject: "Hello ACME" } },
+    { id: "b1:1", message: "Email to Globex", defaults: { subject: "Hi" } },
+  ],
+};
+
+describe("slackHitl sendBatch", () => {
+  it("posts the batch as one message and returns channel:ts as externalId", async () => {
+    const { calls, fetchImpl } = fakeSlack();
+    const plugin = makePlugin(fetchImpl);
+
+    const { externalId } = await plugin.sendBatch!(batchRequest);
+
+    expect(externalId).toBe("C1:111.222");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ url: "https://slack.com/api/chat.postMessage" });
+    expect(calls[0]!.body).toMatchObject({
+      channel: "#inbound-leads",
+      text: "Outbound emails",
+    });
+    const blocksJson = JSON.stringify(calls[0]!.body.blocks);
+    expect(blocksJson).toContain("Email to ACME");
+    expect(blocksJson).toContain("hitldev_batch_submit");
+  });
+});
+
+describe("slackHitl updateBatch", () => {
+  it("replaces the batch message with per-item outcomes", async () => {
+    const { calls, fetchImpl } = fakeSlack();
+    const plugin = makePlugin(fetchImpl);
+
+    const { externalId } = await plugin.sendBatch!(batchRequest);
+    await plugin.updateBatch!(externalId, [
+      { type: "APPROVED", id: "b1:0", by: { name: "ryosuke" } },
+      { type: "DENIED", id: "b1:1", reason: "spam" },
+    ]);
+
+    expect(calls[1]).toMatchObject({ url: "https://slack.com/api/chat.update" });
+    expect(calls[1]!.body).toMatchObject({ channel: "C1", ts: "111.222" });
+    const blocksJson = JSON.stringify(calls[1]!.body.blocks);
+    expect(blocksJson).toContain("Email to ACME");
+    expect(blocksJson).toContain("Approved by ryosuke");
+    expect(blocksJson).toContain("spam");
+  });
+});
+
+describe("slackHitl canSendBatch", () => {
+  it("accepts a small batch", () => {
+    const { fetchImpl } = fakeSlack();
+    const plugin = makePlugin(fetchImpl);
+    expect(plugin.canSendBatch!(batchRequest)).toBe(true);
+  });
+
+  it("rejects a batch that exceeds the 50-block message limit", () => {
+    const { fetchImpl } = fakeSlack();
+    const plugin = makePlugin(fetchImpl);
+    const big: BatchApprovalRequest = {
+      ...batchRequest,
+      items: Array.from({ length: 30 }, (_, i) => ({
+        id: `b1:${i}`,
+        message: `Item ${i}`,
+        defaults: {},
+      })),
+    };
+    expect(plugin.canSendBatch!(big)).toBe(false);
   });
 });
 

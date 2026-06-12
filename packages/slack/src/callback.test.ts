@@ -1,3 +1,4 @@
+import type { HitlCallback } from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
 import { parseSlackCallback } from "./callback";
 
@@ -60,7 +61,7 @@ describe("parseSlackCallback", () => {
     );
 
     expect(callback).toMatchObject({ requestId: "req-1", decision: "deny" });
-    expect(callback?.feedbacks).toBeUndefined();
+    expect((callback as HitlCallback).feedbacks).toBeUndefined();
   });
 
   it("ignores non-POST requests", async () => {
@@ -83,6 +84,64 @@ describe("parseSlackCallback", () => {
       body: new URLSearchParams({ other: "x" }),
     });
     expect(await parseSlackCallback(req)).toBeNull();
+  });
+
+  it("parses a batch submit into per-item decisions", async () => {
+    const callback = await parseSlackCallback(
+      slackRequest({
+        type: "block_actions",
+        user: { id: "U1", username: "ryosuke" },
+        actions: [{ action_id: "hitldev_batch_submit", value: "b1" }],
+        state: {
+          values: {
+            "item:b1:0:decision": {
+              value: { type: "radio_buttons", selected_option: { value: "approve" } },
+            },
+            "item:b1:0:field:subject": {
+              value: { type: "plain_text_input", value: "Edited" },
+            },
+            "item:b1:1:decision": {
+              value: { type: "radio_buttons", selected_option: { value: "deny" } },
+            },
+            "item:b1:1:field:subject": {
+              value: { type: "plain_text_input", value: "Hi" },
+            },
+          },
+        },
+      }),
+    );
+
+    expect(callback).toMatchObject({
+      batchId: "b1",
+      by: { id: "U1", name: "ryosuke" },
+    });
+    const decisions = (callback as { decisions: unknown[] }).decisions;
+    expect(decisions).toEqual(
+      expect.arrayContaining([
+        { requestId: "b1:0", decision: "approve", feedbacks: { subject: "Edited" } },
+        { requestId: "b1:1", decision: "deny" },
+      ]),
+    );
+    expect(decisions).toHaveLength(2);
+    expect(callback?.response?.status).toBe(200);
+  });
+
+  it("treats items without a decision selection as approve", async () => {
+    const callback = await parseSlackCallback(
+      slackRequest({
+        type: "block_actions",
+        actions: [{ action_id: "hitldev_batch_submit", value: "b1" }],
+        state: {
+          values: {
+            "item:b1:0:decision": { value: { type: "radio_buttons", selected_option: null } },
+          },
+        },
+      }),
+    );
+
+    expect((callback as { decisions: unknown[] }).decisions).toEqual([
+      { requestId: "b1:0", decision: "approve" },
+    ]);
   });
 
   it("ignores interactivity payloads without an hitldev action", async () => {

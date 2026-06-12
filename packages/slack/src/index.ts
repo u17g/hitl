@@ -1,6 +1,19 @@
-import type { ApprovalRequest, ApprovalResult, HitlPlugin, Notification } from "@hitldev/sdk";
+import type {
+  ApprovalRequest,
+  ApprovalResult,
+  BatchApprovalRequest,
+  HitlPlugin,
+  Notification,
+} from "@hitldev/sdk";
 import { parseSlackCallback } from "./callback";
-import { renderApprovalBlocks, renderResultBlocks, type SlackBlock } from "./render";
+import {
+  MAX_MESSAGE_BLOCKS,
+  renderApprovalBlocks,
+  renderBatchBlocks,
+  renderBatchResultBlocks,
+  renderResultBlocks,
+  type SlackBlock,
+} from "./render";
 
 export interface SlackHitlOptions {
   /** Plugin id, the routing key used by `waitForApproval({ channel })`. */
@@ -25,6 +38,8 @@ export function slackHitl(options: SlackHitlOptions): HitlPlugin {
   const fetchImpl = options.fetch ?? fetch;
   // chat.update needs the original message text; remember it per delivered message.
   const sentMessages = new Map<string, string>();
+  // updateBatch re-renders the items; remember the request per delivered batch.
+  const sentBatches = new Map<string, BatchApprovalRequest>();
 
   async function slackApi(method: string, body: Record<string, unknown>): Promise<SlackApiResponse> {
     const res = await fetchImpl(`https://slack.com/api/${method}`, {
@@ -60,6 +75,34 @@ export function slackHitl(options: SlackHitlOptions): HitlPlugin {
       return { externalId };
     },
 
+    async sendBatch(request: BatchApprovalRequest): Promise<{ externalId: string }> {
+      const data = await postMessage({
+        channel: options.channel,
+        text: request.title ?? `${request.items.length} approvals requested`,
+        blocks: renderBatchBlocks(request),
+      });
+      const externalId = `${data.channel}:${data.ts}`;
+      sentBatches.set(externalId, request);
+      return { externalId };
+    },
+
+    canSendBatch(request: BatchApprovalRequest): boolean {
+      return renderBatchBlocks(request).length <= MAX_MESSAGE_BLOCKS;
+    },
+
+    async updateBatch(externalId: string, results: ApprovalResult[]): Promise<void> {
+      const request = sentBatches.get(externalId);
+      if (!request) return;
+      const { channel, ts } = splitExternalId(externalId);
+      await slackApi("chat.update", {
+        channel,
+        ts,
+        text: request.title ?? `${request.items.length} approvals requested`,
+        blocks: renderBatchResultBlocks(request, results),
+      });
+      sentBatches.delete(externalId);
+    },
+
     async update(externalId: string, result: ApprovalResult): Promise<void> {
       const { channel, ts } = splitExternalId(externalId);
       const message = sentMessages.get(externalId) ?? "";
@@ -90,5 +133,10 @@ function splitExternalId(externalId: string): { channel: string; ts: string } {
 }
 
 export { parseSlackCallback } from "./callback";
-export { renderApprovalBlocks, renderResultBlocks } from "./render";
+export {
+  renderApprovalBlocks,
+  renderBatchBlocks,
+  renderBatchResultBlocks,
+  renderResultBlocks,
+} from "./render";
 export type { SlackBlock } from "./render";

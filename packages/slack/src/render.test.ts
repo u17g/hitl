@@ -1,6 +1,16 @@
-import { field, type ApprovalRequest, type ApprovalResult } from "@hitldev/sdk";
+import {
+  field,
+  type ApprovalRequest,
+  type ApprovalResult,
+  type BatchApprovalRequest,
+} from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
-import { renderApprovalBlocks, renderResultBlocks } from "./render";
+import {
+  renderApprovalBlocks,
+  renderBatchBlocks,
+  renderBatchResultBlocks,
+  renderResultBlocks,
+} from "./render";
 
 // Test list:
 // - message renders as a section block
@@ -85,6 +95,92 @@ describe("renderApprovalBlocks", () => {
       expect.objectContaining({ action_id: "hitldev_approve", value: "req-1", style: "primary" }),
       expect.objectContaining({ action_id: "hitldev_deny", value: "req-1", style: "danger" }),
     ]);
+  });
+});
+
+const batchRequest: BatchApprovalRequest = {
+  batchId: "b1",
+  channel: "lead-approvals",
+  title: "Outbound emails",
+  fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+  items: [
+    { id: "b1:0", message: "Email to ACME", defaults: { subject: "Hello ACME" } },
+    { id: "b1:1", message: "Email to Globex", defaults: { subject: "Hi" } },
+  ],
+};
+
+describe("renderBatchBlocks", () => {
+  const blocks = renderBatchBlocks(batchRequest);
+
+  it("starts with the title", () => {
+    expect(blocks[0]).toMatchObject({
+      type: "header",
+      text: { type: "plain_text", text: "Outbound emails" },
+    });
+  });
+
+  it("renders each item message as a section", () => {
+    const json = JSON.stringify(blocks);
+    expect(json).toContain("Email to ACME");
+    expect(json).toContain("Email to Globex");
+  });
+
+  it("renders the shared field per item with the item's defaults", () => {
+    const first = blocks.find((b) => b.block_id === "item:b1:0:field:subject");
+    expect(first).toMatchObject({
+      type: "input",
+      label: { type: "plain_text", text: "Subject" },
+      element: { type: "plain_text_input", action_id: "value", initial_value: "Hello ACME" },
+    });
+    const second = blocks.find((b) => b.block_id === "item:b1:1:field:subject");
+    expect(second).toMatchObject({
+      element: { initial_value: "Hi" },
+    });
+  });
+
+  it("renders an approve/deny decision per item, defaulting to approve", () => {
+    const decision = blocks.find((b) => b.block_id === "item:b1:0:decision");
+    expect(decision).toMatchObject({
+      type: "input",
+      element: {
+        type: "radio_buttons",
+        action_id: "value",
+        initial_option: { value: "approve" },
+      },
+    });
+    const element = (decision as unknown as { element: { options: { value: string }[] } }).element;
+    expect(element.options.map((o) => o.value)).toEqual(["approve", "deny"]);
+  });
+
+  it("ends with a single submit button carrying the batch id", () => {
+    const actions = blocks.at(-1) as {
+      type: string;
+      elements: { action_id: string; value: string }[];
+    };
+    expect(actions.type).toBe("actions");
+    expect(actions.elements).toEqual([
+      expect.objectContaining({ action_id: "hitldev_batch_submit", value: "b1" }),
+    ]);
+  });
+
+  it("omits the header when there is no title", () => {
+    const noTitle = renderBatchBlocks({ ...batchRequest, title: undefined });
+    expect(noTitle[0]?.type).not.toBe("header");
+  });
+});
+
+describe("renderBatchResultBlocks", () => {
+  it("shows each item with its outcome and no inputs", () => {
+    const blocks = renderBatchResultBlocks(batchRequest, [
+      { type: "APPROVED", id: "b1:0", by: { name: "ryosuke" } },
+      { type: "DENIED", id: "b1:1", reason: "spam" },
+    ]);
+    const json = JSON.stringify(blocks);
+    expect(json).toContain("Email to ACME");
+    expect(json).toContain("Approved by ryosuke");
+    expect(json).toContain("spam");
+    expect(json).not.toContain("plain_text_input");
+    expect(json).not.toContain("hitldev_batch_submit");
   });
 });
 

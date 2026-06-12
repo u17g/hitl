@@ -1,5 +1,13 @@
-import type { HitlCallback } from "@hitldev/sdk";
-import { APPROVE_ACTION, DENY_ACTION, FIELD_BLOCK_PREFIX } from "./render";
+import type { HitlBatchCallback, HitlCallback } from "@hitldev/sdk";
+import {
+  APPROVE_ACTION,
+  BATCH_SUBMIT_ACTION,
+  DENY_ACTION,
+  FIELD_BLOCK_PREFIX,
+  ITEM_BLOCK_PREFIX,
+  ITEM_DECISION_SUFFIX,
+  ITEM_FIELD_INFIX,
+} from "./render";
 
 interface BlockActionsPayload {
   type: string;
@@ -18,7 +26,9 @@ interface StateValue {
  * Parse a Slack interactivity callback (form-encoded `payload`).
  * Returns null when the request is not a Slack hitldev interaction.
  */
-export async function parseSlackCallback(req: Request): Promise<HitlCallback | null> {
+export async function parseSlackCallback(
+  req: Request,
+): Promise<HitlCallback | HitlBatchCallback | null> {
   if (req.method !== "POST") return null;
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.includes("application/x-www-form-urlencoded")) return null;
@@ -35,6 +45,11 @@ export async function parseSlackCallback(req: Request): Promise<HitlCallback | n
   }
   if (payload.type !== "block_actions") return null;
 
+  const batchAction = payload.actions?.find((a) => a.action_id === BATCH_SUBMIT_ACTION);
+  if (batchAction?.value) {
+    return parseBatchSubmit(batchAction.value, payload);
+  }
+
   const action = payload.actions?.find(
     (a) => a.action_id === APPROVE_ACTION || a.action_id === DENY_ACTION,
   );
@@ -50,6 +65,66 @@ export async function parseSlackCallback(req: Request): Promise<HitlCallback | n
       name: payload.user.username ?? payload.user.name,
     },
     feedbacks: decision === "approve" ? extractFeedbacks(payload) : undefined,
+    // Slack requires a fast empty ack; the message itself is replaced via chat.update.
+    response: new Response(null, { status: 200 }),
+  };
+}
+
+/**
+ * One submit carries every item's decision and field edits. Block ids are
+ * parsed by known prefix/suffix (never `split(":")` — item ids contain colons).
+ */
+function parseBatchSubmit(batchId: string, payload: BlockActionsPayload): HitlBatchCallback {
+  const collected = new Map<string, { decision: "approve" | "deny"; feedbacks?: Record<string, unknown> }>();
+  const entry = (itemId: string) => {
+    let item = collected.get(itemId);
+    if (!item) {
+      item = { decision: "approve" };
+      collected.set(itemId, item);
+    }
+    return item;
+  };
+
+  for (const [blockId, actions] of Object.entries(payload.state?.values ?? {})) {
+    if (!blockId.startsWith(ITEM_BLOCK_PREFIX)) continue;
+    const state = Object.values(actions)[0];
+    if (!state) continue;
+
+    if (blockId.endsWith(ITEM_DECISION_SUFFIX)) {
+      const itemId = blockId.slice(ITEM_BLOCK_PREFIX.length, -ITEM_DECISION_SUFFIX.length);
+      if (state.selected_option?.value === "deny") {
+        entry(itemId).decision = "deny";
+      } else {
+        entry(itemId).decision = "approve";
+      }
+      continue;
+    }
+
+    const infixIndex = blockId.lastIndexOf(ITEM_FIELD_INFIX);
+    if (infixIndex === -1) continue;
+    const itemId = blockId.slice(ITEM_BLOCK_PREFIX.length, infixIndex);
+    const key = blockId.slice(infixIndex + ITEM_FIELD_INFIX.length);
+    const item = entry(itemId);
+    item.feedbacks = {
+      ...item.feedbacks,
+      [key]: state.selected_option ? state.selected_option.value : state.value,
+    };
+  }
+
+  const decisions: HitlBatchCallback["decisions"] = [...collected.entries()].map(
+    ([requestId, item]) =>
+      item.decision === "approve" && item.feedbacks
+        ? { requestId, decision: item.decision, feedbacks: item.feedbacks }
+        : { requestId, decision: item.decision },
+  );
+
+  return {
+    batchId,
+    decisions,
+    by: payload.user && {
+      id: payload.user.id,
+      name: payload.user.username ?? payload.user.name,
+    },
     // Slack requires a fast empty ack; the message itself is replaced via chat.update.
     response: new Response(null, { status: 200 }),
   };
