@@ -1,7 +1,17 @@
-import { field, type ApprovalRequest } from "@hitldev/sdk";
+import {
+  field,
+  type ApprovalRequest,
+  type BatchApprovalRequest,
+  type HitlBatchCallback,
+} from "@hitldev/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { discordHitl } from "./index";
-import { approveCustomId, denyCustomId } from "./render";
+import {
+  approveCustomId,
+  batchSelectCustomId,
+  batchSubmitCustomId,
+  denyCustomId,
+} from "./render";
 import { createTestKeyPair, signedDiscordRequest } from "./test-sign";
 
 interface DiscordCall {
@@ -111,6 +121,102 @@ describe("discordHitl notify", () => {
       content: "Update",
       message_reference: { message_id: "msg-99" },
     });
+  });
+});
+
+const batchRequest: BatchApprovalRequest = {
+  batchId: "b1",
+  channel: "lead-approvals",
+  title: "Outbound emails",
+  fields: {},
+  items: [
+    { id: "b1:0", message: "Email to ACME", defaults: {} },
+    { id: "b1:1", message: "Email to Globex", defaults: {} },
+  ],
+};
+
+describe("discordHitl batch", () => {
+  it("canSendBatch accepts field-less batches up to 25 items", () => {
+    const { fetchImpl } = fakeDiscord();
+    const plugin = makePlugin(fetchImpl);
+
+    expect(plugin.canSendBatch!(batchRequest)).toBe(true);
+    expect(
+      plugin.canSendBatch!({
+        ...batchRequest,
+        fields: { subject: field.textField({ label: "Subject" }) },
+      }),
+    ).toBe(false);
+    expect(
+      plugin.canSendBatch!({
+        ...batchRequest,
+        items: Array.from({ length: 26 }, (_, i) => ({
+          id: `b1:${i}`,
+          message: `Item ${i}`,
+          defaults: {},
+        })),
+      }),
+    ).toBe(false);
+  });
+
+  it("sendBatch posts the batch as one message", async () => {
+    const { calls, fetchImpl } = fakeDiscord();
+    const plugin = makePlugin(fetchImpl);
+
+    const { externalId } = await plugin.sendBatch!(batchRequest);
+
+    expect(externalId).toBe("chan-1:msg-1");
+    const json = JSON.stringify(calls[0]?.body);
+    expect(json).toContain("Email to ACME");
+    expect(json).toContain(batchSelectCustomId("b1"));
+    expect(json).toContain(batchSubmitCustomId("b1"));
+  });
+
+  it("updateBatch patches the message with per-item outcomes", async () => {
+    const { calls, fetchImpl } = fakeDiscord([{ id: "msg-1", channel_id: "chan-1" }, {}]);
+    const plugin = makePlugin(fetchImpl);
+
+    const { externalId } = await plugin.sendBatch!(batchRequest);
+    await plugin.updateBatch!(externalId, [
+      { type: "APPROVED", id: "b1:0", by: { name: "alice" } },
+      { type: "DENIED", id: "b1:1", reason: "spam" },
+    ]);
+
+    expect(calls[1]).toMatchObject({
+      method: "PATCH",
+      url: "https://discord.com/api/v10/channels/chan-1/messages/msg-1",
+    });
+    expect(calls[1]?.body.components).toEqual([]);
+    const json = JSON.stringify(calls[1]?.body.embeds);
+    expect(json).toContain("Approved by alice");
+    expect(json).toContain("spam");
+  });
+
+  it("handleCallback runs the select-then-submit flow", async () => {
+    const { fetchImpl } = fakeDiscord();
+    const { publicKeyHex, privateKey } = createTestKeyPair();
+    const plugin = makePlugin(fetchImpl, publicKeyHex);
+    await plugin.sendBatch!(batchRequest);
+
+    const select = await plugin.handleCallback!(
+      signedDiscordRequest(privateKey, {
+        type: 3,
+        data: { custom_id: batchSelectCustomId("b1"), values: ["b1:1"] },
+      }),
+    );
+    expect(select?.ackOnly).toBe(true);
+
+    const submit = await plugin.handleCallback!(
+      signedDiscordRequest(privateKey, {
+        type: 3,
+        data: { custom_id: batchSubmitCustomId("b1") },
+        user: { id: "u1", username: "alice" },
+      }),
+    );
+    expect((submit as HitlBatchCallback).decisions).toEqual([
+      { requestId: "b1:0", decision: "deny" },
+      { requestId: "b1:1", decision: "approve" },
+    ]);
   });
 });
 

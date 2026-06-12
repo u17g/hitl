@@ -1,4 +1,9 @@
-import type { ApprovalRequest, ApprovalResult, HitlField } from "@hitldev/sdk";
+import type {
+  ApprovalRequest,
+  ApprovalResult,
+  BatchApprovalRequest,
+  HitlField,
+} from "@hitldev/sdk";
 
 /** Minimal Discord component shape — only what this plugin emits. */
 export interface DiscordComponent {
@@ -17,10 +22,16 @@ export const APPROVE_PREFIX = "hitldev_approve:";
 export const DENY_PREFIX = "hitldev_deny:";
 export const MODAL_PREFIX = "hitldev-modal:";
 export const FIELD_PREFIX = "field:";
+export const BATCH_SELECT_PREFIX = "hitldev_batch_select:";
+export const BATCH_SUBMIT_PREFIX = "hitldev_batch_submit:";
+
+/** Discord string selects carry at most 25 options. */
+export const MAX_BATCH_ITEMS = 25;
 
 const TEXT_INPUT = 4;
 const ACTION_ROW = 1;
 const BUTTON = 2;
+const STRING_SELECT = 3;
 const STYLE_PRIMARY = 1;
 const STYLE_DANGER = 4;
 const STYLE_SHORT = 1;
@@ -36,6 +47,14 @@ export function denyCustomId(requestId: string): string {
 
 export function modalCustomId(requestId: string): string {
   return `${MODAL_PREFIX}${requestId}`;
+}
+
+export function batchSelectCustomId(batchId: string): string {
+  return `${BATCH_SELECT_PREFIX}${batchId}`;
+}
+
+export function batchSubmitCustomId(batchId: string): string {
+  return `${BATCH_SUBMIT_PREFIX}${batchId}`;
 }
 
 export function parsePrefixedCustomId(prefix: string, customId: string): string | null {
@@ -128,6 +147,75 @@ export function renderApprovalModal(
     custom_id: modalCustomId(requestId),
     title: "Review approval",
     components,
+  };
+}
+
+/**
+ * Render a pending batch as one message: a numbered list in the embed plus a
+ * multi select where the chosen items are approved and the rest denied on
+ * submit. Field editing is not available in batch mode — Discord has no
+ * message-level form; batches with fields fall back to per-item delivery.
+ */
+export function renderBatchMessage(request: BatchApprovalRequest): {
+  embeds: DiscordEmbed[];
+  components: DiscordComponent[];
+} {
+  const lines: string[] = [];
+  if (request.title) lines.push(`**${request.title}**`, "");
+  for (const [index, item] of request.items.entries()) {
+    lines.push(`${index + 1}. ${item.message}`);
+  }
+  lines.push("", "Selected items are approved on Submit; unselected items are denied.");
+
+  return {
+    embeds: [{ description: lines.join("\n") }],
+    components: [
+      {
+        type: ACTION_ROW,
+        components: [
+          {
+            type: STRING_SELECT,
+            custom_id: batchSelectCustomId(request.batchId),
+            min_values: 0,
+            max_values: request.items.length,
+            options: request.items.map((item, index) => ({
+              label: `${index + 1}. ${item.message}`.slice(0, 100),
+              value: item.id,
+              default: true,
+            })),
+          },
+        ],
+      },
+      {
+        type: ACTION_ROW,
+        components: [
+          {
+            type: BUTTON,
+            style: STYLE_PRIMARY,
+            label: "Submit",
+            custom_id: batchSubmitCustomId(request.batchId),
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/** Replace the batch message with per-item outcomes (components removed). */
+export function renderBatchResultMessage(
+  request: BatchApprovalRequest,
+  results: ApprovalResult[],
+): { embeds: DiscordEmbed[]; components: [] } {
+  const lines: string[] = [];
+  if (request.title) lines.push(`**${request.title}**`, "");
+  for (const [index, item] of request.items.entries()) {
+    lines.push(`${index + 1}. ${item.message}`);
+    const result = results[index];
+    if (result) lines.push(`   ${outcomeLine(result)}`);
+  }
+  return {
+    embeds: [{ description: lines.join("\n") }],
+    components: [],
   };
 }
 

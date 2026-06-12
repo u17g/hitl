@@ -1,8 +1,10 @@
-import { field } from "@hitldev/sdk";
+import { field, type HitlBatchCallback } from "@hitldev/sdk";
 import { describe, expect, it } from "vitest";
-import { parseDiscordCallback, RESPONSE_MODAL } from "./callback";
+import { parseDiscordCallback, RESPONSE_MODAL, type PendingBatch } from "./callback";
 import {
   approveCustomId,
+  batchSelectCustomId,
+  batchSubmitCustomId,
   denyCustomId,
   modalCustomId,
   MODAL_PREFIX,
@@ -96,6 +98,73 @@ describe("parseDiscordCallback", () => {
     expect(body.type).toBe(RESPONSE_MODAL);
     expect(body.data.custom_id).toBe(`${MODAL_PREFIX}req-1`);
     expect(body.data.custom_id).toBe(modalCustomId("req-1"));
+  });
+
+  it("records a batch selection and acks with a deferred update", async () => {
+    const pendingBatches = new Map<string, PendingBatch>([
+      ["b1", { itemIds: ["b1:0", "b1:1"], selected: null }],
+    ]);
+    const callback = await parseDiscordCallback(
+      signedDiscordRequest(privateKey, {
+        type: 3,
+        data: { custom_id: batchSelectCustomId("b1"), values: ["b1:0"] },
+      }),
+      { publicKey: publicKeyHex, pendingFields, pendingBatches },
+    );
+
+    expect(callback?.ackOnly).toBe(true);
+    expect(await callback!.response!.json()).toEqual({ type: 6 });
+    expect(pendingBatches.get("b1")?.selected).toEqual(["b1:0"]);
+  });
+
+  it("turns a batch submit into per-item decisions (selected approve, rest deny)", async () => {
+    const pendingBatches = new Map<string, PendingBatch>([
+      ["b1", { itemIds: ["b1:0", "b1:1"], selected: ["b1:0"] }],
+    ]);
+    const callback = await parseDiscordCallback(
+      signedDiscordRequest(privateKey, {
+        type: 3,
+        data: { custom_id: batchSubmitCustomId("b1") },
+        user: { id: "u1", username: "alice" },
+      }),
+      { publicKey: publicKeyHex, pendingFields, pendingBatches },
+    );
+
+    expect(callback).toMatchObject({ batchId: "b1", by: { id: "u1", name: "alice" } });
+    expect((callback as HitlBatchCallback).decisions).toEqual([
+      { requestId: "b1:0", decision: "approve" },
+      { requestId: "b1:1", decision: "deny" },
+    ]);
+    expect(await callback!.response!.json()).toEqual({ type: 6 });
+  });
+
+  it("approves every item when submit arrives without a prior selection", async () => {
+    const pendingBatches = new Map<string, PendingBatch>([
+      ["b1", { itemIds: ["b1:0", "b1:1"], selected: null }],
+    ]);
+    const callback = await parseDiscordCallback(
+      signedDiscordRequest(privateKey, {
+        type: 3,
+        data: { custom_id: batchSubmitCustomId("b1") },
+      }),
+      { publicKey: publicKeyHex, pendingFields, pendingBatches },
+    );
+
+    expect((callback as HitlBatchCallback).decisions).toEqual([
+      { requestId: "b1:0", decision: "approve" },
+      { requestId: "b1:1", decision: "approve" },
+    ]);
+  });
+
+  it("ignores a batch submit for an unknown batch", async () => {
+    const callback = await parseDiscordCallback(
+      signedDiscordRequest(privateKey, {
+        type: 3,
+        data: { custom_id: batchSubmitCustomId("missing") },
+      }),
+      { publicKey: publicKeyHex, pendingFields, pendingBatches: new Map() },
+    );
+    expect(callback).toBeNull();
   });
 
   it("parses modal submit with feedbacks", async () => {

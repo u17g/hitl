@@ -1,6 +1,8 @@
-import type { HitlCallback, HitlField } from "@hitldev/sdk";
+import type { HitlBatchCallback, HitlCallback, HitlField } from "@hitldev/sdk";
 import {
   APPROVE_PREFIX,
+  BATCH_SELECT_PREFIX,
+  BATCH_SUBMIT_PREFIX,
   DENY_PREFIX,
   MODAL_PREFIX,
   parseModalFeedbacks,
@@ -26,16 +28,25 @@ interface DiscordInteraction {
   type: number;
   data?: {
     custom_id?: string;
+    values?: string[];
     components?: { components?: { custom_id?: string; value?: string }[] }[];
   };
   member?: { user?: DiscordUser };
   user?: DiscordUser;
 }
 
+/** Select state of one delivered batch; `selected: null` means untouched (all approved). */
+export interface PendingBatch {
+  itemIds: string[];
+  selected: string[] | null;
+}
+
 export interface ParseDiscordCallbackOptions {
   publicKey: string;
   /** Stored fields per request id, populated by send(). */
   pendingFields: Map<string, Record<string, HitlField>>;
+  /** Stored item ids and select state per batch id, populated by sendBatch(). */
+  pendingBatches?: Map<string, PendingBatch>;
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -61,7 +72,7 @@ function reviewerFrom(interaction: DiscordInteraction) {
 export async function parseDiscordCallback(
   req: Request,
   options: ParseDiscordCallbackOptions,
-): Promise<HitlCallback | null> {
+): Promise<HitlCallback | HitlBatchCallback | null> {
   if (req.method !== "POST") return null;
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return null;
@@ -97,6 +108,8 @@ export async function parseDiscordCallback(
   }
 
   if (interaction.type === INTERACTION_MESSAGE_COMPONENT) {
+    const batch = parseBatchComponent(interaction, options.pendingBatches ?? new Map());
+    if (batch !== undefined) return batch;
     return parseMessageComponent(interaction, options.pendingFields);
   }
 
@@ -105,6 +118,50 @@ export async function parseDiscordCallback(
   }
 
   return null;
+}
+
+/**
+ * Batch select/submit handling. Returns `undefined` when the interaction is
+ * not batch-related so single-approval parsing can take over.
+ */
+function parseBatchComponent(
+  interaction: DiscordInteraction,
+  pendingBatches: Map<string, PendingBatch>,
+): HitlCallback | HitlBatchCallback | null | undefined {
+  const customId = interaction.data?.custom_id;
+  if (!customId) return undefined;
+
+  const selectBatchId = parsePrefixedCustomId(BATCH_SELECT_PREFIX, customId);
+  if (selectBatchId) {
+    const batch = pendingBatches.get(selectBatchId);
+    if (batch) {
+      batch.selected = interaction.data?.values ?? [];
+    }
+    return {
+      requestId: "",
+      decision: "approve",
+      ackOnly: true,
+      response: deferredUpdateResponse(),
+    };
+  }
+
+  const submitBatchId = parsePrefixedCustomId(BATCH_SUBMIT_PREFIX, customId);
+  if (submitBatchId) {
+    const batch = pendingBatches.get(submitBatchId);
+    if (!batch) return null;
+    const selected = new Set(batch.selected ?? batch.itemIds);
+    return {
+      batchId: submitBatchId,
+      decisions: batch.itemIds.map((requestId) => ({
+        requestId,
+        decision: selected.has(requestId) ? ("approve" as const) : ("deny" as const),
+      })),
+      by: reviewerFrom(interaction),
+      response: deferredUpdateResponse(),
+    };
+  }
+
+  return undefined;
 }
 
 function parseMessageComponent(
