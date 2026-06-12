@@ -23,8 +23,10 @@ export interface ApprovalRequest {
 
 export interface Notification {
   message: string;
-  /** Approval id to thread under (e.g. Slack thread_ts lookup). */
+  /** Approval id to thread under. */
   parent?: string;
+  /** Channel message id of the parent approval (e.g. Slack thread_ts), resolved by the core. */
+  parentExternalId?: string;
   channel?: string;
 }
 
