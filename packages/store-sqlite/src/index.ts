@@ -1,19 +1,21 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ApprovalRecord, ApprovalResult, NewApprovalRecord, Store } from "@hitldev/sdk";
+import { applyMigrations } from "./migrate.js";
+import { schemaSql as buildSchemaSql } from "./schema-sql.js";
+import { DEFAULT_TABLE, resolveTableName } from "./table.js";
+
+export { DEFAULT_TABLE } from "./table.js";
+export { SCHEMA_VERSION } from "./migrations/index.js";
+export { migrationSql } from "./schema-sql.js";
 
 export interface SqliteStoreOptions {
   /** Defaults to `hitldev.approvals`. */
   tableName?: string;
 }
 
-const DEFAULT_TABLE = "hitldev.approvals";
-const IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-const QUALIFIED = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/;
-
-interface ResolvedTable {
-  /** SQL fragment for FROM/INTO/UPDATE clauses */
-  sql: string;
-  indexName: string;
+/** Idempotent DDL for the approvals table; also used by `ensureSchema()`. */
+export function schemaSql(tableName = DEFAULT_TABLE): string {
+  return buildSchemaSql(tableName);
 }
 
 interface ApprovalRow {
@@ -36,32 +38,19 @@ interface ApprovalRow {
  */
 export class SqliteStore implements Store {
   private readonly db: DatabaseSync;
-  private readonly table: ResolvedTable;
+  private readonly tableName: string;
+  private readonly table: ReturnType<typeof resolveTableName>;
 
   constructor(database: DatabaseSync, options?: SqliteStoreOptions) {
     this.db = database;
-    this.table = resolveTableName(options?.tableName ?? DEFAULT_TABLE);
+    this.tableName = options?.tableName ?? DEFAULT_TABLE;
+    this.table = resolveTableName(this.tableName);
     this.ensureSchema();
   }
 
   /** Idempotent; already run by the constructor. */
   ensureSchema(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS ${this.table.sql} (
-        id          TEXT PRIMARY KEY,
-        token       TEXT NOT NULL,
-        channel     TEXT NOT NULL,
-        message     TEXT NOT NULL,
-        fields      TEXT NOT NULL,
-        status      TEXT NOT NULL,
-        external_id TEXT,
-        result      TEXT,
-        created_at  TEXT NOT NULL,
-        resolved_at TEXT
-      );
-      CREATE INDEX IF NOT EXISTS ${this.table.indexName}
-        ON ${this.table.sql} (external_id);
-    `);
+    applyMigrations(this.db, this.tableName);
   }
 
   async create(record: NewApprovalRecord): Promise<void> {
@@ -122,38 +111,6 @@ export class SqliteStore implements Store {
         : this.db.prepare(`SELECT * FROM ${this.table.sql}`).all()
     ) as unknown as ApprovalRow[];
     return rows.map(rowToRecord);
-  }
-}
-
-function resolveTableName(tableName: string): ResolvedTable {
-  if (!QUALIFIED.test(tableName)) {
-    throw new Error(`Invalid table name "${tableName}"`);
-  }
-  if (tableName.includes(".")) {
-    const parts = tableName.split(".");
-    const schema = parts[0];
-    const table = parts[1];
-    if (!schema || !table || parts.length !== 2) {
-      throw new Error(`Invalid table name "${tableName}"`);
-    }
-    assertIdentifier(schema);
-    assertIdentifier(table);
-    const quoted = `"${schema}.${table}"`;
-    return {
-      sql: quoted,
-      indexName: `${schema}_${table}_external_id_idx`,
-    };
-  }
-  assertIdentifier(tableName);
-  return {
-    sql: tableName,
-    indexName: `${tableName}_external_id_idx`,
-  };
-}
-
-function assertIdentifier(name: string): void {
-  if (!IDENTIFIER.test(name)) {
-    throw new Error(`Invalid table name "${name}"`);
   }
 }
 

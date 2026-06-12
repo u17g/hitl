@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { hitl, type NewApprovalRecord } from "@hitldev/sdk";
 import { describeStoreContract } from "@hitldev/sdk/store-contract";
-import { SqliteStore } from "./index";
+import { SqliteStore, schemaSql } from "./index";
 
 describeStoreContract(
   "SqliteStore",
@@ -57,5 +57,12 @@ describe("SqliteStore specifics", () => {
     await store.create({ ...newRecord("a1"), fields });
 
     expect((await store.get("a1"))?.fields).toEqual(fields);
+  });
+
+  it("exports idempotent schemaSql", () => {
+    expect(schemaSql("hitldev.approvals")).toContain(
+      'CREATE TABLE IF NOT EXISTS "hitldev.approvals"',
+    );
+    expect(schemaSql("custom_approvals")).toContain("CREATE TABLE IF NOT EXISTS custom_approvals");
   });
 });
