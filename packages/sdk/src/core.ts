@@ -1,7 +1,15 @@
-import type { EngineBinding } from "./binding";
+import type { EngineBinding, EngineSuspension } from "./binding";
 import { parseDuration, type Duration } from "./duration";
 import type { FeedbackValues, HitlField } from "./fields";
-import type { Store } from "./store";
+import {
+  escalateMessage,
+  isEscalate,
+  remindMessage,
+  type EscalateEntry,
+  type ReminderEntry,
+  type RemindEntry,
+} from "./reminder";
+import type { ApprovalRecord, Store } from "./store";
 import type {
   ApprovalResult,
   HitlCallback,
@@ -24,6 +32,8 @@ export interface ApprovalOptions<F extends Record<string, HitlField>> {
   channel?: string;
   /** e.g. "72h"; resolves as { type: "TIMED_OUT" }. */
   timeout?: Duration;
+  /** Remind or escalate while pending. `{ after, message }` reminds; `{ after, channel }` escalates. */
+  reminder?: ReminderEntry[];
 }
 
 function pickPlugin(plugins: HitlPlugin[], channel?: string): HitlPlugin {
@@ -37,6 +47,17 @@ function pickPlugin(plugins: HitlPlugin[], channel?: string): HitlPlugin {
     throw new Error(`Unknown channel "${channel}". Configured plugins: ${known}`);
   }
   return plugin;
+}
+
+interface ScheduledReminder {
+  entry: ReminderEntry;
+  ms: number;
+}
+
+function buildReminderSchedule(reminders: ReminderEntry[]): ScheduledReminder[] {
+  return reminders
+    .map((entry) => ({ entry, ms: parseDuration(entry.after) }))
+    .sort((a, b) => a.ms - b.ms || 0);
 }
 
 /**
@@ -71,33 +92,207 @@ export async function requestApproval<F extends Record<string, HitlField>>(
     runtime.store.setExternalId(id, externalId),
   );
 
-  if (opts.timeout === undefined) return suspension.promise;
+  const timeoutMs = opts.timeout === undefined ? undefined : parseDuration(opts.timeout);
+  const reminderSchedule = buildReminderSchedule(opts.reminder ?? []);
 
-  const timeoutMs = parseDuration(opts.timeout);
-  const TIMED_OUT = Symbol("timed-out");
-  const winner = await Promise.race([
-    suspension.promise,
-    runtime.binding.sleep(timeoutMs).then(() => TIMED_OUT),
-  ]);
-  if (winner !== TIMED_OUT) return winner as ApprovalResult<FeedbackValues<F>>;
+  if (timeoutMs === undefined && reminderSchedule.length === 0) {
+    return suspension.promise;
+  }
 
-  // The callback may have won a near-simultaneous race; prefer its result.
-  const record = await runtime.binding.run("hitldev:check-resolution", () =>
-    runtime.store.get(id),
+  return waitWithReminders<F>(runtime, {
+    id,
+    plugin,
+    fields: (opts.fields ?? {}) as F,
+    message: opts.message,
+    suspension,
+    timeoutMs,
+    reminderSchedule,
+  });
+}
+
+interface WaitContext<F extends Record<string, HitlField>> {
+  id: string;
+  plugin: HitlPlugin;
+  fields: F;
+  message: string;
+  suspension: EngineSuspension<ApprovalResult<FeedbackValues<F>>>;
+  timeoutMs: number | undefined;
+  reminderSchedule: ScheduledReminder[];
+}
+
+async function waitWithReminders<F extends Record<string, HitlField>>(
+  runtime: HitlRuntime,
+  ctx: WaitContext<F>,
+): Promise<ApprovalResult<FeedbackValues<F>>> {
+  let elapsedMs = 0;
+  let reminderIndex = 0;
+
+  while (true) {
+    while (reminderIndex < ctx.reminderSchedule.length) {
+      const next = ctx.reminderSchedule[reminderIndex]!;
+      if (next.ms > elapsedMs) break;
+      if (ctx.timeoutMs !== undefined && next.ms >= ctx.timeoutMs) {
+        reminderIndex++;
+        continue;
+      }
+      await runReminder(runtime, ctx, next.entry, reminderIndex);
+      reminderIndex++;
+    }
+
+    let nextWakeMs = Infinity;
+    let wakeKind: "timeout" | "reminder" | undefined;
+
+    if (ctx.timeoutMs !== undefined && ctx.timeoutMs > elapsedMs) {
+      nextWakeMs = ctx.timeoutMs - elapsedMs;
+      wakeKind = "timeout";
+    }
+
+    if (reminderIndex < ctx.reminderSchedule.length) {
+      const nextReminderMs = ctx.reminderSchedule[reminderIndex]!.ms - elapsedMs;
+      if (nextReminderMs >= 0 && nextReminderMs < nextWakeMs) {
+        nextWakeMs = nextReminderMs;
+        wakeKind = "reminder";
+      }
+    }
+
+    if (wakeKind === undefined) {
+      return (await ctx.suspension.promise) as ApprovalResult<FeedbackValues<F>>;
+    }
+
+    const winner = await Promise.race([
+      ctx.suspension.promise.then((result) => ({ kind: "resolved" as const, result })),
+      runtime.binding.sleep(nextWakeMs).then(() => ({ kind: wakeKind! })),
+    ]);
+
+    if (winner.kind === "resolved") {
+      return winner.result as ApprovalResult<FeedbackValues<F>>;
+    }
+
+    elapsedMs += nextWakeMs;
+
+    if (winner.kind === "timeout") {
+      return finalizeTimeout(runtime, ctx.id, ctx.plugin);
+    }
+
+    const entry = ctx.reminderSchedule[reminderIndex]!.entry;
+    await runReminder(runtime, ctx, entry, reminderIndex);
+    reminderIndex++;
+  }
+}
+
+async function runReminder<F extends Record<string, HitlField>>(
+  runtime: HitlRuntime,
+  ctx: WaitContext<F>,
+  entry: ReminderEntry,
+  index: number,
+): Promise<void> {
+  const record = await runtime.binding.run(`hitldev:reminder-check:${index}`, () =>
+    runtime.store.get(ctx.id),
   );
+  if (!record || record.status !== "pending") return;
+
+  if (isEscalate(entry)) {
+    await runEscalate(runtime, ctx, entry, index);
+  } else {
+    await runRemind(runtime, ctx, entry, index);
+  }
+}
+
+async function runRemind<F extends Record<string, HitlField>>(
+  runtime: HitlRuntime,
+  ctx: WaitContext<F>,
+  entry: RemindEntry,
+  index: number,
+): Promise<void> {
+  await runtime.binding.run(`hitldev:remind:${index}`, async () => {
+    const parent = await runtime.store.get(ctx.id);
+    const notification: Notification = {
+      parent: ctx.id,
+      message: remindMessage(entry),
+      channel: ctx.plugin.id,
+    };
+    if (parent?.externalId) notification.parentExternalId = parent.externalId;
+    await ctx.plugin.notify(notification);
+  });
+}
+
+async function runEscalate<F extends Record<string, HitlField>>(
+  runtime: HitlRuntime,
+  ctx: WaitContext<F>,
+  entry: EscalateEntry,
+  index: number,
+): Promise<void> {
+  const mode = entry.mode ?? "notify";
+  const escalatePlugin = pickPlugin(runtime.plugins, entry.channel);
+
+  if (mode === "redeliver") {
+    const { externalId } = await runtime.binding.run(`hitldev:escalate-redeliver:${index}`, () =>
+      escalatePlugin.send({
+        id: ctx.id,
+        channel: entry.channel,
+        message: ctx.message,
+        fields: ctx.fields,
+      }),
+    );
+    await runtime.binding.run(`hitldev:escalate-store-external-id:${index}`, () =>
+      runtime.store.setExternalId(ctx.id, externalId, entry.channel),
+    );
+    return;
+  }
+
+  await runtime.binding.run(`hitldev:escalate-notify:${index}`, async () => {
+    const escalatePlugin = pickPlugin(runtime.plugins, entry.channel);
+    const parent = await runtime.store.get(ctx.id);
+    const notification: Notification = {
+      message: escalateMessage(entry),
+      channel: entry.channel,
+      parent: ctx.id,
+    };
+    if (parent?.externalId) notification.parentExternalId = parent.externalId;
+    await escalatePlugin.notify(notification);
+  });
+}
+
+async function finalizeTimeout<F extends Record<string, HitlField>>(
+  runtime: HitlRuntime,
+  id: string,
+  _plugin: HitlPlugin,
+): Promise<ApprovalResult<FeedbackValues<F>>> {
+  const record = await runtime.binding.run("hitldev:check-resolution", () => runtime.store.get(id));
   if (record?.status === "resolved" && record.result) {
     return record.result as ApprovalResult<FeedbackValues<F>>;
   }
 
   const result: ApprovalResult<FeedbackValues<F>> = { type: "TIMED_OUT", id };
   await runtime.binding.run("hitldev:record-timeout", () => runtime.store.resolve(id, result));
-  const externalIdToUpdate = record?.externalId;
-  if (externalIdToUpdate && plugin.update) {
-    await runtime.binding.run("hitldev:update-channel", () =>
-      plugin.update!(externalIdToUpdate, result),
-    );
+  if (record) {
+    await runtime.binding.run("hitldev:update-channel", () => updateChannels(runtime, record, result));
   }
   return result;
+}
+
+async function updateChannels(
+  runtime: HitlRuntime,
+  record: ApprovalRecord,
+  result: ApprovalResult,
+): Promise<void> {
+  const pluginIds = new Set<string>();
+  if (record.externalId) pluginIds.add(record.channel);
+  if (record.externalIds) {
+    for (const pluginId of Object.keys(record.externalIds)) {
+      pluginIds.add(pluginId);
+    }
+  }
+
+  for (const pluginId of pluginIds) {
+    const channelPlugin = runtime.plugins.find((p) => p.id === pluginId);
+    const externalId =
+      record.externalIds?.[pluginId] ??
+      (pluginId === record.channel ? record.externalId : undefined);
+    if (channelPlugin?.update && externalId) {
+      await channelPlugin.update(externalId, result);
+    }
+  }
 }
 
 /**
@@ -117,10 +312,7 @@ export async function resolveApproval(
   await runtime.store.resolve(record.id, result);
   await runtime.binding.resolve(record.token, result);
 
-  const plugin = runtime.plugins.find((p) => p.id === record.channel);
-  if (plugin?.update && record.externalId) {
-    await plugin.update(record.externalId, result);
-  }
+  await updateChannels(runtime, record, result);
   return result;
 }
 

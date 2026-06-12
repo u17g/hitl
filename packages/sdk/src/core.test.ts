@@ -14,11 +14,18 @@ import type { ApprovalRequest, HitlPlugin, Notification } from "./types";
 // - resolveApproval(deny with reason) -> DENIED
 // - invalid feedbacks reject and leave the request pending
 // - timeout resolves as TIMED_OUT and updates store + channel
+// - reminder sends a threaded notify when the timer elapses while pending
+// - reminder is skipped after the approval is resolved
+// - reminders after timeout are skipped
+// - escalate notify posts to the fallback channel
+// - escalate redeliver re-sends approval UI on the fallback channel
 // - notify routes by channel and resolves parent approval to its externalId
 
 class FakeBinding implements EngineBinding {
   waits = new Map<string, (payload: unknown) => void>();
   private counter = 0;
+  private sleepResolvers: Array<() => void> = [];
+  readonly sleepCalls: number[] = [];
 
   suspend<T>(): EngineSuspension<T> {
     const token = `tok_${++this.counter}`;
@@ -34,7 +41,23 @@ class FakeBinding implements EngineBinding {
     resolveFn(payload);
   }
 
-  sleep = vi.fn((ms: number) => new Promise<void>(() => {}));
+  sleep = vi.fn((ms: number) => {
+    this.sleepCalls.push(ms);
+    return new Promise<void>((resolve) => {
+      this.sleepResolvers.push(resolve);
+    });
+  });
+
+  /** Resolves the next pending `sleep()` call. */
+  flushSleep(): void {
+    const resolve = this.sleepResolvers.shift();
+    resolve?.();
+  }
+
+  /** Resolves `sleep()` immediately on each call (for timeout tests). */
+  autoResolveSleep(): void {
+    this.sleep = vi.fn(() => Promise.resolve());
+  }
 
   async run<T>(_label: string, fn: () => Promise<T>): Promise<T> {
     return fn();
@@ -131,7 +154,7 @@ describe("requestApproval", () => {
 
   it("resolves as TIMED_OUT when the timeout elapses first", async () => {
     const { runtime, binding, store, plugins } = makeRuntime();
-    binding.sleep = vi.fn(() => Promise.resolve());
+    binding.autoResolveSleep();
 
     const result = await requestApproval(runtime, { message: "m", timeout: "72h" });
 
@@ -141,6 +164,159 @@ describe("requestApproval", () => {
     const record = await store.get(result.id);
     expect(record?.status).toBe("resolved");
     expect(plugins[0]!.updates).toEqual([[`ext_${result.id}`, result]]);
+  });
+
+  it("sends a reminder notify when the timer elapses while pending", async () => {
+    const { runtime, binding, plugins } = makeRuntime(["a"]);
+    const pending = requestApproval(runtime, {
+      message: "Approve?",
+      reminder: [{ after: "1h", message: "Still waiting" }],
+    });
+
+    await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
+    const requestId = plugins[0]!.sent[0]!.id;
+
+    expect(binding.sleepCalls).toEqual([3_600_000]);
+    binding.flushSleep();
+
+    await vi.waitFor(() => expect(plugins[0]!.notifications).toHaveLength(1));
+    expect(plugins[0]!.notifications[0]).toEqual({
+      parent: requestId,
+      message: "Still waiting",
+      channel: "a",
+      parentExternalId: `ext_${requestId}`,
+    });
+
+    await resolveApproval(runtime, { requestId, decision: "approve" });
+    await pending;
+  });
+
+  it("uses the default reminder message when message is omitted", async () => {
+    const { runtime, binding, plugins } = makeRuntime();
+    const pending = requestApproval(runtime, {
+      message: "m",
+      reminder: [{ after: "10m" }],
+    });
+
+    await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
+    binding.flushSleep();
+
+    await vi.waitFor(() => expect(plugins[0]!.notifications).toHaveLength(1));
+    expect(plugins[0]!.notifications[0]?.message).toBe("Reminder: approval still pending");
+
+    await resolveApproval(runtime, {
+      requestId: plugins[0]!.sent[0]!.id,
+      decision: "approve",
+    });
+    await pending;
+  });
+
+  it("skips a reminder after the approval is resolved", async () => {
+    const { runtime, binding, plugins } = makeRuntime();
+    const pending = requestApproval(runtime, {
+      message: "m",
+      reminder: [{ after: "1h", message: "ping" }],
+    });
+
+    await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
+    const requestId = plugins[0]!.sent[0]!.id;
+
+    await resolveApproval(runtime, { requestId, decision: "approve" });
+    await pending;
+
+    binding.flushSleep();
+    expect(plugins[0]!.notifications).toHaveLength(0);
+  });
+
+  it("skips reminders scheduled after the timeout", async () => {
+    const { runtime, binding, plugins } = makeRuntime();
+    binding.autoResolveSleep();
+
+    await requestApproval(runtime, {
+      message: "m",
+      timeout: "1h",
+      reminder: [{ after: "2h", message: "too late" }],
+    });
+
+    expect(plugins[0]!.notifications).toHaveLength(0);
+  });
+
+  it("escalates with a notify on the fallback channel", async () => {
+    const { runtime, binding, plugins } = makeRuntime(["primary", "oncall"]);
+    const pending = requestApproval(runtime, {
+      message: "m",
+      channel: "primary",
+      reminder: [{ after: "30m", channel: "oncall", message: "Needs eyes" }],
+    });
+
+    await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
+    const requestId = plugins[0]!.sent[0]!.id;
+    binding.flushSleep();
+
+    await vi.waitFor(() => expect(plugins[1]!.notifications).toHaveLength(1));
+    expect(plugins[1]!.notifications[0]).toEqual({
+      message: "Needs eyes",
+      channel: "oncall",
+      parent: requestId,
+      parentExternalId: `ext_${requestId}`,
+    });
+
+    await resolveApproval(runtime, { requestId, decision: "approve" });
+    await pending;
+  });
+
+  it("escalates with redeliver on the fallback channel", async () => {
+    const { runtime, binding, store, plugins } = makeRuntime(["primary", "oncall"]);
+    const pending = requestApproval(runtime, {
+      message: "Escalate me",
+      channel: "primary",
+      fields,
+      reminder: [{ after: "1h", channel: "oncall", mode: "redeliver" }],
+    });
+
+    await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
+    const requestId = plugins[0]!.sent[0]!.id;
+    binding.flushSleep();
+
+    await vi.waitFor(() => expect(plugins[1]!.sent).toHaveLength(1));
+    expect(plugins[1]!.sent[0]).toMatchObject({
+      id: requestId,
+      channel: "oncall",
+      message: "Escalate me",
+    });
+
+    const record = await store.get(requestId);
+    expect(record?.externalIds?.oncall).toBe(`ext_${requestId}`);
+
+    await resolveApproval(runtime, { requestId, decision: "approve" });
+    await pending;
+
+    expect(plugins[0]!.updates).toHaveLength(1);
+    expect(plugins[1]!.updates).toHaveLength(1);
+  });
+
+  it("fires same-time reminders in array order", async () => {
+    const { runtime, binding, plugins } = makeRuntime(["primary", "oncall"]);
+    const pending = requestApproval(runtime, {
+      message: "m",
+      reminder: [
+        { after: "1h", message: "first" },
+        { after: "1h", channel: "oncall", message: "second" },
+      ],
+    });
+
+    await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
+    binding.flushSleep();
+
+    await vi.waitFor(() => expect(plugins[1]!.notifications).toHaveLength(1));
+    expect(plugins[0]!.notifications[0]?.message).toBe("first");
+    expect(plugins[1]!.notifications[0]?.message).toBe("second");
+
+    await resolveApproval(runtime, {
+      requestId: plugins[0]!.sent[0]!.id,
+      decision: "approve",
+    });
+    await pending;
   });
 });
 

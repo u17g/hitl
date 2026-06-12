@@ -45,7 +45,7 @@ A Workflow DevKit workflow using the plain AI SDK for drafting and hitldev for t
 // workflows/inbound-lead.ts
 import { z } from "zod";
 import { generateObject } from "ai";
-import { field, notify, waitForApproval } from "@hitldev/sdk";
+import { field, waitForApproval } from "@hitldev/sdk";
 import { sendEmail } from "../lib/email";
 
 export async function inboundLead(input: { email: string; message: string }) {
@@ -66,12 +66,10 @@ export async function inboundLead(input: { email: string; message: string }) {
       body: field.textArea({ label: "Body", default: draft.body }),
     },
     timeout: "72h",
-  });
-
-  // Thread context under the approval request
-  await notify({
-    parent: approval.id,
-    message: `Original message:\n${input.message}`,
+    reminder: [
+      { after: "0s", message: `Original message:\n${input.message}` },
+      { after: "24h", message: "Still waiting for review" },
+    ],
   });
 
   if (approval.type === "DENIED" || approval.type === "TIMED_OUT") return;
@@ -135,8 +133,22 @@ const approval = await waitForApproval({
   fields?: Record<string, HitlField>,  // fields the reviewer can edit
   channel?: string,                       // plugin id; defaults to the first configured plugin
   timeout?: Duration,                     // e.g. "72h"; resolves as { type: "TIMED_OUT" }
+  reminder?: ReminderEntry[],            // remind / escalate while pending (see below)
 });
 ```
+
+While pending, `reminder` entries fire on a durable timer:
+
+```ts
+reminder: [
+  { after: "24h", message: "Still waiting for review" },           // same-channel thread remind
+  { after: "48h", channel: "oncall", message: "Unanswered" },      // escalate (notify fallback channel)
+  { after: "48h", channel: "oncall", mode: "redeliver" },          // escalate (re-send approval UI)
+]
+```
+
+- `{ after, message? }` — threaded remind on the approval channel (`message` defaults to `"Reminder: approval still pending"`)
+- `{ after, channel, message?, mode? }` — escalate to another plugin id (`mode` defaults to `"notify"`)
 
 The result is a discriminated union, with `feedbacks` typed by the field definitions:
 
@@ -348,7 +360,7 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 - **More channels** — email (approve via magic link)
 - **Engine bindings** — `@hitldev/temporal`, `@hitldev/inngest`, `@hitldev/restate`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
 - **Approval policies** — multi-approver, quorum, role routing, auto-approve rules
-- **Escalation** — SLA timers, reminder nudges, fallback channels
+- **Escalation** — SLA timers, reminder nudges (`waitForApproval({ reminder })`), fallback channels
 - **Audit export** — approval history as structured logs
 - **hitldev Cloud (hosted relay)** — a hosted server that owns the platform integrations, replacing per-platform setup with one `cloud({ apiKey })` plugin. One-click OAuth installs instead of hand-built Slack/Azure/Discord apps; resolutions delivered to your app as normalized, HMAC-signed callbacks at `.well-known/hitldev/v1/webhook/:token`; `hitldev listen` forwards them to localhost during development. Implements the same `HitlPlugin` interface and event schema as the in-process plugins — the relay is an alternative transport, not a fork. Library mode stays primary and fully self-contained.
 

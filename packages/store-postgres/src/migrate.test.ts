@@ -13,7 +13,7 @@ function newPool(): PgQueryable {
 describe("postgres migrations", () => {
   it("tracks the current schema version", () => {
     expect(SCHEMA_VERSION).toBe(MIGRATIONS.length);
-    expect(MIGRATIONS.map((migration) => migration.id)).toEqual(["001_initial"]);
+    expect(MIGRATIONS.map((migration) => migration.id)).toEqual(["001_initial", "002_external_ids"]);
   });
 
   it("prints user-facing DDL without the migration ledger", () => {
@@ -31,6 +31,6 @@ describe("postgres migrations", () => {
     await applyMigrations(pool, DEFAULT_TABLE);
 
     const { rows } = await pool.query("SELECT id FROM hitldev.schema_migrations ORDER BY id");
-    expect(rows.map((row) => row.id)).toEqual(["001_initial"]);
+    expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids"]);
   });
 });

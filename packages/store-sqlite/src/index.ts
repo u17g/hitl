@@ -26,6 +26,7 @@ interface ApprovalRow {
   fields: string;
   status: string;
   external_id: string | null;
+  external_ids: string;
   result: string | null;
   created_at: string;
   resolved_at: string | null;
@@ -80,13 +81,29 @@ export class SqliteStore implements Store {
     const row = this.db
       .prepare(`SELECT * FROM ${this.table.sql} WHERE external_id = ?`)
       .get(externalId) as ApprovalRow | undefined;
-    return row ? rowToRecord(row) : null;
+    if (row) return rowToRecord(row);
+
+    const rows = this.db.prepare(`SELECT * FROM ${this.table.sql}`).all() as unknown as ApprovalRow[];
+    for (const candidate of rows) {
+      const externalIds = parseExternalIds(candidate.external_ids);
+      if (Object.values(externalIds).includes(externalId)) {
+        return rowToRecord(candidate);
+      }
+    }
+    return null;
   }
 
-  async setExternalId(id: string, externalId: string): Promise<void> {
+  async setExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
+    const record = await this.get(id);
+    if (!record) throw new Error(`Unknown approval "${id}"`);
+
+    const key = pluginId ?? record.channel;
+    const externalIds = { ...record.externalIds, [key]: externalId };
+    const primaryExternalId = key === record.channel ? externalId : record.externalId;
+
     const { changes } = this.db
-      .prepare(`UPDATE ${this.table.sql} SET external_id = ? WHERE id = ?`)
-      .run(externalId, id);
+      .prepare(`UPDATE ${this.table.sql} SET external_id = ?, external_ids = ? WHERE id = ?`)
+      .run(primaryExternalId ?? null, JSON.stringify(externalIds), id);
     if (changes === 0) throw new Error(`Unknown approval "${id}"`);
   }
 
@@ -114,6 +131,16 @@ export class SqliteStore implements Store {
   }
 }
 
+function parseExternalIds(raw: string | undefined): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
 function rowToRecord(row: ApprovalRow): ApprovalRecord {
   return {
     id: row.id,
@@ -123,6 +150,10 @@ function rowToRecord(row: ApprovalRow): ApprovalRecord {
     fields: JSON.parse(row.fields),
     status: row.status as ApprovalRecord["status"],
     externalId: row.external_id ?? undefined,
+    externalIds: (() => {
+      const ids = parseExternalIds(row.external_ids);
+      return Object.keys(ids).length > 0 ? ids : undefined;
+    })(),
     result: row.result === null ? undefined : JSON.parse(row.result),
     createdAt: row.created_at,
     resolvedAt: row.resolved_at ?? undefined,

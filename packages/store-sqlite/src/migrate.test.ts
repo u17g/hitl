@@ -8,7 +8,7 @@ import { DEFAULT_TABLE } from "./table";
 describe("sqlite migrations", () => {
   it("tracks the current schema version", () => {
     expect(SCHEMA_VERSION).toBe(MIGRATIONS.length);
-    expect(MIGRATIONS.map((migration) => migration.id)).toEqual(["001_initial"]);
+    expect(MIGRATIONS.map((migration) => migration.id)).toEqual(["001_initial", "002_external_ids"]);
   });
 
   it("prints user-facing DDL without the migration ledger", () => {
@@ -28,6 +28,6 @@ describe("sqlite migrations", () => {
     const rows = db
       .prepare('SELECT id FROM "hitldev.schema_migrations" ORDER BY id')
       .all() as Array<{ id: string }>;
-    expect(rows.map((row) => row.id)).toEqual(["001_initial"]);
+    expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids"]);
   });
 });

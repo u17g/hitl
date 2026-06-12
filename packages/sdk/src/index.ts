@@ -54,4 +54,5 @@ export type { ApprovalRecord, Store, NewApprovalRecord } from "./store";
 
 export type { EngineBinding, EngineSuspension } from "./binding";
 export type { Duration } from "./duration";
+export type { ReminderEntry, RemindEntry, EscalateEntry } from "./reminder";
 export { FeedbackValidationError, validateFeedbacks } from "./validate";

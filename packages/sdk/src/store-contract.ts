@@ -62,6 +62,21 @@ export function describeStoreContract(
       expect(await store.findByExternalId("slack-ts-123")).toMatchObject({ id: "a1" });
     });
 
+    it("attaches per-channel external ids for escalation deliveries", async () => {
+      const store = await factory();
+      await store.create(newRecord("a1"));
+      await store.setExternalId("a1", "slack-ts-primary");
+      await store.setExternalId("a1", "slack-ts-oncall", "oncall");
+
+      const record = await store.get("a1");
+      expect(record?.externalId).toBe("slack-ts-primary");
+      expect(record?.externalIds).toEqual({
+        "lead-approvals": "slack-ts-primary",
+        oncall: "slack-ts-oncall",
+      });
+      expect(await store.findByExternalId("slack-ts-oncall")).toMatchObject({ id: "a1" });
+    });
+
     it("resolves a record with a result", async () => {
       const store = await factory();
       await store.create(newRecord("a1"));

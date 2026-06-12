@@ -26,6 +26,7 @@ interface ApprovalRow {
   fields: ApprovalRecord["fields"];
   status: string;
   external_id: string | null;
+  external_ids: Record<string, string> | null;
   result: ApprovalResult | null;
   created_at: string;
   resolved_at: string | null;
@@ -77,13 +78,33 @@ export class PostgresStore implements Store {
       `SELECT * FROM ${this.table.sql} WHERE external_id = $1`,
       [externalId],
     );
-    return rows[0] ? rowToRecord(rows[0]) : null;
+    if (rows[0]) return rowToRecord(rows[0]);
+
+    const { rows: withExtras } = await this.pool.query(
+      `SELECT * FROM ${this.table.sql} WHERE external_ids != '{}'::jsonb`,
+    );
+    for (const row of withExtras) {
+      const record = rowToRecord(row);
+      if (record.externalIds && Object.values(record.externalIds).includes(externalId)) {
+        return record;
+      }
+    }
+    return null;
   }
 
-  async setExternalId(id: string, externalId: string): Promise<void> {
+  async setExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
+    const record = await this.get(id);
+    if (!record) throw new Error(`Unknown approval "${id}"`);
+
+    const key = pluginId ?? record.channel;
+    const externalIds = { ...record.externalIds, [key]: externalId };
+    const primaryExternalId = key === record.channel ? externalId : record.externalId;
+
     const { rowCount } = await this.pool.query(
-      `UPDATE ${this.table.sql} SET external_id = $2 WHERE id = $1`,
-      [id, externalId],
+      `UPDATE ${this.table.sql}
+       SET external_id = $2, external_ids = $3::jsonb
+       WHERE id = $1`,
+      [id, primaryExternalId ?? null, JSON.stringify(externalIds)],
     );
     if (!rowCount) throw new Error(`Unknown approval "${id}"`);
   }
@@ -118,6 +139,10 @@ function rowToRecord(row: ApprovalRow): ApprovalRecord {
     fields: row.fields,
     status: row.status as ApprovalRecord["status"],
     externalId: row.external_id ?? undefined,
+    externalIds:
+      row.external_ids && Object.keys(row.external_ids).length > 0
+        ? row.external_ids
+        : undefined,
     result: row.result ?? undefined,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at ?? undefined,
