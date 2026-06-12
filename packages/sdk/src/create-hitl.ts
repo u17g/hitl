@@ -98,6 +98,9 @@ async function handleCallback(runtime: HitlRuntime, req: Request): Promise<Respo
     if (!callback) continue;
 
     try {
+      if (callback.ackOnly) {
+        return callback.response ?? new Response(null, { status: 204 });
+      }
       const result = await resolveApproval(runtime, callback);
       return callback.response ?? json({ ok: true, result });
     } catch (error) {

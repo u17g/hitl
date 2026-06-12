@@ -105,6 +105,41 @@ describe("createHitl callback dispatch", () => {
     expect(res.status).toBe(404);
   });
 
+  it("returns ackOnly response without resolving the approval", async () => {
+    resetRuntime();
+    const binding = new FakeBinding();
+    const ackPlugin: HitlPlugin = {
+      id: "ack",
+      async send(request) {
+        return { externalId: `ext_${request.id}` };
+      },
+      async notify() {},
+      async handleCallback(): Promise<HitlCallback | null> {
+        return {
+          requestId: "ignored",
+          decision: "approve",
+          ackOnly: true,
+          response: new Response(JSON.stringify({ type: 9 }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        };
+      },
+    };
+    const app = createHitl({ plugins: [ackPlugin], binding });
+    const { promise, requestId } = await startApproval(app, binding);
+
+    const res = await app.fetch(
+      new Request("http://x/hitl/callback", { method: "POST", body: "{}" }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ type: 9 });
+    const record = await app.store.get(requestId);
+    expect(record?.status).toBe("pending");
+    void promise;
+  });
+
   it("returns 400 on invalid feedbacks", async () => {
     const { app, binding } = setup();
     const { requestId } = await startApproval(app, binding);

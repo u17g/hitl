@@ -43,6 +43,8 @@ export interface HitlCallback {
   feedbacks?: Record<string, unknown>;
   /** Channel-specific ack to return to the caller (e.g. Slack expects a fast 200). */
   response?: Response;
+  /** When true, return response immediately without resolving an approval. */
+  ackOnly?: boolean;
 }
 
 export interface HitlPlugin {
