@@ -288,6 +288,7 @@ DATABASE_URL=postgres://... npx openhitl setup
 
 ```
 packages/
-  openhitl/     # openhitl (core)
-  ...           # @openhitl/slack, @openhitl/teams, @openhitl/ui follow as they are implemented
+  sdk/      # @openhitl/sdk (core: waitForApproval, notify, field builders, createHitl, webui, WDK binding)
+  slack/    # @openhitl/slack
+  ...       # @openhitl/teams, @openhitl/ui follow as they are implemented
 ```
