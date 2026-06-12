@@ -31,7 +31,7 @@ hitldev is the missing library: open source, typed end-to-end, native to a durab
 
 ## Design principles
 
-1. **One primitive, done well.** `waitForApproval` and `notify`. No agent abstraction, no workflow engine, no triggers, no deploy story. Compose it with what you already use.
+1. **One primitive, done well.** `waitForApproval` (and its list form, `waitForBatchApprovals`) and `notify`. No agent abstraction, no workflow engine, no triggers, no deploy story. Compose it with what you already use.
 2. **Typed feedbacks.** Field builders define what a reviewer can edit; `REVIEWED` results carry the edited values, typed by inference. The reviewer's edit is data, not a comment.
 3. **Durable by construction.** Built on the engine's native suspension via a thin binding (Workflow DevKit hooks in v0): suspension is event-sourced, resumption survives restarts and deploys. hitldev adds no runtime of its own.
 4. **Channel-agnostic.** Workflow code declares *what* needs review. Plugins — explicit instances with an `id` and their own token — decide *where* it renders and *how* it comes back.
@@ -162,6 +162,34 @@ type ApprovalResult<F> =
 
 Under the hood, `waitForApproval` is a Workflow DevKit hook: the workflow suspends, the plugin delivers the request, and the human's response resolves the hook and resumes the run — across restarts and deploys.
 
+### `waitForBatchApprovals`
+
+The list form of `waitForApproval`: deliver many approvals as **one message**, reviewed and submitted together.
+
+```ts
+const results = await waitForBatchApprovals({
+  title: "Outbound emails",
+  fields: {
+    subject: field.textField({ label: "Subject", default: "Hi" }),
+  },
+  items: [
+    { message: "Email to ACME", defaults: { subject: "Hello ACME" } },
+    { message: "Email to Globex" },   // uses the shared field defaults
+  ],
+  channel: "lead-approvals",
+  timeout: "72h",                      // one timeout for the whole batch
+  reminder: [{ after: "24h" }],        // reminders/escalation are batch-level too
+});
+// results: ApprovalResult<{ subject: string }>[], in item order
+```
+
+- **Shared field schema.** `fields` is defined once for the whole batch; each item overrides initial values via `defaults`. Every result's `feedbacks` is typed by the same schema.
+- **One submit.** The reviewer picks approve/deny per item (and edits fields where the channel supports it), then submits once — one callback resolves the whole batch. Items resolve independently: the same submit can produce `APPROVED`, `DENIED`, and `REVIEWED` results side by side.
+- **All-items completion.** The workflow suspends until every item is resolved and returns results in input order. On `timeout`, items already resolved keep their result; the rest become `TIMED_OUT`.
+- **Fallback delivery.** Channels that can't render the batch as one message (no `sendBatch`, or `canSendBatch` returns `false` — e.g. over the channel's size limits) receive one regular approval message per item; the batch still waits for all of them.
+
+Channel limits: Slack renders up to the 50-block message limit (roughly 15 items with one field); Teams up to the ~28 KB card limit; Discord renders field-less batches of up to 25 items as a multi-select + Submit (batches **with** fields fall back to per-item delivery, where edits use the modal).
+
 ### Field builders
 
 ```ts
@@ -196,7 +224,14 @@ interface HitlPlugin {
   notify(notification: Notification): Promise<void>;
   // Parse inbound interaction callbacks (Slack interactivity payloads etc.)
   // The runtime resolves the matching Workflow DevKit hook, resuming the workflow.
-  handleCallback?(req: Request): Promise<HitlCallback | null>;
+  // A batch submit comes back as one HitlBatchCallback carrying every item's decision.
+  handleCallback?(req: Request): Promise<HitlCallback | HitlBatchCallback | null>;
+  // Batch capability (optional): render a whole batch as a single message.
+  // Absent sendBatch — or canSendBatch returning false — makes the core
+  // fall back to one send() per item.
+  sendBatch?(request: BatchApprovalRequest): Promise<{ externalId: string }>;
+  canSendBatch?(request: BatchApprovalRequest): boolean;
+  updateBatch?(externalId: string, results: ApprovalResult[]): Promise<void>;
 }
 ```
 
@@ -291,6 +326,7 @@ Switching engines means switching one import (`@hitldev/vercel-workflow` → `@h
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
 - hitldev needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@hitldev/store-postgres` or `@hitldev/store-sqlite` store for persistence.
+- **Custom `Store` implementations:** batch support added four methods to the `Store` interface (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) and two columns plus a companion `<table>_batches` table to the SQL schema (migration `003_batches`, applied automatically by the bundled stores). Custom stores must implement them; `describeStoreContract` from `@hitldev/sdk/store-contract` covers the expected behavior.
 - **SQLite** — schema is created automatically in the constructor; no extra step:
 
 ```ts
@@ -331,6 +367,8 @@ DATABASE_URL=postgres://... npx hitldev setup
 
 When a reviewer clicks **Approve** and the request has feedback fields, Discord opens a Modal to collect edits before resolving the approval.
 
+Batches (`waitForBatchApprovals`) render as a multi-select (every item preselected = approve) plus a **Submit** button, for up to 25 field-less items. Discord has no message-level form, so batches **with** fields fall back to per-item delivery automatically — edits then use the modal as usual.
+
 ### Teams setup
 
 1. Register a bot in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) and enable the **Microsoft Teams** channel.
@@ -339,13 +377,13 @@ When a reviewer clicks **Approve** and the request has feedback fields, Discord 
 4. Package and install the Teams app (see [packages/teams/manifest.json](packages/teams/manifest.json)) in the target team and/or for individual reviewers.
 5. Pass `teamId` + `channelId` for channel approvals, or a reviewer's Azure AD object id for 1:1 DM approvals.
 
-Teams renders feedback fields inline in the Adaptive Card — no modal step is needed.
+Teams renders feedback fields inline in the Adaptive Card — no modal step is needed. Batches render as one card with per-item inputs and a single **Submit**; batches over the ~28 KB card limit fall back to per-item delivery.
 
 ## Packages
 
 | Package | Contents |
 |---|---|
-| `@hitldev/sdk` | Core: `waitForApproval`, `notify`, `field.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
+| `@hitldev/sdk` | Core: `waitForApproval`, `waitForBatchApprovals`, `notify`, `field.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
 | `@hitldev/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
@@ -359,7 +397,7 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 
 - **More channels** — email (approve via magic link)
 - **Engine bindings** — `@hitldev/temporal`, `@hitldev/inngest`, `@hitldev/restate`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
-- **Approval policies** — multi-approver, quorum, role routing, auto-approve rules
+- **Approval policies** — multi-approver, quorum, role routing, auto-approve rules (batched lists ship today as `waitForBatchApprovals`)
 - **Escalation** — SLA timers, reminder nudges (`waitForApproval({ reminder })`), fallback channels
 - **Audit export** — approval history as structured logs
 - **hitldev Cloud (hosted relay)** — a hosted server that owns the platform integrations, replacing per-platform setup with one `cloud({ apiKey })` plugin. One-click OAuth installs instead of hand-built Slack/Azure/Discord apps; resolutions delivered to your app as normalized, HMAC-signed callbacks at `.well-known/hitldev/v1/webhook/:token`; `hitldev listen` forwards them to localhost during development. Implements the same `HitlPlugin` interface and event schema as the in-process plugins — the relay is an alternative transport, not a fork. Library mode stays primary and fully self-contained.
