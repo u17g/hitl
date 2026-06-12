@@ -1,0 +1,27 @@
+{
+  "name": "@openhitl/store-postgres",
+  "version": "0.0.0",
+  "description": "Postgres store for openhitl. Bring your own pg-compatible pool.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@openhitl/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@openhitl/sdk": "workspace:*",
+    "@types/node": "^25.9.3",
+    "pg-mem": "^3.0.5",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
