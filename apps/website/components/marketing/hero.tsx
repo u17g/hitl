@@ -16,9 +16,6 @@ export function Hero() {
       <div className="absolute inset-0 grid-bg opacity-50" />
       <div className="relative mx-auto max-w-6xl px-4 py-24 md:py-32">
         <div className="mx-auto max-w-3xl text-center">
-          <Badge variant="secondary" className="mb-6">
-            {t({ en: "Human-in-the-loop", ja: "Human-in-the-loop" })}
-          </Badge>
           <h1 className="text-4xl font-bold tracking-tight md:text-6xl md:leading-tight">
             {t({
               en: "Make any workflow human-aware",
