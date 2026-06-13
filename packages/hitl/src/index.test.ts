@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { field, humanActions, InMemoryState, type HumanResult } from "./index";
+import { field, actions, InMemoryState, type HumanResult } from "./index";
 import { createTestHitl } from "./testing";
 
 // Test list:
@@ -8,8 +8,8 @@ import { createTestHitl } from "./testing";
 // - notify threads through the always-on web inbox channel
 // - the batch loop resolves through hitl.inbox.resolveBatch with typed results
 
-const approvalActions = humanActions()
-  .submit({
+const approvalActions = actions()
+  .approve({
     fields: {
       subject: field.textField({ label: "Subject", default: "Hi" }),
       body: field.textArea({ label: "Body", default: "Hello" }),
@@ -17,8 +17,8 @@ const approvalActions = humanActions()
   })
   .build();
 
-const batchActions = humanActions()
-  .submit({ fields: { subject: field.textField({ label: "Subject", default: "Hi" }) } })
+const batchActions = actions()
+  .approve({ fields: { subject: field.textField({ label: "Subject", default: "Hi" }) } })
   .build();
 
 describe("public API", () => {
@@ -44,7 +44,7 @@ describe("public API", () => {
     await client.notify({ threadId: requestId, message: "Original message: hello" });
 
     await hitl.inbox.resolve(requestId, {
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited subject", body: "Hello" },
       by: { name: "ryosuke" },
     });
@@ -52,12 +52,12 @@ describe("public API", () => {
     const approval = await pending;
     expect(approval).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited subject", body: "Hello" },
       edited: true,
     });
 
-    if (approval.type === "RESOLVED" && approval.actionId === "submit") {
+    if (approval.type === "RESOLVED" && approval.actionId === "approve") {
       expectTypeOf(approval.feedbacks).toEqualTypeOf<{ subject: string; body: string }>();
     }
   });
@@ -88,8 +88,8 @@ describe("public API", () => {
     await hitl.inbox.resolveBatch(
       batchId,
       [
-        { requestId: `${batchId}:0`, actionId: "submit" },
-        { requestId: `${batchId}:1`, actionId: "submit", feedbacks: { subject: "Edited" } },
+        { requestId: `${batchId}:0`, actionId: "approve" },
+        { requestId: `${batchId}:1`, actionId: "approve", feedbacks: { subject: "Edited" } },
       ],
       { by: { name: "ryosuke" } },
     );
@@ -98,13 +98,13 @@ describe("public API", () => {
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       by: { name: "ryosuke" },
     });
     expect(results[0]).not.toHaveProperty("edited");
     expect(results[1]).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited" },
       edited: true,
     });

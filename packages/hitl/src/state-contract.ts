@@ -1,5 +1,5 @@
 import { field } from "./fields";
-import { humanActions } from "./human-actions-builder";
+import { actions } from "./human-actions-builder";
 import type { NewHumanRequestRecord, NewBatchRecord, State } from "./state";
 
 /**
@@ -30,8 +30,8 @@ export function describeStateContract(
       token: `tok_${id}`,
       channel: "lead-approvals",
       message: "Inbound lead",
-      actions: humanActions()
-        .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+      actions: actions()
+        .approve({ fields: { subject: field.textField({ label: "Subject" }) } })
         .build(),
     };
   }
@@ -93,7 +93,7 @@ export function describeStateContract(
       await state.create(newRecord("a1"));
       const resolved = {
         type: "RESOLVED" as const,
-        actionId: "submit" as const,
+        actionId: "approve" as const,
         id: "a1",
         feedbacks: {},
       };
@@ -110,7 +110,7 @@ export function describeStateContract(
       await state.create(newRecord("a1"));
       const first = {
         type: "RESOLVED" as const,
-        actionId: "submit" as const,
+        actionId: "approve" as const,
         id: "a1",
         feedbacks: {},
       };
@@ -132,7 +132,7 @@ export function describeStateContract(
       await state.create(newRecord("a2"));
       await state.resolve("a1", {
         type: "RESOLVED",
-        actionId: "submit",
+        actionId: "approve",
         id: "a1",
         feedbacks: {},
       });
@@ -150,7 +150,7 @@ export function describeStateContract(
       await state.create(newRecord("a2"));
       await state.resolve("a1", {
         type: "RESOLVED",
-        actionId: "submit",
+        actionId: "approve",
         id: "a1",
         feedbacks: {},
       });
@@ -190,7 +190,7 @@ export function describeStateContract(
       await expect(
         state.resolve("missing", {
           type: "RESOLVED",
-          actionId: "submit",
+          actionId: "approve",
           id: "missing",
           feedbacks: {},
         }),

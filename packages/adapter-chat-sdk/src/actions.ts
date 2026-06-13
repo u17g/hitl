@@ -41,7 +41,7 @@ async function handleAction(event: ActionEvent, inbox: HitlInbox): Promise<void>
   if (!requestId || !actionId) return;
   const by = reviewerFrom(event.user);
   const record = await inbox.get(requestId);
-  const actions = record?.actions ?? [{ id: "submit" }];
+  const actions = record?.actions ?? [{ id: "approve" }];
   const def = actionById(actions, actionId);
   if (!def) return;
 
@@ -60,7 +60,7 @@ async function handleModalSubmit(event: ModalSubmitEvent, inbox: HitlInbox): Pro
   const by = reviewerFrom(event.user);
 
   const record = await inbox.get(parsed.requestId);
-  const actions = record?.actions ?? [{ id: "submit" }];
+  const actions = record?.actions ?? [{ id: "approve" }];
   const def = actionById(actions, actionId);
   if (!def) return;
 

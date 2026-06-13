@@ -26,12 +26,12 @@ export {
   denyAction,
   denyFields,
   effectiveStyle,
-  submitAction,
-  submitFields,
+  approveAction,
+  approveFields,
   validateActions,
   normalizeActions,
 } from "./human-actions";
-export { ActionsBuilder, humanActions } from "./human-actions-builder";
+export { ActionsBuilder, actions } from "./human-actions-builder";
 export type { HumanResult } from "./human-result";
 export { isResolved } from "./human-result";
 export type { HumanItem, WaitForHumanOptions } from "./human-options";

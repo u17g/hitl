@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { field, humanActions, submitFields, type NewHumanRequestRecord } from "hitl";
+import { field, actions, approveFields, type NewHumanRequestRecord } from "hitl";
 import { describeStateContract } from "hitl/state-contract";
 import { SqliteState, schemaSql } from "./index";
 
@@ -16,8 +16,8 @@ function newRecord(id: string): NewHumanRequestRecord {
     token: `tok_${id}`,
     channel: "lead-approvals",
     message: "Inbound lead",
-    actions: humanActions()
-      .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+    actions: actions()
+      .approve({ fields: { subject: field.textField({ label: "Subject" }) } })
       .build(),
   };
 }
@@ -56,9 +56,9 @@ describe("SqliteState specifics", () => {
       tier: field.select({ label: "Tier", options: ["gold", "silver"], default: "silver" }),
       confirmed: field.confirm({ label: "Confirm?" }),
     };
-    await state.create({ ...newRecord("a1"), actions: humanActions().submit({ fields }).build() });
+    await state.create({ ...newRecord("a1"), actions: actions().approve({ fields }).build() });
 
-    expect(submitFields((await state.get("a1"))!.actions)).toEqual(fields);
+    expect(approveFields((await state.get("a1"))!.actions)).toEqual(fields);
   });
 
   it("exports idempotent schemaSql", () => {

@@ -10,7 +10,7 @@ export const migration005ActionsArray: Migration = {
         SELECT COALESCE(json_group_array(obj), json_array())
         FROM (
           SELECT json_object(
-            'id', 'submit',
+            'id', 'approve',
             'label', json_extract(actions, '$.submit.label'),
             'style', json_extract(actions, '$.submit.style'),
             'fields', COALESCE(json_extract(actions, '$.submit.fields'), json_object())
@@ -33,7 +33,7 @@ export const migration005ActionsArray: Migration = {
         SELECT COALESCE(json_group_array(obj), json_array())
         FROM (
           SELECT json_object(
-            'id', 'submit',
+            'id', 'approve',
             'label', json_extract(actions, '$.submit.label'),
             'style', json_extract(actions, '$.submit.style'),
             'fields', COALESCE(json_extract(actions, '$.submit.fields'), json_object())

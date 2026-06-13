@@ -1,10 +1,10 @@
-import { field, humanActions, InMemoryState } from "hitl";
+import { field, actions, InMemoryState } from "hitl";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it } from "vitest";
 
-const actions = humanActions()
-  .action("submit", { label: "Approve" })
-  .action("deny", {
+const approvalActions = actions()
+  .approve({ label: "Approve" })
+  .deny({
     label: "Deny",
     fields: { reason: field.textArea({ label: "Reason" }) },
   })
@@ -18,7 +18,7 @@ describe("hello-world smoke", () => {
 
     const pending = client.waitForHuman({
       message: "Say hello to world?",
-      actions,
+      actions: approvalActions,
     });
 
     const record = await (async () => {
@@ -29,10 +29,10 @@ describe("hello-world smoke", () => {
       }
     })();
     expect(record.message).toBe("Say hello to world?");
-    expect(record.actions.map((a) => a.id)).toEqual(["submit", "deny"]);
+    expect(record.actions.map((a) => a.id)).toEqual(["approve", "deny"]);
 
-    await hitl.inbox.resolve(record.id, { actionId: "submit", by: { name: "you" } });
+    await hitl.inbox.resolve(record.id, { actionId: "approve", by: { name: "you" } });
 
-    await expect(pending).resolves.toMatchObject({ type: "RESOLVED", actionId: "submit" });
+    await expect(pending).resolves.toMatchObject({ type: "RESOLVED", actionId: "approve" });
   });
 });

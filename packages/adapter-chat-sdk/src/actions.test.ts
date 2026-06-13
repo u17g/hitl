@@ -1,4 +1,4 @@
-import { field, humanActions, type HitlInbox } from "hitl";
+import { field, actions, type HitlInbox } from "hitl";
 import { describe, expect, it, vi } from "vitest";
 import { actionButtonId, actionModalCallback } from "./constants";
 import { registerHitlHandlers } from "./actions";
@@ -23,7 +23,7 @@ function fakeInbox(record: unknown): HitlInbox {
     list: vi.fn(),
     get: vi.fn(async () => record),
     getBatch: vi.fn(),
-    resolve: vi.fn(async () => ({ type: "RESOLVED", actionId: "submit", id: "req-1", feedbacks: {} })),
+    resolve: vi.fn(async () => ({ type: "RESOLVED", actionId: "approve", id: "req-1", feedbacks: {} })),
     resolveBatch: vi.fn(),
     submitBatch: vi.fn(),
   } as unknown as HitlInbox;
@@ -32,7 +32,7 @@ function fakeInbox(record: unknown): HitlInbox {
 describe("registerHitlHandlers — action clicks", () => {
   it("resolves deny on a deny click when deny has no fields", async () => {
     const { bot, handlers } = fakeBot();
-    const inbox = fakeInbox({ actions: humanActions().submit().deny().build() });
+    const inbox = fakeInbox({ actions: actions().approve().deny().build() });
     registerHitlHandlers(bot as never, () => inbox);
 
     await handlers.action?.({ actionId: actionButtonId("deny"), value: "req-1", user });
@@ -46,8 +46,8 @@ describe("registerHitlHandlers — action clicks", () => {
   it("opens the deny modal when deny has fields", async () => {
     const { bot, handlers } = fakeBot();
     const inbox = fakeInbox({
-      actions: humanActions()
-        .submit()
+      actions: actions()
+        .approve()
         .deny({ fields: { reason: field.textArea({ label: "Reason" }) } })
         .build(),
     });
@@ -62,14 +62,14 @@ describe("registerHitlHandlers — action clicks", () => {
 
   it("resolves immediately when submit has no fields", async () => {
     const { bot, handlers } = fakeBot();
-    const inbox = fakeInbox({ actions: humanActions().submit().build() });
+    const inbox = fakeInbox({ actions: actions().approve().build() });
     registerHitlHandlers(bot as never, () => inbox);
 
     const openModal = vi.fn();
-    await handlers.action?.({ actionId: actionButtonId("submit"), value: "req-1", user, openModal });
+    await handlers.action?.({ actionId: actionButtonId("approve"), value: "req-1", user, openModal });
 
     expect(inbox.resolve).toHaveBeenCalledWith("req-1", {
-      actionId: "submit",
+      actionId: "approve",
       by: { id: "u1", name: "Ryo" },
     });
     expect(openModal).not.toHaveBeenCalled();
@@ -78,14 +78,14 @@ describe("registerHitlHandlers — action clicks", () => {
   it("opens the submit modal when submit has fields, without resolving", async () => {
     const { bot, handlers } = fakeBot();
     const inbox = fakeInbox({
-      actions: humanActions()
-        .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+      actions: actions()
+        .approve({ fields: { subject: field.textField({ label: "Subject" }) } })
         .build(),
     });
     registerHitlHandlers(bot as never, () => inbox);
 
     const openModal = vi.fn();
-    await handlers.action?.({ actionId: actionButtonId("submit"), value: "req-1", user, openModal });
+    await handlers.action?.({ actionId: actionButtonId("approve"), value: "req-1", user, openModal });
 
     expect(openModal).toHaveBeenCalledTimes(1);
     expect(inbox.resolve).not.toHaveBeenCalled();
@@ -96,8 +96,8 @@ describe("registerHitlHandlers — modal submit", () => {
   it("resolves with feedbacks parsed from the submitted values", async () => {
     const { bot, handlers } = fakeBot();
     const inbox = fakeInbox({
-      actions: humanActions()
-        .submit({
+      actions: actions()
+        .approve({
           fields: {
             subject: field.textField({ label: "Subject" }),
             send: field.confirm({ label: "Send?" }),
@@ -108,14 +108,14 @@ describe("registerHitlHandlers — modal submit", () => {
     registerHitlHandlers(bot as never, () => inbox);
 
     await handlers.modal?.({
-      callbackId: actionModalCallback("submit"),
-      privateMetadata: JSON.stringify({ requestId: "req-1", actionId: "submit" }),
+      callbackId: actionModalCallback("approve"),
+      privateMetadata: JSON.stringify({ requestId: "req-1", actionId: "approve" }),
       values: { subject: "Hello", send: "no" },
       user,
     });
 
     expect(inbox.resolve).toHaveBeenCalledWith("req-1", {
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Hello", send: false },
       by: { id: "u1", name: "Ryo" },
     });
@@ -124,8 +124,8 @@ describe("registerHitlHandlers — modal submit", () => {
   it("resolves with feedbacks from the deny modal", async () => {
     const { bot, handlers } = fakeBot();
     const inbox = fakeInbox({
-      actions: humanActions()
-        .submit()
+      actions: actions()
+        .approve()
         .deny({ fields: { reason: field.textArea({ label: "Reason" }) } })
         .build(),
     });
@@ -149,7 +149,7 @@ describe("registerHitlHandlers — modal submit", () => {
 describe("registerHitlHandlers — idempotency", () => {
   it("registers handlers only once per bot", () => {
     const { bot } = fakeBot();
-    const inbox = fakeInbox({ actions: humanActions().submit().build() });
+    const inbox = fakeInbox({ actions: actions().approve().build() });
     registerHitlHandlers(bot as never, () => inbox);
     registerHitlHandlers(bot as never, () => inbox);
 

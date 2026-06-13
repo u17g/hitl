@@ -4,21 +4,21 @@ import type { HumanActionDef } from "./human-actions";
 import { validateActions } from "./human-actions";
 import type { ReminderEntry } from "./reminder";
 
-type SubmitFields<Actions extends readonly HumanActionDef[]> =
-  Extract<Actions[number], { id: "submit" }> extends HumanActionDef<"submit", infer F>
+type ApproveFields<Actions extends readonly HumanActionDef[]> =
+  Extract<Actions[number], { id: "approve" }> extends HumanActionDef<"approve", infer F>
     ? F
     : Record<string, never>;
 
 export interface HumanItem<Actions extends readonly HumanActionDef[]> {
   message: string;
-  defaults?: Partial<FeedbackValues<SubmitFields<Actions>>>;
+  defaults?: Partial<FeedbackValues<ApproveFields<Actions>>>;
 }
 
 export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]> {
   message?: string;
   actions: Actions;
   items?: ReadonlyArray<HumanItem<Actions>>;
-  /** Batch defaults target when no submit action exists. */
+  /** Batch defaults target when no approve action exists. */
   defaultsActionId?: string;
   context?: Record<string, unknown>;
   channel?: string;

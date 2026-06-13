@@ -22,31 +22,29 @@ npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams
 ## Usage
 
 ```ts
-import { field, humanActions, isResolved } from "hitl";
+import { field, actions, isResolved } from "hitl";
 import { waitForHuman } from "../lib/hitl-workflow";
 
 export async function inboundLead(input: { email: string; draft: { subject: string; body: string } }) {
   "use workflow";
 
-  const actions = humanActions()
-    .action("submit", {
-      fields: {
-        subject: field.textField({ label: "Subject", default: input.draft.subject }),
-        body: field.textArea({ label: "Body", default: input.draft.body }),
-      },
-    })
-    .action("deny", {
-      fields: { reason: field.textArea({ label: "Reason" }) },
-    })
-    .build();
-
   const approval = await waitForHuman({
     message: `Inbound lead: ${input.email}`,
-    actions,
+    actions: actions()
+      .approve({
+        fields: {
+          subject: field.textField({ label: "Subject", default: input.draft.subject }),
+          body: field.textArea({ label: "Body", default: input.draft.body }),
+        },
+      })
+      .deny({
+        fields: { reason: field.textArea({ label: "Reason" }) },
+      })
+      .build(),
     timeout: "72h",
   });
 
-  if (!isResolved(approval, "submit")) return;
+  if (!isResolved(approval, "approve")) return;
 
   const { subject, body } = approval.edited ? approval.feedbacks : input.draft;
 

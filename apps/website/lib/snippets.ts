@@ -16,20 +16,8 @@ export function docHref(locale: Locale, slug: DocSlug) {
 export const snippets = {
   install: `npm install hitl @hitl/resolver-workflow-sdk`,
   installAdapters: `npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams`,
-  workflowUsage: `import { field, humanActions, isResolved } from "hitl";
+  workflowUsage: `import { field, actions, isResolved } from "hitl";
 import { waitForHuman } from "../lib/hitl-workflow";
-
-const actions = humanActions()
-  .action("submit", {
-    fields: {
-      subject: field.textField({ label: "Subject" }),
-      body: field.textArea({ label: "Body" }),
-    },
-  })
-  .action("deny", {
-    fields: { reason: field.textArea({ label: "Reason" }) },
-  })
-  .build();
 
 export async function inboundLead(input: {
   email: string;
@@ -39,11 +27,21 @@ export async function inboundLead(input: {
 
   const approval = await waitForHuman({
     message: \`Inbound lead: \${input.email}\`,
-    actions,
+    actions: actions()
+      .approve({
+        fields: {
+          subject: field.textField({ label: "Subject" }),
+          body: field.textArea({ label: "Body" }),
+        },
+      })
+      .deny({
+        fields: { reason: field.textArea({ label: "Reason" }) },
+      })
+      .build(),
     timeout: "72h",
   });
 
-  if (!isResolved(approval, "submit")) return;
+  if (!isResolved(approval, "approve")) return;
 
   const { subject, body } = approval.edited
     ? approval.feedbacks
@@ -56,17 +54,15 @@ const job = await queue.enqueue("wait-approval", { leadId });
 await pollUntilApproved(job.id); // cron + DB + retries
 const edits = await db.getEdits(job.id);
 await sendEmail({ ...edits });`,
-  withHitl: `const actions = humanActions()
-  .action("submit", { fields: { subject, body } })
-  .build();
-
-const approval = await waitForHuman({
+  withHitl: `const approval = await waitForHuman({
   message: \`Inbound lead: \${input.email}\`,
-  actions,
+  actions: actions()
+    .approve({ fields: { subject, body } })
+    .build(),
   timeout: "72h",
 });
 
-if (isResolved(approval, "submit") && approval.edited) {
+if (isResolved(approval, "approve") && approval.edited) {
   await sendEmail({ ...approval.feedbacks });
 }`,
   serverSetup: `import { Hitl } from "hitl";
@@ -102,7 +98,7 @@ const pending = await hitl.inbox.list({ status: "pending" });
 
 // Resolve with optional field edits
 await hitl.inbox.resolve(id, {
-  actionId: "submit",
+  actionId: "approve",
   by: { name: "you" },
   feedbacks: { subject: "Updated subject" },
 });`,

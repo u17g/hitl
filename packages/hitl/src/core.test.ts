@@ -9,7 +9,7 @@ import {
   type HitlRuntime,
 } from "./core";
 import { field } from "./fields";
-import { humanActions } from "./human-actions-builder";
+import { actions } from "./human-actions-builder";
 import { InMemoryState } from "./state";
 import type { HumanRequest, HitlAdapter, Notification } from "./types";
 
@@ -76,11 +76,11 @@ const fields = {
   subject: field.textField({ label: "Subject", default: "Hi" }),
   body: field.textArea({ label: "Body", default: "Hello there" }),
 };
-const actions = humanActions()
-  .submit({ fields })
+const approvalActions = actions()
+  .approve({ fields })
   .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
   .build();
-const submitOnly = humanActions().submit({}).build();
+const approveOnly = actions().approve({}).build();
 
 describe("createHumanRequest", () => {
   it("records the request, sends via the default adapter, and stores the externalId", async () => {
@@ -89,7 +89,7 @@ describe("createHumanRequest", () => {
     const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "Approve?",
-      actions,
+      actions: approvalActions,
     });
 
     expect(adapters[0]!.sent).toHaveLength(1);
@@ -112,7 +112,7 @@ describe("createHumanRequest", () => {
     await createHumanRequest(runtime, {
       token: "tok_1",
       message: "m",
-      actions: submitOnly,
+      actions: approveOnly,
       channel: "b",
     });
 
@@ -123,22 +123,22 @@ describe("createHumanRequest", () => {
   it("throws on an unknown channel id", async () => {
     const { runtime } = makeRuntime(["a"]);
     await expect(
-      createHumanRequest(runtime, { token: "t", message: "m", actions: submitOnly, channel: "nope" }),
+      createHumanRequest(runtime, { token: "t", message: "m", actions: approveOnly, channel: "nope" }),
     ).rejects.toThrow(/nope/);
   });
 
   it("throws when no adapters are configured", async () => {
     const { runtime } = makeRuntime([]);
     await expect(
-      createHumanRequest(runtime, { token: "t", message: "m", actions: submitOnly }),
+      createHumanRequest(runtime, { token: "t", message: "m", actions: approveOnly }),
     ).rejects.toThrow(/no .*adapter/i);
   });
 
   it("returns the existing id without re-sending when the token is already known", async () => {
     const { runtime, adapters } = makeRuntime();
 
-    const first = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
-    const second = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const first = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+    const second = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     expect(second.id).toBe(first.id);
     expect(adapters[0]!.sent).toHaveLength(1);
@@ -147,9 +147,9 @@ describe("createHumanRequest", () => {
   it("finishes the delivery when a retry finds a record without an externalId", async () => {
     const { runtime, state, adapters } = makeRuntime();
     // Simulate a crash between create and send: the record exists, no externalId.
-    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", actions });
+    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", actions: approvalActions });
 
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     expect(id).toBe("a1");
     expect(adapters[0]!.sent).toHaveLength(1);
@@ -159,7 +159,7 @@ describe("createHumanRequest", () => {
 
 describe("resolveHumanRequest", () => {
   async function startApproval(runtime: HitlRuntime, token = "tok_1") {
-    const { id } = await createHumanRequest(runtime, { token, message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token, message: "m", actions: approvalActions });
     return id;
   }
 
@@ -169,13 +169,13 @@ describe("resolveHumanRequest", () => {
 
     const result = await resolveHumanRequest(runtime, {
       requestId,
-      actionId: "submit",
+      actionId: "approve",
       by: { name: "ryosuke" },
     });
 
     expect(result).toEqual({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       id: requestId,
       by: { name: "ryosuke" },
       feedbacks: { subject: "Hi", body: "Hello there" },
@@ -190,13 +190,13 @@ describe("resolveHumanRequest", () => {
 
     const result = await resolveHumanRequest(runtime, {
       requestId,
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
     });
 
     expect(result).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
       edited: true,
     });
@@ -208,13 +208,13 @@ describe("resolveHumanRequest", () => {
 
     const result = await resolveHumanRequest(runtime, {
       requestId,
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Hi", body: "Hello there" },
     });
 
     expect(result).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Hi", body: "Hello there" },
     });
     expect(result).not.toHaveProperty("edited");
@@ -245,7 +245,7 @@ describe("resolveHumanRequest", () => {
     await expect(
       resolveHumanRequest(runtime, {
         requestId,
-        actionId: "submit",
+        actionId: "approve",
         feedbacks: { subject: "ok", body: "ok", extra: "nope" },
       }),
     ).rejects.toThrow(/extra/);
@@ -257,7 +257,7 @@ describe("resolveHumanRequest", () => {
   it("rejects an unknown request id", async () => {
     const { runtime } = makeRuntime();
     await expect(
-      resolveHumanRequest(runtime, { requestId: "missing", actionId: "submit" }),
+      resolveHumanRequest(runtime, { requestId: "missing", actionId: "approve" }),
     ).rejects.toThrow(/missing/);
   });
 });
@@ -265,7 +265,7 @@ describe("resolveHumanRequest", () => {
 describe("timeoutHumanRequest", () => {
   it("resolves a pending approval as TIMED_OUT and updates the channel", async () => {
     const { runtime, state, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     const result = await timeoutHumanRequest(runtime, id);
 
@@ -276,8 +276,8 @@ describe("timeoutHumanRequest", () => {
 
   it("returns the stored result when the approval is already resolved", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
-    const resolved = await resolveHumanRequest(runtime, { requestId: id, actionId: "submit" });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+    const resolved = await resolveHumanRequest(runtime, { requestId: id, actionId: "approve" });
     adapters[0]!.updates.length = 0;
 
     const result = await timeoutHumanRequest(runtime, id);
@@ -288,18 +288,18 @@ describe("timeoutHumanRequest", () => {
 
   it("returns the winning result when it loses the resolve race", async () => {
     const { runtime, state } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     // Simulate a callback landing between the pending check and the CAS write.
     const originalResolve = state.resolve.bind(state);
     state.resolve = async () => {
-      await originalResolve(id, { type: "RESOLVED", actionId: "submit", id, feedbacks: {} });
+      await originalResolve(id, { type: "RESOLVED", actionId: "approve", id, feedbacks: {} });
       throw new Error(`Approval "${id}" is already resolved`);
     };
 
     const result = await timeoutHumanRequest(runtime, id);
 
-    expect(result).toEqual({ type: "RESOLVED", actionId: "submit", id, feedbacks: {} });
+    expect(result).toEqual({ type: "RESOLVED", actionId: "approve", id, feedbacks: {} });
   });
 
   it("throws on an unknown approval id", async () => {
@@ -311,7 +311,7 @@ describe("timeoutHumanRequest", () => {
 describe("remindHumanRequest", () => {
   it("sends a threaded notify while pending", async () => {
     const { runtime, adapters } = makeRuntime(["a"]);
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     const { pending } = await remindHumanRequest(runtime, id, {
       kind: "remind",
@@ -331,7 +331,7 @@ describe("remindHumanRequest", () => {
 
   it("uses the default reminder message when message is omitted", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     await remindHumanRequest(runtime, id, { kind: "remind" });
 
@@ -340,8 +340,8 @@ describe("remindHumanRequest", () => {
 
   it("is a no-op once the approval is resolved", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
-    await resolveHumanRequest(runtime, { requestId: id, actionId: "submit" });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+    await resolveHumanRequest(runtime, { requestId: id, actionId: "approve" });
 
     const { pending } = await remindHumanRequest(runtime, id, { kind: "remind" });
 
@@ -354,7 +354,7 @@ describe("remindHumanRequest", () => {
     const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "m",
-      actions,
+      actions: approvalActions,
       channel: "primary",
     });
 
@@ -380,7 +380,7 @@ describe("remindHumanRequest", () => {
     const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "Escalate me",
-      actions,
+      actions: approvalActions,
       channel: "primary",
     });
 
@@ -398,7 +398,7 @@ describe("remindHumanRequest", () => {
     expect((await state.get(id))?.externalIds?.oncall).toBe(`ext_${id}`);
 
     // Resolution updates both deliveries.
-    await resolveHumanRequest(runtime, { requestId: id, actionId: "submit" });
+    await resolveHumanRequest(runtime, { requestId: id, actionId: "approve" });
     expect(adapters[0]!.updates).toHaveLength(1);
     expect(adapters[1]!.updates).toHaveLength(1);
   });
@@ -420,7 +420,7 @@ describe("notifyVia", () => {
 
   it("resolves the parent approval id to the channel externalId", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     await notifyVia(runtime, { message: "context", threadId: id });
 

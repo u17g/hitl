@@ -28,7 +28,7 @@ export function humanRequestCard(request: HumanRequest) {
 }
 
 function defaultLabel(id: string): string {
-  if (id === "submit") return "Approve";
+  if (id === "approve") return "Approve";
   if (id === "deny") return "Deny";
   return id;
 }
@@ -84,7 +84,7 @@ export function outcomeLine(result: HumanResult): string {
           ? ` — ${result.feedbacks.reason}`
           : "";
       const label =
-        result.actionId === "submit"
+        result.actionId === "approve"
           ? `Approved${edited}`
           : result.actionId === "deny"
             ? `Denied${reason}`

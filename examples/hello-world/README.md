@@ -57,7 +57,7 @@ Copy the `id` from the first request in the `requests` array.
 ```bash
 curl -s -X POST "http://localhost:3000/api/inbox" \
   -H 'content-type: application/json' \
-  -d '{"id":"<id>","actionId":"submit","by":{"name":"you"}}'
+  -d '{"id":"<id>","actionId":"approve","by":{"name":"you"}}'
 ```
 
 **4. Check the dev server logs**

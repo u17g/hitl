@@ -4,8 +4,8 @@ import { createHitlClient, type HitlClient } from "./client";
 import { resolveHumanRequest, resolveBatchHumanRequest } from "./core";
 import { Hitl, type HitlInstance } from "./hitl";
 import { field } from "./fields";
-import { humanActions } from "./human-actions-builder";
-import { submitAction, type HumanActions } from "./human-actions";
+import { actions } from "./human-actions-builder";
+import { approveAction, type HumanActions } from "./human-actions";
 import { escalate, remind } from "./reminder";
 import { InMemoryState } from "./state";
 import type {
@@ -141,18 +141,18 @@ const fields = {
   subject: field.textField({ label: "Subject", default: "Hi" }),
   body: field.textArea({ label: "Body", default: "Hello there" }),
 };
-const actions = humanActions().submit({ fields }).build();
-const batchActions = humanActions()
-  .submit({ fields })
+const approvalActions = actions().approve({ fields }).build();
+const batchActions = actions()
+  .approve({ fields })
   .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
   .build();
-const submitOnly = humanActions().submit({}).build();
+const approveOnly = actions().approve({}).build();
 
 describe("waitForHuman", () => {
   it("POSTs the resume token to /requests and resolves on callback", async () => {
     const { adapters, hitl, client, requestCalls } = makeHarness();
 
-    const pending = client.waitForHuman({ message: "Approve?", actions });
+    const pending = client.waitForHuman({ message: "Approve?", actions: approvalActions });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     expect(requestCalls[0]!.url).toBe("http://hitl.test/.well-known/hitl/v1/requests");
@@ -162,14 +162,14 @@ describe("waitForHuman", () => {
     const requestId = adapters[0]!.sent[0]!.id;
     const result = await resolveHumanRequest(hitl.runtime, {
       requestId,
-      actionId: "submit",
+      actionId: "approve",
       by: { name: "ryosuke" },
     });
 
     expect(await pending).toEqual(result);
     expect(result).toEqual({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       id: requestId,
       by: { name: "ryosuke" },
       feedbacks: { subject: "Hi", body: "Hello there" },
@@ -179,19 +179,19 @@ describe("waitForHuman", () => {
   it("typed feedbacks flow back on RESOLVED with edited", async () => {
     const { adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForHuman({ message: "m", actions });
+    const pending = client.waitForHuman({ message: "m", actions: approvalActions });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
     });
 
     const result = await pending;
     expect(result).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
       edited: true,
     });
@@ -203,28 +203,28 @@ describe("waitForHuman", () => {
       clientSecret: "s3cret",
     });
 
-    const pending = client.waitForHuman({ message: "m", actions: submitOnly });
+    const pending = client.waitForHuman({ message: "m", actions: approveOnly });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     expect(requestCalls[0]!.headers.authorization).toBe("Bearer s3cret");
 
     await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      actionId: "submit",
+      actionId: "approve",
     });
     await pending;
   });
 
   it("rejects when the server returns 401", async () => {
     const { client } = makeHarness({ secret: "s3cret", clientSecret: "wrong" });
-    await expect(client.waitForHuman({ message: "m", actions: submitOnly })).rejects.toThrow(/401/);
+    await expect(client.waitForHuman({ message: "m", actions: approveOnly })).rejects.toThrow(/401/);
   });
 
   it("resolves as TIMED_OUT when the timeout elapses first", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
     engine.autoResolveSleep();
 
-    const result = await client.waitForHuman({ message: "m", actions: submitOnly, timeout: "72h" });
+    const result = await client.waitForHuman({ message: "m", actions: approveOnly, timeout: "72h" });
 
     expect(engine.sleepCalls).toEqual([72 * 60 * 60 * 1000]);
     expect(result.type).toBe("TIMED_OUT");
@@ -235,12 +235,12 @@ describe("waitForHuman", () => {
   it("returns the callback result when it wins the race against the timeout", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForHuman({ message: "m", actions: submitOnly, timeout: "72h" });
+    const pending = client.waitForHuman({ message: "m", actions: approveOnly, timeout: "72h" });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     const result = await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      actionId: "submit",
+      actionId: "approve",
     });
     expect(await pending).toEqual(result);
     void engine;
@@ -251,7 +251,7 @@ describe("waitForHuman", () => {
 
     const pending = client.waitForHuman({
       message: "Approve?",
-      actions: submitOnly,
+      actions: approveOnly,
       reminders: [remind.after("1h", { message: "Still waiting" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
@@ -268,7 +268,7 @@ describe("waitForHuman", () => {
       threadRef: `ext_${requestId}`,
     });
 
-    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "submit" });
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
     await pending;
   });
 
@@ -276,14 +276,14 @@ describe("waitForHuman", () => {
     const { engine, adapters, hitl, client } = makeHarness();
     const pending = client.waitForHuman({
       message: "m",
-      actions: submitOnly,
+      actions: approveOnly,
       reminders: [remind.after("1h", { message: "ping" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      actionId: "submit",
+      actionId: "approve",
     });
     await pending;
 
@@ -297,7 +297,7 @@ describe("waitForHuman", () => {
 
     await client.waitForHuman({
       message: "m",
-      actions: submitOnly,
+      actions: approveOnly,
       timeout: "1h",
       reminders: [remind.after("2h", { message: "too late" })],
     });
@@ -309,7 +309,7 @@ describe("waitForHuman", () => {
     const { engine, adapters, hitl, client } = makeHarness({ adapterIds: ["a", "oncall"] });
     const pending = client.waitForHuman({
       message: "m",
-      actions: submitOnly,
+      actions: approveOnly,
       reminders: [
         remind.after("1h", { message: "first" }),
         escalate.to("oncall").after("1h", { message: "second" }),
@@ -324,7 +324,7 @@ describe("waitForHuman", () => {
 
     await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      actionId: "submit",
+      actionId: "approve",
     });
     await pending;
   });
@@ -337,7 +337,7 @@ describe("waitForHuman", () => {
     const { engine, adapters, hitl, client } = makeHarness();
     const pending = client.waitForHuman({
       message: "Approve?",
-      actions: submitOnly,
+      actions: approveOnly,
       reminders: [remind.tomorrowAt("07:00", { tz: "UTC", message: "Morning ping" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
@@ -357,7 +357,7 @@ describe("waitForHuman", () => {
       threadRef: `ext_${requestId}`,
     });
 
-    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "submit" });
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
     await pending;
     vi.useRealTimers();
   });
@@ -367,7 +367,7 @@ describe("waitForHuman", () => {
     const pending = client.waitForHuman({
       message: "Escalate me",
       channel: "primary",
-      actions,
+      actions: approvalActions,
       reminders: [escalate.to("oncall").after("1h", { mode: "redeliver" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
@@ -381,7 +381,7 @@ describe("waitForHuman", () => {
       message: "Escalate me",
     });
 
-    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "submit" });
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
     await pending;
 
     expect(adapters[0]!.updates).toHaveLength(1);
@@ -408,28 +408,28 @@ describe("waitForHuman batch", () => {
       items: Array<{ token: string; defaults?: Record<string, unknown> }>;
     };
     expect(body.items.map((i) => i.token)).toEqual(["tok_1", "tok_2"]);
-    expect(submitAction(body.actions)!.fields!.subject).toMatchObject({ default: "Hi" });
+    expect(approveAction(body.actions)!.fields!.subject).toMatchObject({ default: "Hi" });
     expect(body.items[0]!.defaults).toEqual({ subject: "Hello ACME" });
 
     const batchId = adapters[0]!.sentBatches[0]!.batchId;
     const results = await resolveBatchHumanRequest(hitl.runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:0`, actionId: "approve" },
         { requestId: `${batchId}:1`, actionId: "deny", feedbacks: { reason: "no" } },
       ],
     });
 
     expect(await pending).toEqual(results);
     expect(results.map((r) => (r.type === "RESOLVED" ? r.actionId : r.type))).toEqual([
-      "submit",
+      "approve",
       "deny",
     ]);
   });
 
   it("throws on empty items without suspending", async () => {
     const { client, requestCalls } = makeHarness();
-    await expect(client.waitForHuman({ actions: submitOnly, items: [] })).rejects.toThrow(
+    await expect(client.waitForHuman({ actions: approveOnly, items: [] })).rejects.toThrow(
       /at least one item/i,
     );
     expect(requestCalls).toHaveLength(0);
@@ -439,18 +439,18 @@ describe("waitForHuman batch", () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
     const pending = client.waitForHuman({
-      actions,
+      actions: approvalActions,
       items: [{ message: "A" }, { message: "B" }],
       timeout: "1h",
     });
     await vi.waitFor(() => expect(adapters[0]!.sentBatches).toHaveLength(1));
     const batchId = adapters[0]!.sentBatches[0]!.batchId;
 
-    await resolveHumanRequest(hitl.runtime, { requestId: `${batchId}:0`, actionId: "submit" });
+    await resolveHumanRequest(hitl.runtime, { requestId: `${batchId}:0`, actionId: "approve" });
     engine.flushSleep();
 
     const results = await pending;
-    expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "submit", id: `${batchId}:0` });
+    expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "approve", id: `${batchId}:0` });
     expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
   });
 
@@ -458,7 +458,7 @@ describe("waitForHuman batch", () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
     const pending = client.waitForHuman({
-      actions,
+      actions: approvalActions,
       items: [{ message: "A" }, { message: "B" }],
       reminders: [remind.after("1h", { message: "Still waiting" })],
     });
@@ -477,8 +477,8 @@ describe("waitForHuman batch", () => {
     await resolveBatchHumanRequest(hitl.runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, actionId: "submit" },
-        { requestId: `${batchId}:1`, actionId: "submit" },
+        { requestId: `${batchId}:0`, actionId: "approve" },
+        { requestId: `${batchId}:1`, actionId: "approve" },
       ],
     });
     await pending;

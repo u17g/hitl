@@ -1,4 +1,4 @@
-import { humanActions, type HitlRequest } from "hitl";
+import { actions, type HitlRequest } from "hitl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { workflowHitl } from "./index";
 
@@ -58,7 +58,7 @@ describe("workflowHitl", () => {
     const { request, calls } = fakeRequest([{ id: "a1" }]);
     const hitl = workflowHitl({ request, secret: "s3cret" });
 
-    void hitl.waitForHuman({ message: "Approve?", actions: humanActions().submit().build() });
+    void hitl.waitForHuman({ message: "Approve?", actions: actions().approve().build() });
     await vi.waitFor(() => expect(calls).toHaveLength(1));
 
     expect(calls[0]!.url).toBe("https://my-app.vercel.app/.well-known/hitl/v1/requests");
@@ -71,7 +71,7 @@ describe("workflowHitl", () => {
     const a = fakeRequest([{ id: "a1" }]);
     void workflowHitl({ request: a.request }).waitForHuman({
       message: "m",
-      actions: humanActions().submit().build(),
+      actions: actions().approve().build(),
     });
     await vi.waitFor(() => expect(a.calls).toHaveLength(1));
     expect(a.calls[0]!.url).toBe("http://localhost:3000/.well-known/hitl/v1/requests");
@@ -79,7 +79,7 @@ describe("workflowHitl", () => {
     const b = fakeRequest([{ id: "a1" }]);
     void workflowHitl({ request: b.request, url: "https://override.example" }).waitForHuman({
       message: "m",
-      actions: humanActions().submit().build(),
+      actions: actions().approve().build(),
     });
     await vi.waitFor(() => expect(b.calls).toHaveLength(1));
     expect(b.calls[0]!.url).toBe("https://override.example/.well-known/hitl/v1/requests");
@@ -94,7 +94,7 @@ describe("workflowHitl", () => {
 
     const result = await hitl.waitForHuman({
       message: "m",
-      actions: humanActions().submit().build(),
+      actions: actions().approve().build(),
       timeout: "1h",
     });
 

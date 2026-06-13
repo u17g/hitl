@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { HitlResolver } from "./binding";
 import { createHumanRequest, createBatchRequest, type HitlRuntime } from "./core";
 import { field } from "./fields";
-import { humanActions } from "./human-actions-builder";
+import { actions } from "./human-actions-builder";
 import { createInbox } from "./inbox";
 import { InMemoryState } from "./state";
 import type { HumanRequest, HitlAdapter, Notification } from "./types";
@@ -12,7 +12,7 @@ import { FeedbackValidationError } from "./validate";
 // - list() / list({ status }) forward to the state
 // - get(id) forwards; unknown id -> null
 // - getBatch(batchId) returns { batch, items } in item order; unknown -> null
-// - resolve(id, { actionId: "submit" }) -> RESOLVED, resolver resumed with the stored token, adapter.update called
+// - resolve(id, { actionId: "approve" }) -> RESOLVED, resolver resumed with the stored token, adapter.update called
 // - resolve with edited feedbacks -> RESOLVED edited: true; defaults-only -> RESOLVED without edited
 // - resolve(id, { actionId: "deny", feedbacks }) -> RESOLVED actionId deny
 // - resolve on an unknown id throws NotFoundError (not swallowed)
@@ -68,20 +68,20 @@ const fields = {
   subject: field.textField({ label: "Subject", default: "Hi" }),
   body: field.textArea({ label: "Body", default: "Hello there" }),
 };
-const actions = humanActions()
-  .submit({ fields })
+const approvalActions = actions()
+  .approve({ fields })
   .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
   .build();
 
 async function seedApproval(runtime: HitlRuntime, token = "tok_1") {
-  const { id } = await createHumanRequest(runtime, { token, message: "Approve?", actions });
+  const { id } = await createHumanRequest(runtime, { token, message: "Approve?", actions: approvalActions });
   return id;
 }
 
 async function seedBatch(runtime: HitlRuntime) {
   return createBatchRequest(runtime, {
     message: "Outbound emails",
-    actions,
+    actions: approvalActions,
     items: [
       { token: "tok_0", message: "Email A" },
       { token: "tok_1", message: "Email B" },
@@ -123,11 +123,11 @@ describe("HitlInbox write", () => {
     const { runtime, inbox, resolver, adapter } = makeRuntime();
     const id = await seedApproval(runtime);
 
-    const result = await inbox.resolve(id, { actionId: "submit", by: { name: "ryosuke" } });
+    const result = await inbox.resolve(id, { actionId: "approve", by: { name: "ryosuke" } });
 
     expect(result).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       id,
       by: { name: "ryosuke" },
       feedbacks: { subject: "Hi", body: "Hello there" },
@@ -141,22 +141,22 @@ describe("HitlInbox write", () => {
     const { runtime, inbox } = makeRuntime();
     const edited = await seedApproval(runtime, "tok_edit");
     const reviewed = await inbox.resolve(edited, {
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
     });
     expect(reviewed).toMatchObject({
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
       edited: true,
     });
 
     const untouched = await seedApproval(runtime, "tok_same");
     const approved = await inbox.resolve(untouched, {
-      actionId: "submit",
+      actionId: "approve",
       feedbacks: { subject: "Hi", body: "Hello there" },
     });
-    expect(approved).toMatchObject({ type: "RESOLVED", actionId: "submit" });
+    expect(approved).toMatchObject({ type: "RESOLVED", actionId: "approve" });
     expect(approved).not.toHaveProperty("edited");
   });
 
@@ -174,14 +174,14 @@ describe("HitlInbox write", () => {
 
   it("throws NotFoundError for an unknown id", async () => {
     const { inbox } = makeRuntime();
-    await expect(inbox.resolve("missing", { actionId: "submit" })).rejects.toThrow(/Unknown human request/);
+    await expect(inbox.resolve("missing", { actionId: "approve" })).rejects.toThrow(/Unknown human request/);
   });
 
   it("throws FeedbackValidationError on invalid feedbacks", async () => {
     const { runtime, inbox } = makeRuntime();
     const id = await seedApproval(runtime);
     await expect(
-      inbox.resolve(id, { actionId: "submit", feedbacks: { bogus: "x" } }),
+      inbox.resolve(id, { actionId: "approve", feedbacks: { bogus: "x" } }),
     ).rejects.toBeInstanceOf(FeedbackValidationError);
   });
 
@@ -192,14 +192,14 @@ describe("HitlInbox write", () => {
     const results = await inbox.resolveBatch(
       batchId,
       [
-        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:0`, actionId: "approve" },
         { requestId: `${batchId}:1`, actionId: "deny", feedbacks: { reason: "no" } },
       ],
       { by: { name: "ryosuke" } },
     );
 
     expect(results.map((r) => (r.type === "RESOLVED" ? r.actionId : r.type))).toEqual([
-      "submit",
+      "approve",
       "deny",
     ]);
     expect(results.every((r) => r.type === "RESOLVED")).toBe(true);
@@ -211,7 +211,7 @@ describe("HitlInbox write", () => {
     const { batchId } = await seedBatch(runtime);
 
     await expect(
-      inbox.resolveBatch(batchId, [{ requestId: `${batchId}:0`, actionId: "submit" }]),
+      inbox.resolveBatch(batchId, [{ requestId: `${batchId}:0`, actionId: "approve" }]),
     ).rejects.toThrow();
   });
 });

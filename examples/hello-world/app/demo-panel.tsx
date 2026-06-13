@@ -150,7 +150,7 @@ function FeedbackForm({
 }
 
 function actionButtonStyle(id: string): CSSProperties {
-  if (id === "submit") return approveBtnStyle;
+  if (id === "approve") return approveBtnStyle;
   if (id === "deny") return denyBtnStyle;
   return ghostBtnStyle;
 }
@@ -289,7 +289,7 @@ export function DemoPanel() {
         body: JSON.stringify({ id, actionId, feedbacks, by: { name: "demo-ui" } }),
       });
       await readJson<{ result: { type: string } }>(res);
-      pushLog(`Resolved ${id} (${actionId})`, actionId === "submit" ? "ok" : undefined);
+      pushLog(`Resolved ${id} (${actionId})`, actionId === "approve" ? "ok" : undefined);
       setActiveForm(null);
       await refresh();
     } catch (err) {
@@ -386,7 +386,7 @@ export function DemoPanel() {
                       disabled={busy}
                       onClick={() => beginAction(item, def.id)}
                     >
-                      {def.label ?? (def.id === "submit" ? "Submit" : def.id === "deny" ? "Deny" : def.id)}
+                      {def.label ?? (def.id === "approve" ? "Approve" : def.id === "deny" ? "Deny" : def.id)}
                     </button>
                   ))}
                   <button

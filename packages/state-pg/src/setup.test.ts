@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { humanActions } from "hitl";
+import { actions } from "hitl";
 import { newDb } from "pg-mem";
 import { PostgresState, type PgQueryable } from "./index.js";
 import { ensureHitlSchema } from "./setup.js";
@@ -20,7 +20,7 @@ describe("setup command", () => {
       token: "tok_a1",
       channel: "lead-approvals",
       message: "Approve?",
-      actions: humanActions().submit().build(),
+      actions: actions().approve().build(),
     });
     expect(await state.get("a1")).toMatchObject({ id: "a1", status: "pending" });
   });
@@ -35,7 +35,7 @@ describe("setup command", () => {
       token: "tok_a1",
       channel: "lead-approvals",
       message: "Approve?",
-      actions: humanActions().submit().build(),
+      actions: actions().approve().build(),
     });
     expect(await state.get("a1")).not.toBeNull();
   });

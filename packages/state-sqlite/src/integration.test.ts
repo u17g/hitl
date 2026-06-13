@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { field, humanActions, type HitlAdapter } from "hitl";
+import { field, actions, type HitlAdapter } from "hitl";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it, vi } from "vitest";
 import { SqliteState } from "./index";
@@ -24,8 +24,8 @@ describe("Hitl with SqliteState", () => {
 
     const promise = client.waitForHuman({
       message: "Approve?",
-      actions: humanActions()
-        .submit({ fields: { subject: field.textField({ label: "Subject", default: "Hi" }) } })
+      actions: actions()
+        .approve({ fields: { subject: field.textField({ label: "Subject", default: "Hi" }) } })
         .build(),
     });
     const requestId = await vi.waitFor(async () => {
@@ -37,14 +37,14 @@ describe("Hitl with SqliteState", () => {
     const pending = await hitl.inbox.list({ status: "pending" });
     expect(pending.map((a) => a.id)).toEqual([requestId]);
 
-    await hitl.inbox.resolve(requestId, { actionId: "submit" });
-    expect(await promise).toMatchObject({ type: "RESOLVED", actionId: "submit", id: requestId });
+    await hitl.inbox.resolve(requestId, { actionId: "approve" });
+    expect(await promise).toMatchObject({ type: "RESOLVED", actionId: "approve", id: requestId });
 
     const fresh = new SqliteState(db);
     expect(await fresh.get(requestId)).toMatchObject({
       status: "resolved",
       externalId: `ext_${requestId}`,
-      result: { type: "RESOLVED", actionId: "submit", id: requestId },
+      result: { type: "RESOLVED", actionId: "approve", id: requestId },
     });
   });
 });

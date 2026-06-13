@@ -23,17 +23,17 @@ export function actionById(actions: HumanActions, id: string): HumanActionDef | 
   return actions.find((a) => a.id === id);
 }
 
-export function submitAction(actions: HumanActions): HumanActionDef | undefined {
-  return actionById(actions, "submit");
+export function approveAction(actions: HumanActions): HumanActionDef | undefined {
+  return actionById(actions, "approve");
 }
 
 export function denyAction(actions: HumanActions): HumanActionDef | undefined {
   return actionById(actions, "deny");
 }
 
-/** Effective submit field schema (empty when submit action is absent or has no fields). */
-export function submitFields(actions: HumanActions): Record<string, HitlField> {
-  const def = submitAction(actions);
+/** Effective approve field schema (empty when approve action is absent or has no fields). */
+export function approveFields(actions: HumanActions): Record<string, HitlField> {
+  const def = approveAction(actions);
   return def ? actionFields(def) : {};
 }
 
@@ -44,7 +44,7 @@ export function denyFields(actions: HumanActions): Record<string, HitlField> {
 }
 
 export function defaultStyle(id: string): ActionStyle {
-  if (id === "submit") return "primary";
+  if (id === "approve") return "primary";
   if (id === "deny") return "danger";
   return "default";
 }
@@ -80,22 +80,26 @@ interface LegacyHumanActionsObject {
   deny?: Omit<HumanActionDef, "id">;
 }
 
+function migrateActionId(def: HumanActionDef): HumanActionDef {
+  return def.id === "submit" ? { ...def, id: "approve" } : def;
+}
+
 /** Normalize persisted or legacy wire shapes into an ordered actions array. */
 export function normalizeActions(raw: unknown, legacyFields?: Record<string, unknown>): HumanActions {
   if (Array.isArray(raw)) {
-    return raw as HumanActions;
+    return (raw as HumanActionDef[]).map(migrateActionId);
   }
   if (raw && typeof raw === "object") {
     const legacy = raw as LegacyHumanActionsObject;
     const actions: HumanActionDef[] = [];
-    if (legacy.submit) actions.push({ id: "submit", ...legacy.submit });
+    if (legacy.submit) actions.push({ id: "approve", ...legacy.submit });
     if (legacy.deny) actions.push({ id: "deny", ...legacy.deny });
     if (actions.length > 0) return actions;
   }
   if (legacyFields && Object.keys(legacyFields).length > 0) {
-    return [{ id: "submit", fields: legacyFields as Record<string, HitlField> }];
+    return [{ id: "approve", fields: legacyFields as Record<string, HitlField> }];
   }
-  return [{ id: "submit" }];
+  return [{ id: "approve" }];
 }
 
 /** Resolve which action receives per-item defaults in batch mode. */
@@ -109,8 +113,8 @@ export function defaultsActionId(
     }
     return explicit;
   }
-  if (submitAction(actions)) return "submit";
+  if (approveAction(actions)) return "approve";
   throw new Error(
-    "waitForHuman batch items require a submit action or defaultsActionId.",
+    "waitForHuman batch items require an approve action or defaultsActionId.",
   );
 }

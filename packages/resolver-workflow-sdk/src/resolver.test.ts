@@ -11,7 +11,7 @@ describe("workflowResolver", () => {
 
     const payload = {
       type: "RESOLVED" as const,
-      actionId: "submit" as const,
+      actionId: "approve" as const,
       id: "a1",
       feedbacks: {},
     };

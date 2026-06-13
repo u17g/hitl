@@ -1,4 +1,4 @@
-import { field, humanActions, type HumanRequest, type HitlInbox } from "hitl";
+import { field, actions, type HumanRequest, type HitlInbox } from "hitl";
 import { toCardElement } from "chat";
 import { describe, expect, it, vi } from "vitest";
 import { chatHitl } from "./index";
@@ -14,8 +14,8 @@ const request: HumanRequest = {
   id: "req-1",
   channel: "approvals",
   message: "Inbound lead: a@b.com",
-  actions: humanActions()
-    .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+  actions: actions()
+    .approve({ fields: { subject: field.textField({ label: "Subject" }) } })
     .build(),
 };
 
@@ -65,7 +65,7 @@ describe("chatHitl update", () => {
 
     await plugin.update?.(externalId, {
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       id: "req-1",
       by: { name: "Ryo" },
       feedbacks: {},
@@ -81,7 +81,7 @@ describe("chatHitl update", () => {
     const plugin = makePlugin(bot);
 
     await expect(
-      plugin.update?.("slack:C123#gone", { type: "RESOLVED", actionId: "submit", id: "x", feedbacks: {} }),
+      plugin.update?.("slack:C123#gone", { type: "RESOLVED", actionId: "approve", id: "x", feedbacks: {} }),
     ).resolves.toBeUndefined();
     expect(handles).toHaveLength(0);
   });

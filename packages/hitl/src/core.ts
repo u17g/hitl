@@ -12,7 +12,7 @@ import {
   actionById,
   actionFields,
   defaultsActionId,
-  submitFields,
+  approveFields,
   type HumanActions,
 } from "./human-actions";
 import type { HumanResult } from "./human-result";
@@ -133,7 +133,7 @@ async function deliverHumanRequest(
 }
 
 function resolvedDefaults(actions: HumanActions): Record<string, unknown> {
-  const fields = submitFields(actions);
+  const fields = approveFields(actions);
   const values: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(fields)) {
     if (field.default !== undefined) values[key] = field.default;
@@ -346,7 +346,7 @@ async function redeliverBatch(
   channel: string,
 ): Promise<void> {
   const escalateAdapter = pickAdapter(runtime.adapters, channel);
-  const actions = batch.actions ?? items[0]?.actions ?? [{ id: "submit" }];
+  const actions = batch.actions ?? items[0]?.actions ?? [{ id: "approve" }];
   const request = toBatchRequest(
     { id: batch.id, channel, message: batch.message, context: batch.context },
     actions,

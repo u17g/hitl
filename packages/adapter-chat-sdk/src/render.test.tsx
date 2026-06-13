@@ -1,4 +1,4 @@
-import { field, humanActions, type HumanRequest, type HumanResult } from "hitl";
+import { field, actions, type HumanRequest, type HumanResult } from "hitl";
 import { toCardElement, toModalElement } from "chat";
 import { describe, expect, it } from "vitest";
 import { actionButtonId, actionModalCallback } from "./constants";
@@ -8,7 +8,7 @@ const request: HumanRequest = {
   id: "req-1",
   channel: "approvals",
   message: "Inbound lead: a@b.com",
-  actions: humanActions().submit({ label: "Approve" }).deny({ label: "Deny" }).build(),
+  actions: actions().approve({ label: "Approve" }).deny({ label: "Deny" }).build(),
 };
 
 function actionsOf(card: ReturnType<typeof toCardElement>) {
@@ -27,7 +27,7 @@ describe("humanRequestCard", () => {
     expect(buttons).toContainEqual(
       expect.objectContaining({
         type: "button",
-        id: actionButtonId("submit"),
+        id: actionButtonId("approve"),
         value: "req-1",
         style: "primary",
       }),
@@ -52,14 +52,14 @@ describe("actionModal", () => {
   };
 
   it("carries the callbackId and requestId in privateMetadata", () => {
-    const modal = toModalElement(actionModal("req-1", "submit", fields));
+    const modal = toModalElement(actionModal("req-1", "approve", fields));
     expect(modal?.type).toBe("modal");
-    expect(modal?.callbackId).toBe(actionModalCallback("submit"));
-    expect(modal?.privateMetadata).toBe(JSON.stringify({ requestId: "req-1", actionId: "submit" }));
+    expect(modal?.callbackId).toBe(actionModalCallback("approve"));
+    expect(modal?.privateMetadata).toBe(JSON.stringify({ requestId: "req-1", actionId: "approve" }));
   });
 
   it("renders one input per field, mapped by kind and keyed by field name", () => {
-    const modal = toModalElement(actionModal("req-1", "submit", fields));
+    const modal = toModalElement(actionModal("req-1", "approve", fields));
     const children = modal?.children ?? [];
 
     expect(children).toContainEqual(
@@ -96,7 +96,7 @@ describe("resultCard", () => {
   it("shows the message and the outcome, with no action buttons", () => {
     const result: HumanResult = {
       type: "RESOLVED",
-      actionId: "submit",
+      actionId: "approve",
       id: "req-1",
       by: { name: "Ryo" },
       feedbacks: {},
@@ -113,7 +113,7 @@ describe("outcomeLine", () => {
     expect(
       outcomeLine({
         type: "RESOLVED",
-        actionId: "submit",
+        actionId: "approve",
         id: "1",
         by: { name: "Ryo" },
         feedbacks: {},
@@ -122,7 +122,7 @@ describe("outcomeLine", () => {
     expect(
       outcomeLine({
         type: "RESOLVED",
-        actionId: "submit",
+        actionId: "approve",
         id: "1",
         edited: true,
         feedbacks: {},
