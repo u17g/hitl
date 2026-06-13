@@ -15,6 +15,10 @@ export interface CreateRequestBody {
   context?: Record<string, unknown>;
   /** Adapter id; defaults to the first configured adapter. */
   channel?: string;
+  /** Post under the same chat thread as a prior human step or notify. */
+  after?: { id: string };
+  /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
+  inThread?: string;
 }
 
 export interface CreateRequestResponse {
@@ -38,6 +42,10 @@ export interface CreateBatchBody {
   /** Target action for per-item defaults when no submit action exists. */
   defaultsActionId?: string;
   items: CreateBatchItemBody[];
+  /** Post under the same chat thread as a prior human step or notify. */
+  after?: { id: string };
+  /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
+  inThread?: string;
 }
 
 export interface CreateBatchResponse {
@@ -68,3 +76,7 @@ export interface BatchTimeoutResponse {
 }
 
 export type NotifyBody = Notification;
+
+export interface NotifyResponse {
+  id: string;
+}

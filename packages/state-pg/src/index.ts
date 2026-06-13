@@ -4,6 +4,8 @@ import type {
   BatchRecord,
   NewHumanRequestRecord,
   NewBatchRecord,
+  NewNotifyDeliveryRecord,
+  NotifyDeliveryRecord,
   State,
   TimelineEntry,
 } from "hitl";
@@ -61,6 +63,15 @@ interface TimelineRow {
   thread_id: string;
   message: string;
   detail: Record<string, unknown> | null;
+  created_at: string;
+}
+
+interface NotifyDeliveryRow {
+  id: string;
+  channel: string;
+  message: string;
+  group_id: string;
+  external_id: string | null;
   created_at: string;
 }
 
@@ -235,6 +246,32 @@ export class PostgresState implements State {
     );
     return (rows as TimelineRow[]).map(timelineRowToEntry);
   }
+
+  async createNotifyDelivery(record: NewNotifyDeliveryRecord): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO ${this.table.notifyDeliveriesSql}
+         (id, channel, message, group_id, created_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [record.id, record.channel, record.message, record.groupId, new Date().toISOString()],
+    );
+  }
+
+  async getNotifyDelivery(id: string): Promise<NotifyDeliveryRecord | null> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM ${this.table.notifyDeliveriesSql} WHERE id = $1`,
+      [id],
+    );
+    const row = rows[0] as NotifyDeliveryRow | undefined;
+    return row ? notifyDeliveryRowToRecord(row) : null;
+  }
+
+  async setNotifyDeliveryExternalId(id: string, externalId: string): Promise<void> {
+    const { rowCount } = await this.pool.query(
+      `UPDATE ${this.table.notifyDeliveriesSql} SET external_id = $2 WHERE id = $1`,
+      [id, externalId],
+    );
+    if (!rowCount) throw new Error(`Unknown notify delivery "${id}"`);
+  }
 }
 
 function rowToRecord(row: HumanRequestRow): HumanRequestRecord {
@@ -282,6 +319,17 @@ function timelineRowToEntry(row: TimelineRow): TimelineEntry {
     threadId: row.thread_id,
     message: row.message,
     detail: row.detail ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+function notifyDeliveryRowToRecord(row: NotifyDeliveryRow): NotifyDeliveryRecord {
+  return {
+    id: row.id,
+    channel: row.channel,
+    message: row.message,
+    groupId: row.group_id,
+    externalId: row.external_id ?? undefined,
     createdAt: row.created_at,
   };
 }

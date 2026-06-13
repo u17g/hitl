@@ -306,5 +306,49 @@ export function describeStateContract(
       ]);
       expect(await state.timeline("missing")).toEqual([]);
     });
+
+    it("creates and gets a notify delivery record", async () => {
+      const state = await factory();
+      await state.createNotifyDelivery({
+        id: "n1",
+        channel: "lead-approvals",
+        message: "Deploy started",
+        groupId: "step-1",
+      });
+
+      const delivery = await state.getNotifyDelivery("n1");
+      expect(delivery).toMatchObject({
+        id: "n1",
+        channel: "lead-approvals",
+        message: "Deploy started",
+        groupId: "step-1",
+      });
+      expect(delivery?.createdAt).toBeTruthy();
+    });
+
+    it("returns null for an unknown notify delivery id", async () => {
+      const state = await factory();
+      expect(await state.getNotifyDelivery("missing")).toBeNull();
+    });
+
+    it("attaches an external id to a notify delivery", async () => {
+      const state = await factory();
+      await state.createNotifyDelivery({
+        id: "n1",
+        channel: "lead-approvals",
+        message: "ping",
+        groupId: "step-1",
+      });
+      await state.setNotifyDeliveryExternalId("n1", "slack-ts-123");
+
+      expect((await state.getNotifyDelivery("n1"))?.externalId).toBe("slack-ts-123");
+    });
+
+    it("throws when attaching an external id to an unknown notify delivery", async () => {
+      const state = await factory();
+      await expect(state.setNotifyDeliveryExternalId("missing", "slack-ts-123")).rejects.toThrow(
+        /unknown notify delivery/i,
+      );
+    });
   });
 }

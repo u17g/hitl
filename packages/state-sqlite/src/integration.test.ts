@@ -10,7 +10,9 @@ function jsonAdapter(id: string): HitlAdapter {
     async send(request) {
       return { externalId: `ext_${request.id}` };
     },
-    async notify() {},
+    async notify() {
+      return {};
+    },
   };
 }
 

@@ -47,6 +47,7 @@ export {
   NotFoundError,
   notifyVia,
   resolveNotifyThread,
+  resolveThreadAnchor,
   remindHumanRequest,
   remindBatch,
   resolveHumanRequest,
@@ -54,7 +55,7 @@ export {
   timeoutHumanRequest,
   timeoutBatch,
 } from "./core";
-export type { HitlRuntime, NotifyThreadContext } from "./core";
+export type { HitlRuntime, NotifyThreadContext, ThreadContext } from "./core";
 
 export type {
   BatchTimeoutResponse,
@@ -64,6 +65,7 @@ export type {
   CreateRequestBody,
   CreateRequestResponse,
   NotifyBody,
+  NotifyResponse,
   RemindBody,
   RemindResponse,
   TimeoutResponse,
@@ -77,6 +79,7 @@ export type {
   HitlAdapter,
   Notification,
   Reviewer,
+  ThreadAnchor,
 } from "./types";
 
 export { InMemoryState } from "./state";
@@ -85,6 +88,8 @@ export type {
   BatchRecord,
   NewHumanRequestRecord,
   NewBatchRecord,
+  NewNotifyDeliveryRecord,
+  NotifyDeliveryRecord,
   State,
 } from "./state";
 

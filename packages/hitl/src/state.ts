@@ -34,6 +34,24 @@ export interface BatchRecord extends NewBatchRecord {
   createdAt: string;
 }
 
+export interface NotifyDeliveryRecord {
+  id: string;
+  channel: string;
+  message: string;
+  /** Parent thread group for timeline; human/batch/notify id. */
+  groupId: string;
+  /** Adapter opaque ref after post; undefined for inbox no-op. */
+  externalId?: string;
+  createdAt: string;
+}
+
+export interface NewNotifyDeliveryRecord {
+  id: string;
+  channel: string;
+  message: string;
+  groupId: string;
+}
+
 export interface HumanRequestRecord extends NewHumanRequestRecord {
   status: "pending" | "resolved";
   /** Channel message id (e.g. Slack message ts), set after `adapter.send`. */
@@ -62,12 +80,16 @@ export interface State {
   listByBatch(batchId: string): Promise<HumanRequestRecord[]>;
   appendTimeline(entry: TimelineEntry): Promise<void>;
   timeline(threadId: string): Promise<TimelineEntry[]>;
+  createNotifyDelivery(record: NewNotifyDeliveryRecord): Promise<void>;
+  getNotifyDelivery(id: string): Promise<NotifyDeliveryRecord | null>;
+  setNotifyDeliveryExternalId(id: string, externalId: string): Promise<void>;
 }
 
 export class InMemoryState implements State {
   private records = new Map<string, HumanRequestRecord>();
   private batches = new Map<string, BatchRecord>();
   private timelines = new Map<string, TimelineEntry[]>();
+  private notifyDeliveries = new Map<string, NotifyDeliveryRecord>();
 
   async create(record: NewHumanRequestRecord): Promise<void> {
     this.records.set(record.id, {
@@ -160,6 +182,23 @@ export class InMemoryState implements State {
 
   async timeline(threadId: string): Promise<TimelineEntry[]> {
     return this.timelines.get(threadId) ?? [];
+  }
+
+  async createNotifyDelivery(record: NewNotifyDeliveryRecord): Promise<void> {
+    this.notifyDeliveries.set(record.id, {
+      ...record,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  async getNotifyDelivery(id: string): Promise<NotifyDeliveryRecord | null> {
+    return this.notifyDeliveries.get(id) ?? null;
+  }
+
+  async setNotifyDeliveryExternalId(id: string, externalId: string): Promise<void> {
+    const record = this.notifyDeliveries.get(id);
+    if (!record) throw new Error(`Unknown notify delivery "${id}"`);
+    record.externalId = externalId;
   }
 
   private mustGet(id: string): HumanRequestRecord {

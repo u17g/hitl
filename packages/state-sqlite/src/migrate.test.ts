@@ -16,6 +16,7 @@ describe("sqlite migrations", () => {
       "005_actions_array",
       "006_rename_human_requests",
       "007_rename_batch_title_to_message",
+      "008_notify_deliveries",
     ]);
   });
 
@@ -44,6 +45,7 @@ describe("sqlite migrations", () => {
       "005_actions_array",
       "006_rename_human_requests",
       "007_rename_batch_title_to_message",
+      "008_notify_deliveries",
     ]);
   });
 

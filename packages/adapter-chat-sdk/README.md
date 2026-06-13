@@ -40,9 +40,9 @@ export const POST = bot.webhooks.slack; // app/api/webhooks/slack/route.ts
 
 ## How it maps to `HitlAdapter`
 
-- **send** — posts an approval card (message + Approve/Deny buttons carrying the request id) to `channel`; the `SentMessage` handle is kept in memory for `update`.
+- **send** — posts an approval card (message + Approve/Deny buttons carrying the request id) to `channel`, or inside an existing thread when `threadRef` is set; the `SentMessage` handle is kept in memory for `update`.
 - **update** — edits the card in place to show the outcome once resolved.
-- **notify** — posts to the channel, threading under the human step when `threadRef` is set.
+- **notify** — posts to the channel (or threads under a parent when `threadRef` is set) and returns an encoded `externalId` so later `waitForHuman({ after: await notify(...) })` can chain in the same thread.
 - Feedback fields (`textField` / `textArea` / `select` / `confirm`) are collected through a **modal** opened on Approve, because Chat SDK cards can't hold inline text inputs. So any approval with fields uses the two-step approve → modal → submit flow on every platform. Modal title, submit, and close labels come from each action's `label`, `submitLabel`, and `closeLabel` (submit defaults to `label`).
 - **Batches** have no dedicated UI here: without `sendBatch`, the core delivers each item on its own, so every item goes through the same card + modal flow.
 

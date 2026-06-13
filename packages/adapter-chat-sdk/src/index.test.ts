@@ -55,6 +55,22 @@ describe("chatHitl send", () => {
     expect(posted[0]?.kind).toBe("channel");
     expect(toCardElement(posted[0]?.msg)?.type).toBe("card");
   });
+
+  it("posts in thread when threadRef is set", async () => {
+    const { bot, posted } = fakeBot();
+    await makePlugin(bot).send({ ...request, threadRef: "slack:C123#ts-1" });
+
+    expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
+    expect(posted[0]?.kind).toBe("thread");
+  });
+
+  it("accepts a Chat SDK thread ref directly", async () => {
+    const { bot, posted } = fakeBot();
+    await makePlugin(bot).send({ ...request, threadRef: "slack:C123:ts-1" });
+
+    expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
+    expect(posted[0]?.kind).toBe("thread");
+  });
 });
 
 describe("chatHitl update", () => {
@@ -90,18 +106,20 @@ describe("chatHitl update", () => {
 describe("chatHitl notify", () => {
   it("posts to the channel root when there is no parent", async () => {
     const { bot, posted } = fakeBot();
-    await makePlugin(bot).notify({ message: "Still waiting" });
+    const result = await makePlugin(bot).notify({ message: "Still waiting" });
 
     expect(bot.channel).toHaveBeenCalledWith("slack:C123");
     expect(posted[0]).toMatchObject({ kind: "channel", msg: "Still waiting" });
+    expect(result.externalId).toBe("slack:C123#msg-1");
   });
 
   it("threads under the parent message when threadRef is set", async () => {
     const { bot, posted } = fakeBot();
-    await makePlugin(bot).notify({ message: "Reminder", threadRef: "slack:C123#ts-1" });
+    const result = await makePlugin(bot).notify({ message: "Reminder", threadRef: "slack:C123#ts-1" });
 
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]).toMatchObject({ kind: "thread", msg: "Reminder" });
+    expect(result.externalId).toBe("slack:C123#msg-1");
   });
 });
 

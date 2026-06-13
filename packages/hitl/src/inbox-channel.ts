@@ -25,6 +25,8 @@ export function inboxChannel(): HitlAdapter {
       return { externalId: request.batchId };
     },
 
-    async notify() {},
+    async notify() {
+      return { externalId: undefined };
+    },
   };
 }

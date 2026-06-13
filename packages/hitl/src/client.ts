@@ -2,6 +2,7 @@ import type {
   BatchTimeoutResponse,
   CreateBatchResponse,
   CreateRequestResponse,
+  NotifyResponse,
   RemindBody,
   TimeoutResponse,
 } from "./api-types";
@@ -13,7 +14,7 @@ import type { HumanActionDef } from "./human-actions";
 import type { HumanResult } from "./human-result";
 import { isEscalate, type ReminderEntry } from "./reminder";
 import { expandReminderSchedule } from "./schedule";
-import type { Notification } from "./types";
+import type { Notification, ThreadAnchor } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
 
@@ -25,7 +26,7 @@ type NotifyBase = {
 
 /** Workflow-side notify options. Prefer `after` once a human step has resolved. */
 export type NotifyOptions =
-  | (NotifyBase & { after: HumanResult })
+  | (NotifyBase & { after: HumanResult | ThreadAnchor })
   | (NotifyBase & { on: string })
   | (NotifyBase & { threadId?: string; threadRef?: string });
 
@@ -52,7 +53,7 @@ export interface HitlClient {
     opts: WaitForHumanOptions<Actions> & { items: ReadonlyArray<HumanItem<Actions>> },
   ): Promise<HumanResult<Actions>[]>;
 
-  notify(notification: NotifyOptions): Promise<void>;
+  notify(notification: NotifyOptions): Promise<ThreadAnchor>;
 }
 
 export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
@@ -95,6 +96,8 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       actions: opts.actions,
       context: opts.context,
       channel: opts.channel,
+      after: opts.after ? { id: opts.after.id } : undefined,
+      inThread: opts.inThread,
     });
 
     return waitWithReminders(opts, {
@@ -120,6 +123,8 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       actions: opts.actions,
       context: opts.context,
       defaultsActionId: opts.defaultsActionId,
+      after: opts.after ? { id: opts.after.id } : undefined,
+      inThread: opts.inThread,
       items: opts.items.map((item, index) => ({
         token: suspensions[index]!.token,
         message: item.message,
@@ -201,7 +206,9 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
   return {
     waitForHuman: waitForHuman as HitlClient["waitForHuman"],
     notify: (notification) =>
-      callApi("/notifications", toNotifyBody(notification)).then(() => undefined),
+      callApi<NotifyResponse>("/notifications", toNotifyBody(notification)).then((res) => ({
+        id: res.id,
+      })),
   };
 }
 

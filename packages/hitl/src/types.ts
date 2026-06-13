@@ -10,6 +10,11 @@ export interface Reviewer {
 
 export type { HumanResult };
 
+/** Chain thread placement across notify / waitForHuman. */
+export interface ThreadAnchor {
+  id: string;
+}
+
 /**
  * What an adapter receives to render and deliver a human step.
  * Not to be confused with `HitlRequest` in `binding.ts`, which is the durable
@@ -21,6 +26,8 @@ export interface HumanRequest {
   message: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
+  /** Adapter-native thread ref for in-thread delivery. Inbox ignores. */
+  threadRef?: string;
 }
 
 /**
@@ -35,6 +42,8 @@ export interface BatchHumanRequest {
   /** Input order. `defaults` are submit field defaults overridden per item. */
   items: Array<{ id: string; message: string; defaults: Record<string, unknown> }>;
   context?: Record<string, unknown>;
+  /** Adapter-native thread ref for in-thread delivery. Inbox ignores. */
+  threadRef?: string;
 }
 
 export interface Notification {
@@ -95,7 +104,7 @@ export interface HitlAdapter {
   send(request: HumanRequest): Promise<{ externalId: string }>;
   /** Reflect resolution back into the channel (e.g. replace buttons with "Approved by @ryosuke"). */
   update?(externalId: string, result: HumanResult): Promise<void>;
-  notify(notification: Notification): Promise<void>;
+  notify(notification: Notification): Promise<{ externalId?: string }>;
   /** Render and deliver a batch as a single message. Absent → the core sends items one by one. */
   sendBatch?(request: BatchHumanRequest): Promise<{ externalId: string }>;
   /**

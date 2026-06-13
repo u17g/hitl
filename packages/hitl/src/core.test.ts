@@ -5,6 +5,7 @@ import {
   notifyVia,
   remindHumanRequest,
   resolveHumanRequest,
+  resolveThreadAnchor,
   timeoutHumanRequest,
   type HitlRuntime,
 } from "./core";
@@ -60,6 +61,7 @@ function fakeAdapter(id: string): HitlAdapter & {
     },
     async notify(notification) {
       notifications.push(notification);
+      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
     },
   };
 }
@@ -412,10 +414,13 @@ describe("remindHumanRequest", () => {
 });
 
 describe("notifyVia", () => {
-  it("routes to the default adapter", async () => {
-    const { runtime, adapters } = makeRuntime(["a", "b"]);
-    await notifyVia(runtime, { message: "progress" });
+  it("routes to the default adapter and returns a ThreadAnchor", async () => {
+    const { runtime, adapters, state } = makeRuntime(["a", "b"]);
+    const anchor = await notifyVia(runtime, { message: "progress" });
+    expect(anchor.id).toBeTruthy();
     expect(adapters[0]!.notifications[0]).toMatchObject({ message: "progress", channel: "a" });
+    const delivery = await state.getNotifyDelivery(anchor.id);
+    expect(delivery).toMatchObject({ message: "progress", channel: "a", groupId: anchor.id });
   });
 
   it("resolves the parent approval id to the channel externalId", async () => {
@@ -454,6 +459,61 @@ describe("notifyVia", () => {
       message: "context",
       threadId: id,
       threadRef: `ext_${id}`,
+    });
+  });
+
+  it("stores notify externalId on the delivery record", async () => {
+    const { runtime, state } = makeRuntime();
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+
+    const anchor = await notifyVia(runtime, { message: "context", after: { id } });
+    const delivery = await state.getNotifyDelivery(anchor.id);
+    expect(delivery?.externalId).toBe(`notify_ext_${id}`);
+  });
+
+  it("resolveThreadAnchor resolves notify delivery id to externalId", async () => {
+    const { runtime, state } = makeRuntime();
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+    const anchor = await notifyVia(runtime, { message: "ping", after: { id } });
+
+    const ctx = await resolveThreadAnchor(state, anchor.id);
+    expect(ctx.deliveryRef).toBe(`notify_ext_${id}`);
+    expect(ctx.groupId).toBe(id);
+  });
+
+  it("createHumanRequest passes threadRef when after is a notify anchor", async () => {
+    const { runtime, adapters, state } = makeRuntime();
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+    const anchor = await notifyVia(runtime, { message: "ping", after: { id } });
+
+    await createHumanRequest(runtime, {
+      token: "tok_2",
+      message: "Proceed?",
+      actions: approveOnly,
+      after: { id: anchor.id },
+    });
+
+    expect(adapters[0]!.sent.at(-1)).toMatchObject({
+      message: "Proceed?",
+      threadRef: `notify_ext_${id}`,
+    });
+    void state;
+  });
+
+  it("createHumanRequest prefers inThread over after", async () => {
+    const { runtime, adapters } = makeRuntime();
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+
+    await createHumanRequest(runtime, {
+      token: "tok_2",
+      message: "Proceed?",
+      actions: approveOnly,
+      after: { id },
+      inThread: "slack:C123:ts-99",
+    });
+
+    expect(adapters[0]!.sent.at(-1)).toMatchObject({
+      threadRef: "slack:C123:ts-99",
     });
   });
 });

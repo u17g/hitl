@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeExternalId, encodeExternalId } from "./external-id";
+import { decodeExternalId, encodeExternalId, toChatThreadRef } from "./external-id";
 
 // Test list:
 // - encode/decode round-trips, including a channel ref that itself contains ":"
@@ -20,5 +20,15 @@ describe("external-id codec", () => {
       channel: "teams:conv:1",
       messageId: "a#b",
     });
+  });
+});
+
+describe("toChatThreadRef", () => {
+  it("converts an encoded externalId to a Chat SDK thread ref", () => {
+    expect(toChatThreadRef("slack:C123#ts-1")).toBe("slack:C123:ts-1");
+  });
+
+  it("passes through an existing Chat SDK thread ref", () => {
+    expect(toChatThreadRef("slack:C123:ts-1")).toBe("slack:C123:ts-1");
   });
 });

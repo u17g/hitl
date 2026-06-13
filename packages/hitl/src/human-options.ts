@@ -2,7 +2,9 @@ import type { Duration } from "./duration";
 import type { FeedbackValues, HitlField } from "./fields";
 import type { HumanActionDef } from "./human-actions";
 import { validateActions } from "./human-actions";
+import type { HumanResult } from "./human-result";
 import type { ReminderEntry } from "./reminder";
+import type { ThreadAnchor } from "./types";
 
 type ApproveFields<Actions extends readonly HumanActionDef[]> =
   Extract<Actions[number], { id: "approve" }> extends HumanActionDef<"approve", infer F>
@@ -24,6 +26,10 @@ export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]> 
   channel?: string;
   timeout?: Duration;
   reminders?: ReminderEntry[];
+  /** Post under the same chat thread as a prior human step or notify. */
+  after?: HumanResult<Actions> | ThreadAnchor;
+  /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
+  inThread?: string;
 }
 
 export function validateWaitForHumanOptions<Actions extends readonly HumanActionDef[]>(

@@ -62,6 +62,7 @@ function jsonAdapter(id: string): FakeAdapter {
     },
     async notify(notification) {
       notifications.push(notification);
+      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
     },
   };
 }
@@ -223,8 +224,9 @@ describe("internal API: notifications", () => {
     const res = await post(hitl, "/notifications", { message: "progress", channel: "b" });
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
-    expect(adapters[1]!.notifications).toEqual([{ message: "progress", channel: "b" }]);
+    const body = (await res.json()) as { id: string };
+    expect(body.id).toBeTruthy();
+    expect(adapters[1]!.notifications[0]).toMatchObject({ message: "progress", channel: "b" });
   });
 });
 

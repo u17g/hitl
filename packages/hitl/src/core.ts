@@ -25,6 +25,7 @@ import type {
   HitlCallback,
   HitlAdapter,
   Notification,
+  ThreadAnchor,
 } from "./types";
 import { validateFeedbacks } from "./validate";
 
@@ -55,6 +56,17 @@ export function pickAdapter(adapters: HitlAdapter[], channel?: string): HitlAdap
     throw new Error(`Unknown channel "${channel}". Configured adapters: ${known}`);
   }
   return adapter;
+}
+
+async function resolveRequestThreadRef(
+  state: State,
+  body: { inThread?: string; after?: { id: string } },
+): Promise<string | undefined> {
+  if (body.inThread) return body.inThread;
+  if (body.after) {
+    return (await resolveThreadAnchor(state, body.after.id)).deliveryRef;
+  }
+  return undefined;
 }
 
 /** Merge per-item defaults into the defaults action's field definitions. */
@@ -98,6 +110,7 @@ export async function createHumanRequest(
   }
 
   const id = crypto.randomUUID();
+  const threadRef = await resolveRequestThreadRef(runtime.state, body);
   const record = {
     id,
     token: body.token,
@@ -107,7 +120,7 @@ export async function createHumanRequest(
     context: body.context,
   };
   await runtime.state.create(record);
-  await deliverHumanRequest(runtime, adapter, record);
+  await deliverHumanRequest(runtime, adapter, { ...record, threadRef });
   return { id };
 }
 
@@ -120,6 +133,7 @@ async function deliverHumanRequest(
     message: string;
     actions: HumanActions;
     context?: Record<string, unknown>;
+    threadRef?: string;
   },
 ): Promise<void> {
   const { externalId } = await adapter.send({
@@ -128,6 +142,7 @@ async function deliverHumanRequest(
     message: record.message,
     actions: record.actions,
     context: record.context,
+    threadRef: record.threadRef,
   });
   await runtime.state.setExternalId(record.id, externalId);
 }
@@ -145,6 +160,7 @@ function toBatchRequest(
   batch: { id: string; channel: string; message?: string; context?: Record<string, unknown> },
   actions: HumanActions,
   items: ReadonlyArray<{ id: string; message: string; actions: HumanActions }>,
+  threadRef?: string,
 ): BatchHumanRequest {
   return {
     batchId: batch.id,
@@ -152,6 +168,7 @@ function toBatchRequest(
     message: batch.message,
     actions,
     context: batch.context,
+    threadRef,
     items: items.map((item) => ({
       id: item.id,
       message: item.message,
@@ -185,6 +202,7 @@ export async function createBatchRequest(
   }
 
   const batchId = crypto.randomUUID();
+  const threadRef = await resolveRequestThreadRef(runtime.state, body);
   const items = body.items.map((item, index) => ({
     id: `${batchId}:${index}`,
     message: item.message,
@@ -215,13 +233,19 @@ export async function createBatchRequest(
     { id: batchId, channel: adapter.id, message: body.message, context: body.context },
     body.actions,
     items,
+    threadRef,
   );
   if (canDeliverBatch(adapter, request)) {
     const { externalId } = await adapter.sendBatch!(request);
     await runtime.state.setBatchExternalId(batchId, externalId);
   } else {
     for (const item of items) {
-      await deliverHumanRequest(runtime, adapter, { ...item, channel: adapter.id, context: body.context });
+      await deliverHumanRequest(runtime, adapter, {
+        ...item,
+        channel: adapter.id,
+        context: body.context,
+        threadRef,
+      });
     }
   }
 
@@ -510,56 +534,87 @@ function equalsDefaults(
   return Object.entries(fields).every(([key, field]) => values[key] === field.default);
 }
 
+export interface ThreadContext {
+  /** Timeline grouping id (human/batch/notify parent). */
+  groupId: string;
+  /** Opaque adapter ref for in-thread delivery. */
+  deliveryRef?: string;
+}
+
+/** @deprecated Use {@link resolveThreadAnchor} and {@link ThreadContext}. */
 export interface NotifyThreadContext {
   threadId: string;
   threadRef: string | undefined;
 }
 
-export async function resolveNotifyThread(
+export async function resolveThreadAnchor(
   state: State,
   id: string,
-): Promise<NotifyThreadContext> {
+): Promise<ThreadContext> {
   const record = await state.get(id);
   if (record?.batchId) {
     const batch = await state.getBatch(record.batchId);
     const items = batch ? await state.listByBatch(record.batchId) : [];
     return {
-      threadId: record.batchId,
-      threadRef: batch?.externalId ?? record.externalId ?? items[0]?.externalId,
+      groupId: record.batchId,
+      deliveryRef: batch?.externalId ?? record.externalId ?? items[0]?.externalId,
     };
   }
   if (record) {
-    return { threadId: id, threadRef: record.externalId };
+    return { groupId: id, deliveryRef: record.externalId };
   }
   const batch = await state.getBatch(id);
   if (batch) {
     const items = await state.listByBatch(id);
     return {
-      threadId: id,
-      threadRef: batch.externalId ?? items[0]?.externalId,
+      groupId: id,
+      deliveryRef: batch.externalId ?? items[0]?.externalId,
     };
   }
-  return { threadId: id, threadRef: undefined };
+  const delivery = await state.getNotifyDelivery(id);
+  if (delivery) {
+    return { groupId: delivery.groupId, deliveryRef: delivery.externalId };
+  }
+  return { groupId: id, deliveryRef: undefined };
+}
+
+/** @deprecated Use {@link resolveThreadAnchor}. */
+export async function resolveNotifyThread(
+  state: State,
+  id: string,
+): Promise<NotifyThreadContext> {
+  const ctx = await resolveThreadAnchor(state, id);
+  return { threadId: ctx.groupId, threadRef: ctx.deliveryRef };
 }
 
 export async function notifyVia(
   runtime: HitlRuntime,
   notification: Notification,
-): Promise<void> {
+): Promise<ThreadAnchor> {
+  const adapter = pickAdapter(runtime.adapters, notification.channel);
+  const deliveryId = crypto.randomUUID();
+
   const anchorId = notification.after?.id ?? notification.on ?? notification.threadId;
-  let threadId = notification.threadId;
+  let groupId = notification.threadId ?? deliveryId;
   let threadRef = notification.threadRef;
 
   if (anchorId) {
-    const ctx = await resolveNotifyThread(runtime.state, anchorId);
-    threadId = ctx.threadId;
-    if (!threadRef && ctx.threadRef) threadRef = ctx.threadRef;
+    const ctx = await resolveThreadAnchor(runtime.state, anchorId);
+    groupId = ctx.groupId;
+    if (!threadRef && ctx.deliveryRef) threadRef = ctx.deliveryRef;
   }
 
-  if (threadId) {
+  await runtime.state.createNotifyDelivery({
+    id: deliveryId,
+    channel: adapter.id,
+    message: notification.message,
+    groupId,
+  });
+
+  if (groupId) {
     const entry: TimelineEntry = {
       id: crypto.randomUUID(),
-      threadId,
+      threadId: groupId,
       message: notification.message,
       detail: notification.detail,
       createdAt: new Date().toISOString(),
@@ -567,12 +622,16 @@ export async function notifyVia(
     await runtime.state.appendTimeline(entry);
   }
 
-  const adapter = pickAdapter(runtime.adapters, notification.channel);
-  await adapter.notify({
+  const { externalId } = await adapter.notify({
     message: notification.message,
     channel: adapter.id,
-    threadId,
+    threadId: groupId,
     threadRef,
     detail: notification.detail,
   });
+  if (externalId) {
+    await runtime.state.setNotifyDeliveryExternalId(deliveryId, externalId);
+  }
+
+  return { id: deliveryId };
 }

@@ -3,6 +3,7 @@ import type { CreateBatchBody } from "./api-types";
 import type { HitlResolver } from "./binding";
 import {
   createBatchRequest,
+  createHumanRequest,
   notifyVia,
   remindBatch,
   resolveHumanRequest,
@@ -75,6 +76,7 @@ function fakeAdapter(id: string, opts?: { batch?: boolean }): FakeAdapter {
     },
     async notify(notification) {
       notifications.push(notification);
+      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
     },
   };
   if (opts?.batch !== false) {
@@ -476,6 +478,26 @@ describe("notifyVia batch threading", () => {
       message: "Follow up",
       threadId: batchId,
       threadRef: `bext_${batchId}`,
+    });
+  });
+
+  it("createBatchRequest passes threadRef when after is a notify anchor", async () => {
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
+    const { id } = await createHumanRequest(runtime, {
+      token: "tok_1",
+      message: "m",
+      actions: approveOnly,
+    });
+    const anchor = await notifyVia(runtime, { message: "ping", after: { id } });
+
+    await createBatchRequest(runtime, {
+      actions: approveOnly,
+      after: { id: anchor.id },
+      items: [{ token: "tok_2", message: "Item A" }],
+    });
+
+    expect(adapters[0]!.sentBatches[0]).toMatchObject({
+      threadRef: `notify_ext_${id}`,
     });
   });
 });

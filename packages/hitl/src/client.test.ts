@@ -97,6 +97,7 @@ function fakeAdapter(id: string, opts?: { batch?: boolean }): FakeAdapter {
     },
     async notify(notification) {
       adapter.notifications.push(notification);
+      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
     },
   };
   if (opts?.batch !== false) {
@@ -486,12 +487,13 @@ describe("waitForHuman batch", () => {
 });
 
 describe("notify", () => {
-  it("POSTs /notifications", async () => {
+  it("POSTs /notifications and returns a ThreadAnchor", async () => {
     const { adapters, client } = makeHarness({ adapterIds: ["a", "b"] });
 
-    await client.notify({ message: "progress", channel: "b" });
+    const anchor = await client.notify({ message: "progress", channel: "b" });
 
-    expect(adapters[1]!.notifications).toEqual([{ message: "progress", channel: "b" }]);
+    expect(anchor.id).toBeTruthy();
+    expect(adapters[1]!.notifications[0]).toMatchObject({ message: "progress", channel: "b" });
   });
 
   it("serializes after to { id } on the wire", async () => {
@@ -514,5 +516,48 @@ describe("notify", () => {
       threadId: requestId,
       threadRef: `ext_${requestId}`,
     });
+  });
+
+  it("notify → waitForHuman chains threadRef via after", async () => {
+    const { adapters, client, hitl } = makeHarness();
+
+    const pending1 = client.waitForHuman({ message: "Step 1", actions: approveOnly });
+    await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
+    const step1Id = adapters[0]!.sent[0]!.id;
+    await resolveHumanRequest(hitl.runtime, { requestId: step1Id, actionId: "approve" });
+    await pending1;
+
+    const ping = await client.notify({ after: { id: step1Id }, message: "Deploy started" });
+    const pending2 = client.waitForHuman({
+      after: ping,
+      message: "Proceed?",
+      actions: approveOnly,
+    });
+    await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(2));
+
+    expect(adapters[0]!.sent[1]).toMatchObject({
+      message: "Proceed?",
+      threadRef: `notify_ext_${step1Id}`,
+    });
+    void pending2;
+  });
+
+  it("serializes after and inThread on waitForHuman", async () => {
+    const { client, requestCalls } = makeHarness();
+
+    void client.waitForHuman({
+      message: "Approve?",
+      actions: approveOnly,
+      after: { id: "prev-step" },
+      inThread: "slack:C123:ts-1",
+    });
+    await vi.waitFor(() => expect(requestCalls).toHaveLength(1));
+
+    const body = JSON.parse(requestCalls[0]!.body) as {
+      after?: { id: string };
+      inThread?: string;
+    };
+    expect(body.after).toEqual({ id: "prev-step" });
+    expect(body.inThread).toBe("slack:C123:ts-1");
   });
 });

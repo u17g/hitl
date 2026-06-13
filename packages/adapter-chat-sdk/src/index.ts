@@ -7,7 +7,7 @@ import type {
 } from "hitl";
 import type { Chat, SentMessage } from "chat";
 import { registerHitlHandlers } from "./actions";
-import { encodeExternalId, threadRef } from "./external-id";
+import { encodeExternalId, toChatThreadRef } from "./external-id";
 import { humanRequestCard, resultCard } from "./render";
 
 export interface ChatHitlOptions {
@@ -34,7 +34,10 @@ export function chatHitl(options: ChatHitlOptions): HitlAdapter {
     id: options.id,
 
     async send(request: HumanRequest): Promise<{ externalId: string }> {
-      const handle = await bot.channel(channel).post(humanRequestCard(request));
+      const target = request.threadRef
+        ? bot.thread(toChatThreadRef(request.threadRef))
+        : bot.channel(channel);
+      const handle = await target.post(humanRequestCard(request));
       const externalId = encodeExternalId(channel, handle.id);
       sent.set(externalId, { handle, message: request.message });
       return { externalId };
@@ -47,12 +50,15 @@ export function chatHitl(options: ChatHitlOptions): HitlAdapter {
       sent.delete(externalId);
     },
 
-    async notify(notification: Notification): Promise<void> {
+    async notify(notification: Notification): Promise<{ externalId?: string }> {
       if (notification.threadRef) {
-        await bot.thread(threadRef(notification.threadRef)).post(notification.message);
-        return;
+        const handle = await bot
+          .thread(toChatThreadRef(notification.threadRef))
+          .post(notification.message);
+        return { externalId: encodeExternalId(channel, handle.id) };
       }
-      await bot.channel(channel).post(notification.message);
+      const handle = await bot.channel(channel).post(notification.message);
+      return { externalId: encodeExternalId(channel, handle.id) };
     },
   };
 }

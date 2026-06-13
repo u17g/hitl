@@ -52,6 +52,7 @@ function fakeAdapter(id: string): HitlAdapter & {
     },
     async notify(notification) {
       notifications.push(notification);
+      return {};
     },
   };
 }

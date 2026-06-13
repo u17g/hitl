@@ -13,6 +13,7 @@ export interface ResolvedTable {
   /** Timeline entries for notify and activity under a human step. */
   timelineSql: string;
   timelineThreadIndexName: string;
+  notifyDeliveriesSql: string;
   schema?: string;
   table: string;
 }
@@ -39,6 +40,7 @@ export function resolveTableName(tableName: string): ResolvedTable {
       batchIdIndexName: `${schema}_${table}_batch_id_idx`,
       timelineSql: `"${schema}.${table}_timeline"`,
       timelineThreadIndexName: `${schema}_${table}_timeline_thread_idx`,
+      notifyDeliveriesSql: `"${schema}.${table}_notify_deliveries"`,
       schema,
       table,
     };
@@ -53,6 +55,7 @@ export function resolveTableName(tableName: string): ResolvedTable {
     batchIdIndexName: `${tableName}_batch_id_idx`,
     timelineSql: `${tableName}_timeline`,
     timelineThreadIndexName: `${tableName}_timeline_thread_idx`,
+    notifyDeliveriesSql: `${tableName}_notify_deliveries`,
     table: tableName,
   };
 }

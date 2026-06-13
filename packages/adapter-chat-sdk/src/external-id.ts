@@ -23,3 +23,12 @@ export function threadRef(externalId: string): string {
   const { channel, messageId } = decodeExternalId(externalId);
   return `${channel}:${messageId}`;
 }
+
+/**
+ * Normalize a thread ref from either an encoded externalId (`channel#messageId`)
+ * or a Chat SDK thread ref (`channel:messageId`).
+ */
+export function toChatThreadRef(ref: string): string {
+  if (ref.includes(SEPARATOR)) return threadRef(ref);
+  return ref;
+}

@@ -172,6 +172,8 @@ async function handleInternalApi(
           actions: create.actions,
           context: create.context,
           channel: create.channel,
+          after: create.after,
+          inThread: create.inThread,
         });
         return json(result, 201);
       }
@@ -194,6 +196,8 @@ async function handleInternalApi(
           actions: create.actions,
           context: create.context,
           defaultsActionId: create.defaultsActionId,
+          after: create.after,
+          inThread: create.inThread,
           items: create.items,
         });
         return json(result, 201);
@@ -206,9 +210,10 @@ async function handleInternalApi(
         return json(await remindHumanRequest(runtime, route.id, body as RemindBody));
       case "batch-remind":
         return json(await remindBatch(runtime, route.id, body as RemindBody));
-      case "notify":
-        await notifyVia(runtime, body as NotifyBody);
-        return json({ ok: true });
+      case "notify": {
+        const anchor = await notifyVia(runtime, body as NotifyBody);
+        return json(anchor);
+      }
     }
   } catch (error) {
     if (error instanceof NotFoundError) {
