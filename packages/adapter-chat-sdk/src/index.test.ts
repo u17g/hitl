@@ -1,4 +1,4 @@
-import { field, type ApprovalRequest, type HitlInbox } from "hitl";
+import { field, humanActions, type HumanRequest, type HitlInbox } from "hitl";
 import { toCardElement } from "chat";
 import { describe, expect, it, vi } from "vitest";
 import { chatHitl } from "./index";
@@ -7,14 +7,16 @@ import { chatHitl } from "./index";
 // - send posts the approval card to the channel and returns "<channel>#<id>"
 // - update edits the stored handle with the result card (outcome shown)
 // - update on an unknown externalId is a no-op (handle lost after restart)
-// - notify posts to the channel root, or threads under parentExternalId
+// - notify posts to the channel root, or threads under threadRef
 // - constructing the plugin registers the bot handlers
 
-const request: ApprovalRequest = {
+const request: HumanRequest = {
   id: "req-1",
   channel: "approvals",
   message: "Inbound lead: a@b.com",
-  fields: { subject: field.textField({ label: "Subject" }) },
+  actions: humanActions()
+    .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+    .build(),
 };
 
 function fakeBot() {
@@ -61,7 +63,13 @@ describe("chatHitl update", () => {
     const plugin = makePlugin(bot);
     const { externalId } = await plugin.send(request);
 
-    await plugin.update?.(externalId, { type: "APPROVED", id: "req-1", by: { name: "Ryo" } });
+    await plugin.update?.(externalId, {
+      type: "RESOLVED",
+      actionId: "submit",
+      id: "req-1",
+      by: { name: "Ryo" },
+      feedbacks: {},
+    });
 
     expect(handles[0]?.edit).toHaveBeenCalledTimes(1);
     const edited = handles[0]?.edit.mock.calls[0]?.[0];
@@ -73,7 +81,7 @@ describe("chatHitl update", () => {
     const plugin = makePlugin(bot);
 
     await expect(
-      plugin.update?.("slack:C123#gone", { type: "APPROVED", id: "x" }),
+      plugin.update?.("slack:C123#gone", { type: "RESOLVED", actionId: "submit", id: "x", feedbacks: {} }),
     ).resolves.toBeUndefined();
     expect(handles).toHaveLength(0);
   });
@@ -88,9 +96,9 @@ describe("chatHitl notify", () => {
     expect(posted[0]).toMatchObject({ kind: "channel", msg: "Still waiting" });
   });
 
-  it("threads under the parent message when parentExternalId is set", async () => {
+  it("threads under the parent message when threadRef is set", async () => {
     const { bot, posted } = fakeBot();
-    await makePlugin(bot).notify({ message: "Reminder", parentExternalId: "slack:C123#ts-1" });
+    await makePlugin(bot).notify({ message: "Reminder", threadRef: "slack:C123#ts-1" });
 
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]).toMatchObject({ kind: "thread", msg: "Reminder" });

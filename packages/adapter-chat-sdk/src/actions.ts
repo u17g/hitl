@@ -1,24 +1,33 @@
 import type { HitlInbox, Reviewer } from "hitl";
+import { actionById, actionFields } from "hitl";
 import type { ActionEvent, Chat, ModalSubmitEvent } from "chat";
-import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";
+import {
+  actionButtonId,
+  actionModalCallback,
+  parseActionButtonId,
+  parseActionModalCallback,
+} from "./constants";
 import { needsModal, parseModalValues } from "./fields";
-import { approvalModal } from "./render";
+import { actionModalFromRequest } from "./render";
 
-/** Bots that already have hitldev handlers wired, so multiple adapters sharing a
- * Chat instance register the global onAction/onModalSubmit handlers only once. */
 const wired = new WeakSet<object>();
 
 /**
- * Wire approve/deny clicks and modal submits on a Chat instance to the inbox.
- * The inbox is resolved lazily so it can be created after the adapters (which
- * `new Hitl()` requires up front). Idempotent per bot.
+ * Wire action clicks and modal submits on a Chat instance to the inbox.
+ * The inbox is resolved lazily so it can be created after the adapters.
  */
 export function registerHitlHandlers(bot: Chat, getInbox: () => HitlInbox): void {
   if (wired.has(bot)) return;
   wired.add(bot);
 
-  bot.onAction([ACTION_APPROVE, ACTION_DENY], (event) => handleAction(event, getInbox()));
-  bot.onModalSubmit(MODAL_CALLBACK, (event) => handleModalSubmit(event, getInbox()));
+  bot.onAction((event) => {
+    if (!parseActionButtonId(event.actionId)) return;
+    return handleAction(event, getInbox());
+  });
+  bot.onModalSubmit((event) => {
+    if (!parseActionModalCallback(event.callbackId)) return;
+    return handleModalSubmit(event, getInbox());
+  });
 }
 
 function reviewerFrom(user: ActionEvent["user"] | undefined): Reviewer | undefined {
@@ -28,45 +37,61 @@ function reviewerFrom(user: ActionEvent["user"] | undefined): Reviewer | undefin
 
 async function handleAction(event: ActionEvent, inbox: HitlInbox): Promise<void> {
   const requestId = event.value;
-  if (!requestId) return;
+  const actionId = parseActionButtonId(event.actionId);
+  if (!requestId || !actionId) return;
   const by = reviewerFrom(event.user);
-
-  if (event.actionId === ACTION_DENY) {
-    await inbox.deny(requestId, { by });
-    return;
-  }
-
-  // Approve: collect feedback through a modal when the approval has fields
-  // (chat cards cannot hold inline inputs), otherwise resolve immediately.
   const record = await inbox.get(requestId);
-  const fields = record?.fields ?? {};
+  const actions = record?.actions ?? [{ id: "submit" }];
+  const def = actionById(actions, actionId);
+  if (!def) return;
+
+  const fields = actionFields(def);
   if (needsModal(fields)) {
-    await event.openModal(approvalModal(requestId, fields));
+    await event.openModal(actionModalFromRequest(requestId, actions, actionId));
     return;
   }
-  await inbox.approve(requestId, { by });
+  await inbox.resolve(requestId, { actionId, by });
 }
 
 async function handleModalSubmit(event: ModalSubmitEvent, inbox: HitlInbox): Promise<void> {
-  const requestId = parseRequestId(event.privateMetadata);
-  if (!requestId) return;
+  const parsed = parseModalMetadata(event.privateMetadata);
+  const actionId = parsed?.actionId ?? parseActionModalCallback(event.callbackId);
+  if (!parsed?.requestId || !actionId) return;
   const by = reviewerFrom(event.user);
 
-  const record = await inbox.get(requestId);
-  const fields = record?.fields ?? {};
+  const record = await inbox.get(parsed.requestId);
+  const actions = record?.actions ?? [{ id: "submit" }];
+  const def = actionById(actions, actionId);
+  if (!def) return;
+
+  const fields = actionFields(def);
   const feedbacks = parseModalValues(fields, event.values);
-  await inbox.approve(requestId, {
+
+  await inbox.resolve(parsed.requestId, {
+    actionId,
     feedbacks: Object.keys(feedbacks).length > 0 ? feedbacks : undefined,
     by,
   });
 }
 
-function parseRequestId(privateMetadata: string | undefined): string | undefined {
+function parseModalMetadata(
+  privateMetadata: string | undefined,
+): { requestId?: string; actionId?: string } | undefined {
   if (!privateMetadata) return undefined;
   try {
-    const parsed = JSON.parse(privateMetadata) as { requestId?: string };
-    return parsed.requestId;
+    const parsed = JSON.parse(privateMetadata) as {
+      requestId?: string;
+      actionId?: string;
+      action?: string;
+    };
+    return {
+      requestId: parsed.requestId,
+      actionId: parsed.actionId ?? parsed.action,
+    };
   } catch {
     return undefined;
   }
 }
+
+// Re-export for tests that import modal callback helpers.
+export { actionModalCallback };

@@ -1,6 +1,6 @@
 import type {
-  ApprovalRequest,
-  ApprovalResult,
+  HumanRequest,
+  HumanResult,
   HitlInbox,
   HitlAdapter,
   Notification,
@@ -8,10 +8,10 @@ import type {
 import type { Chat, SentMessage } from "chat";
 import { registerHitlHandlers } from "./actions";
 import { encodeExternalId, threadRef } from "./external-id";
-import { approvalCard, resultCard } from "./render";
+import { humanRequestCard, resultCard } from "./render";
 
 export interface ChatHitlOptions {
-  /** Adapter id, the routing key used by `waitForApproval({ channel })`. */
+  /** Adapter id, the routing key used by `waitForHuman({ channel })`. */
   id: string;
   /** The shared Chat SDK instance that owns the webhooks and handler registry. */
   bot: Chat;
@@ -24,22 +24,8 @@ export interface ChatHitlOptions {
   inbox: () => HitlInbox;
 }
 
-/**
- * A hitldev channel adapter backed by the Vercel Chat SDK. One adapter delivers
- * approvals to Slack, Teams, Discord and every other Chat SDK platform, with the
- * SDK owning webhook verification, payload parsing, and native card rendering.
- *
- * Feedback fields are collected through a modal opened on the approve click
- * (Chat SDK cards cannot hold inline text inputs). Batches have no dedicated UI
- * here — without `sendBatch`, the core delivers each item on its own, so every
- * item goes through the same card + modal flow.
- */
 export function chatHitl(options: ChatHitlOptions): HitlAdapter {
   const { bot, channel } = options;
-  // update() receives only the externalId, but Chat SDK edits need the original
-  // SentMessage handle — keep it (and the message text the result card reuses)
-  // in memory. A process restart loses the map; update then no-ops, matching the
-  // existing platform adapters.
   const sent = new Map<string, { handle: SentMessage; message: string }>();
 
   registerHitlHandlers(bot, options.inbox);
@@ -47,14 +33,14 @@ export function chatHitl(options: ChatHitlOptions): HitlAdapter {
   return {
     id: options.id,
 
-    async send(request: ApprovalRequest): Promise<{ externalId: string }> {
-      const handle = await bot.channel(channel).post(approvalCard(request));
+    async send(request: HumanRequest): Promise<{ externalId: string }> {
+      const handle = await bot.channel(channel).post(humanRequestCard(request));
       const externalId = encodeExternalId(channel, handle.id);
       sent.set(externalId, { handle, message: request.message });
       return { externalId };
     },
 
-    async update(externalId: string, result: ApprovalResult): Promise<void> {
+    async update(externalId: string, result: HumanResult): Promise<void> {
       const entry = sent.get(externalId);
       if (!entry) return;
       await entry.handle.edit(resultCard(entry.message, result));
@@ -62,8 +48,8 @@ export function chatHitl(options: ChatHitlOptions): HitlAdapter {
     },
 
     async notify(notification: Notification): Promise<void> {
-      if (notification.parentExternalId) {
-        await bot.thread(threadRef(notification.parentExternalId)).post(notification.message);
+      if (notification.threadRef) {
+        await bot.thread(threadRef(notification.threadRef)).post(notification.message);
         return;
       }
       await bot.channel(channel).post(notification.message);

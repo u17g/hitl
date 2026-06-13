@@ -1,30 +1,23 @@
-import { field, type ApprovalRequest, type ApprovalResult } from "hitl";
+import { field, humanActions, type HumanRequest, type HumanResult } from "hitl";
 import { toCardElement, toModalElement } from "chat";
 import { describe, expect, it } from "vitest";
-import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";
-import { approvalCard, approvalModal, outcomeLine, resultCard } from "./render";
+import { actionButtonId, actionModalCallback } from "./constants";
+import { humanRequestCard, actionModal, outcomeLine, resultCard } from "./render";
 
-// Test list:
-// - approvalCard: message text + Approve/Deny buttons carrying the requestId as value
-// - approvalModal: modal callbackId + privateMetadata{requestId} + one input per field,
-//   with text/textarea -> text_input, select -> select, confirm -> radio_select(yes/no)
-// - resultCard: message + outcome line, no action buttons
-// - outcomeLine: per result type, includes reviewer name
-
-const request: ApprovalRequest = {
+const request: HumanRequest = {
   id: "req-1",
   channel: "approvals",
   message: "Inbound lead: a@b.com",
-  fields: {},
+  actions: humanActions().submit({ label: "Approve" }).deny({ label: "Deny" }).build(),
 };
 
 function actionsOf(card: ReturnType<typeof toCardElement>) {
   return card?.children.find((c) => c.type === "actions");
 }
 
-describe("approvalCard", () => {
-  it("renders the message and Approve/Deny buttons carrying the requestId", () => {
-    const card = toCardElement(approvalCard(request));
+describe("humanRequestCard", () => {
+  it("renders the message and Submit/Deny buttons carrying the requestId", () => {
+    const card = toCardElement(humanRequestCard(request));
     expect(card?.type).toBe("card");
     expect(card?.children).toContainEqual({ type: "text", content: request.message });
 
@@ -32,15 +25,25 @@ describe("approvalCard", () => {
     expect(actions).toBeDefined();
     const buttons = actions?.type === "actions" ? actions.children : [];
     expect(buttons).toContainEqual(
-      expect.objectContaining({ type: "button", id: ACTION_APPROVE, value: "req-1", style: "primary" }),
+      expect.objectContaining({
+        type: "button",
+        id: actionButtonId("submit"),
+        value: "req-1",
+        style: "primary",
+      }),
     );
     expect(buttons).toContainEqual(
-      expect.objectContaining({ type: "button", id: ACTION_DENY, value: "req-1", style: "danger" }),
+      expect.objectContaining({
+        type: "button",
+        id: actionButtonId("deny"),
+        value: "req-1",
+        style: "danger",
+      }),
     );
   });
 });
 
-describe("approvalModal", () => {
+describe("actionModal", () => {
   const fields = {
     subject: field.textField({ label: "Subject", default: "Hi" }),
     body: field.textArea({ label: "Body" }),
@@ -49,14 +52,14 @@ describe("approvalModal", () => {
   };
 
   it("carries the callbackId and requestId in privateMetadata", () => {
-    const modal = toModalElement(approvalModal("req-1", fields));
+    const modal = toModalElement(actionModal("req-1", "submit", fields));
     expect(modal?.type).toBe("modal");
-    expect(modal?.callbackId).toBe(MODAL_CALLBACK);
-    expect(modal?.privateMetadata).toBe(JSON.stringify({ requestId: "req-1" }));
+    expect(modal?.callbackId).toBe(actionModalCallback("submit"));
+    expect(modal?.privateMetadata).toBe(JSON.stringify({ requestId: "req-1", actionId: "submit" }));
   });
 
   it("renders one input per field, mapped by kind and keyed by field name", () => {
-    const modal = toModalElement(approvalModal("req-1", fields));
+    const modal = toModalElement(actionModal("req-1", "submit", fields));
     const children = modal?.children ?? [];
 
     expect(children).toContainEqual(
@@ -91,7 +94,13 @@ describe("approvalModal", () => {
 
 describe("resultCard", () => {
   it("shows the message and the outcome, with no action buttons", () => {
-    const result: ApprovalResult = { type: "APPROVED", id: "req-1", by: { name: "Ryo" } };
+    const result: HumanResult = {
+      type: "RESOLVED",
+      actionId: "submit",
+      id: "req-1",
+      by: { name: "Ryo" },
+      feedbacks: {},
+    };
     const card = toCardElement(resultCard(request.message, result));
     expect(card?.children).toContainEqual({ type: "text", content: request.message });
     expect(actionsOf(card)).toBeUndefined();
@@ -101,9 +110,32 @@ describe("resultCard", () => {
 
 describe("outcomeLine", () => {
   it("describes each result type", () => {
-    expect(outcomeLine({ type: "APPROVED", id: "1", by: { name: "Ryo" } })).toBe("Approved by Ryo");
-    expect(outcomeLine({ type: "REVIEWED", id: "1", feedbacks: {} })).toBe("Approved with edits");
-    expect(outcomeLine({ type: "DENIED", id: "1", reason: "nope" })).toBe("Denied — nope");
+    expect(
+      outcomeLine({
+        type: "RESOLVED",
+        actionId: "submit",
+        id: "1",
+        by: { name: "Ryo" },
+        feedbacks: {},
+      }),
+    ).toBe("Approved by Ryo");
+    expect(
+      outcomeLine({
+        type: "RESOLVED",
+        actionId: "submit",
+        id: "1",
+        edited: true,
+        feedbacks: {},
+      }),
+    ).toBe("Approved with edits");
+    expect(
+      outcomeLine({
+        type: "RESOLVED",
+        actionId: "deny",
+        id: "1",
+        feedbacks: { reason: "nope" },
+      }),
+    ).toBe("Denied — nope");
     expect(outcomeLine({ type: "TIMED_OUT", id: "1" })).toBe("Timed out");
   });
 });
