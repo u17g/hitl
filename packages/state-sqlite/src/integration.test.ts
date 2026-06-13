@@ -14,10 +14,10 @@ function jsonPlugin(id: string): HitlPlugin {
   };
 }
 
-describe("createHitl with SqliteState", () => {
+describe("Hitl with SqliteState", () => {
   it("persists the approve round-trip in sqlite", async () => {
     const db = new DatabaseSync(":memory:");
-    const { app, client } = createTestHitl({
+    const { hitl, client } = createTestHitl({
       state: new SqliteState(db),
       plugins: [jsonPlugin("a")],
     });
@@ -27,15 +27,15 @@ describe("createHitl with SqliteState", () => {
       fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
     });
     const requestId = await vi.waitFor(async () => {
-      const [record] = await app.state.list({ status: "pending" });
+      const [record] = await hitl.state.list({ status: "pending" });
       expect(record).toBeTruthy();
       return record!.id;
     });
 
-    const pending = await app.inbox.list({ status: "pending" });
+    const pending = await hitl.inbox.list({ status: "pending" });
     expect(pending.map((a) => a.id)).toEqual([requestId]);
 
-    await app.inbox.approve(requestId);
+    await hitl.inbox.approve(requestId);
     expect(await promise).toMatchObject({ type: "APPROVED", id: requestId });
 
     const fresh = new SqliteState(db);

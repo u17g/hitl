@@ -12,7 +12,7 @@ export interface BatchDecision {
 
 /**
  * Programmatic inbox API: read approval state and resolve approvals from your
- * own server code. `createHitl(...)` exposes one as `hitl.inbox` — build your
+ * own server code. `new Hitl(...)` exposes one as `hitl.inbox` — build your
  * own HTTP handlers (or wire the Chat SDK bot) on top of these methods.
  */
 export interface HitlInbox {

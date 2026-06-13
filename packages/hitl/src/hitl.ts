@@ -18,7 +18,7 @@ import { createInbox, type HitlInbox } from "./inbox";
 import { defaultInMemoryState, type State } from "./state";
 import type { HitlPlugin } from "./types";
 
-export interface CreateHitlOptions {
+export interface HitlOptions {
   /**
    * Channel plugins (Slack, Teams, …). Optional: the built-in web inbox channel
    * is always included, so workflows can deliver to the inbox and `hitl.inbox`
@@ -37,23 +37,23 @@ export interface CreateHitlOptions {
   secret?: string;
 }
 
-export interface HitlApp {
+export interface HitlInstance {
   /** Fetch-style handler at the core of every adapter. Mount under `/.well-known/hitldev/v1` (or any base path). */
   fetch(req: Request): Promise<Response>;
   /** Node/Express-style handler. */
   handler(req: IncomingMessage, res: ServerResponse): Promise<void>;
   /** Next.js route handlers: `export const { POST } = hitl.routeHandlers`. */
-  routeHandlers: {
+  readonly routeHandlers: {
     POST(req: Request): Promise<Response>;
   };
-  runtime: HitlRuntime;
-  state: State;
-  plugins: HitlPlugin[];
+  readonly runtime: HitlRuntime;
+  readonly state: State;
+  readonly plugins: HitlPlugin[];
   /** Programmatic inbox: read state and resolve approvals from your own handlers. */
-  inbox: HitlInbox;
+  readonly inbox: HitlInbox;
 }
 
-export function createHitlRuntime(options: CreateHitlOptions): HitlRuntime {
+function buildRuntime(options: HitlOptions): HitlRuntime {
   const configured = options.plugins ?? [];
   // The web inbox is always available as a channel, unless the app already
   // registered one under its id; configured channels take precedence as default.
@@ -67,12 +67,8 @@ export function createHitlRuntime(options: CreateHitlOptions): HitlRuntime {
   };
 }
 
-export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string }): HitlApp {
-  const { state, plugins } = runtime;
-  const inbox = createInbox(runtime);
-  const secret = options?.secret ?? process.env.HITLDEV_SECRET;
-
-  const fetchHandler = async (req: Request): Promise<Response> => {
+function createFetchHandler(runtime: HitlRuntime, secret?: string): HitlInstance["fetch"] {
+  return async (req: Request): Promise<Response> => {
     if (req.method !== "POST") {
       return json({ error: "Method not allowed" }, 405);
     }
@@ -86,20 +82,28 @@ export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string 
     }
     return handleInternalApi(runtime, req, route);
   };
-
-  return {
-    fetch: fetchHandler,
-    routeHandlers: { POST: fetchHandler },
-    handler: (req, res) => nodeHandler(fetchHandler, req, res),
-    runtime,
-    state,
-    plugins,
-    inbox,
-  };
 }
 
-export function createHitl(options: CreateHitlOptions): HitlApp {
-  return createHitlApp(createHitlRuntime(options), { secret: options.secret });
+export class Hitl implements HitlInstance {
+  readonly runtime: HitlRuntime;
+  readonly state: State;
+  readonly plugins: HitlPlugin[];
+  readonly inbox: HitlInbox;
+  readonly routeHandlers: HitlInstance["routeHandlers"];
+  readonly fetch: HitlInstance["fetch"];
+  readonly handler: HitlInstance["handler"];
+
+  constructor(options: HitlOptions) {
+    this.runtime = buildRuntime(options);
+    this.state = this.runtime.state;
+    this.plugins = this.runtime.plugins;
+    this.inbox = createInbox(this.runtime);
+    const secret = options.secret ?? process.env.HITLDEV_SECRET;
+    const fetchHandler = createFetchHandler(this.runtime, secret);
+    this.fetch = fetchHandler;
+    this.routeHandlers = { POST: fetchHandler };
+    this.handler = (req, res) => nodeHandler(fetchHandler, req, res);
+  }
 }
 
 type InternalRoute =

@@ -88,7 +88,7 @@ Wire the server once:
 
 ```ts
 // lib/hitl.ts — the server: state + channel plugin, mounted as route handlers.
-import { createHitl } from "hitl";
+import { Hitl } from "hitl";
 import { chatHitl } from "@hitl/adapter-chat-sdk";
 import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { Chat } from "chat";
@@ -102,11 +102,11 @@ const bot = new Chat({
   state: createRedisState(),            // any Chat SDK state adapter
 });
 
-export const hitl = createHitl({
+export const hitl = new Hitl({
   resolver: workflowResolver(),         // resumes the suspended workflow when a callback lands
   secret: process.env.HITLDEV_SECRET,   // bearer shared with the workflow client (optional in local dev)
   plugins: [
-    // `channel` is a Chat SDK channel ref; `inbox` is lazy because createHitl
+    // `channel` is a Chat SDK channel ref; `inbox` is lazy because `new Hitl()`
     // needs the plugins before hitl.inbox exists.
     chatHitl({ id: "lead-approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
     chatHitl({ id: "teams-approvals", bot, channel: "teams:19:...", inbox: () => hitl.inbox }),
@@ -235,7 +235,7 @@ await notify({ message: string, parent?: string, channel?: string });
 
 ### Plugin interface
 
-Workflow code declares intent; a plugin — instantiated in `createHitl`, never imported by workflow code — owns rendering and delivery. With the Chat SDK plugin, receiving interactivity is owned by the Chat SDK bot, which resolves via `hitl.inbox` (see [Receiving interactivity](#receiving-interactivity-existing-bots) below).
+Workflow code declares intent; a plugin — instantiated in `new Hitl()`, never imported by workflow code — owns rendering and delivery. With the Chat SDK plugin, receiving interactivity is owned by the Chat SDK bot, which resolves via `hitl.inbox` (see [Receiving interactivity](#receiving-interactivity-existing-bots) below).
 
 ```ts
 interface HitlPlugin {
@@ -267,12 +267,12 @@ Official plugin:
 <a id="receiving-interactivity-existing-bots"></a>
 **Receiving interactivity (the Chat SDK bot).** Each platform exposes a single interactivity endpoint; the Chat SDK `bot` owns it through `bot.webhooks.<adapter>`, handling signature verification (Slack HMAC, Teams JWT, Discord Ed25519) and payload parsing for every platform. `chatHitl` registers approve/deny and modal handlers on that bot which resolve through the framework-agnostic `hitl.inbox` (`approve` / `deny` / `submitBatch`). hitldev's own handler is just the internal workflow API, so it co-hosts inside your existing server alongside your inbox and webhook routes — one process, one port.
 
-### `createHitl` (server side)
+### `Hitl` (server side)
 
 The server. Takes plugins, a state backend, and a resolver; returns mountable handlers:
 
 ```ts
-const hitl = createHitl({ resolver, state, plugins: [...], secret });
+const hitl = new Hitl({ resolver, state, plugins: [...], secret });
 
 hitl.fetch             // fetch-style handler — mount under any base path
 hitl.handler           // Node/Express-style handler
@@ -281,7 +281,7 @@ hitl.inbox             // programmatic inbox: list / get / approve / deny / subm
 hitl.runtime / hitl.state / hitl.plugins   // explicit access (advanced)
 ```
 
-`plugins` is optional — the web inbox channel is always included, so it adds Slack/Teams/Discord on top (the first entry is the default delivery channel). `state` defaults to one in-memory state per process; `secret` defaults to `process.env.HITLDEV_SECRET`. Lower-level building blocks: `createHitlRuntime` and `createHitlApp`.
+`plugins` is optional — the web inbox channel is always included, so it adds Slack/Teams/Discord on top (the first entry is the default delivery channel). `state` defaults to one in-memory state per process; `secret` defaults to `process.env.HITLDEV_SECRET`.
 
 `hitl.inbox` is how you drive an approval UI from your own handlers — `await hitl.inbox.list({ status: "pending" })`, `await hitl.inbox.approve(id, { by })`, `.deny(id, { reason })`, `.submitBatch(batchId, decisions)`. Build your own HTTP routes (see the hello-world example's `/api/inbox`) or wire the Chat SDK bot; hitldev does not expose inbox read/write over `.well-known`.
 
@@ -333,7 +333,7 @@ What hitldev **owns** (all thin, bounded pieces):
 
 | Piece | What it is |
 |---|---|
-| Server (`createHitl`) | The `.well-known/hitldev/v1` internal API: request creation, timeout/remind. Owns the state backend and plugins; inbox via `hitl.inbox` |
+| Server (`Hitl`) | The `.well-known/hitldev/v1` internal API: request creation, timeout/remind. Owns the state backend and plugins; inbox via `hitl.inbox` |
 | Workflow client (`createHitlClient` / `workflowHitl`) | `waitForApproval` / `waitForBatchApprovals` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
 | Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
 | Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed plugin that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
@@ -366,18 +366,18 @@ All state and plugin IO lives on the server, so the workflow side never runs arb
 
 The architecture is split along that contract:
 
-- **Core (engine-agnostic):** the approval state, field builders, `ApprovalResult` typing and validation, the plugin interface, the server services (`createApprovalRequest`, `resolveApproval`, `timeoutApproval`, …) and HTTP layer (`createHitl`), and the workflow-side client (`createHitlClient`) that drives the reminder/timeout loop and talks to the server. The bulk of the code; knows nothing about engines.
-- **Binding (per engine, thin):** two small interfaces. `WorkflowPrimitives` (`suspend` / `sleep` / `request`) is injected into `createHitlClient` on the workflow side; `HitlResolver` (`resolve`) is passed to `createHitl` on the server side. For WDK: a hook for `suspend`, `sleep` for the timer, your `"use step"` `fetch` for `request`, and `resumeHook` for `resolve`. `@hitl/resolver-workflow-sdk` packages this as `workflowHitl()` + `workflowResolver()`.
+- **Core (engine-agnostic):** the approval state, field builders, `ApprovalResult` typing and validation, the plugin interface, the server services (`createApprovalRequest`, `resolveApproval`, `timeoutApproval`, …) and HTTP layer (`Hitl`), and the workflow-side client (`createHitlClient`) that drives the reminder/timeout loop and talks to the server. The bulk of the code; knows nothing about engines.
+- **Binding (per engine, thin):** two small interfaces. `WorkflowPrimitives` (`suspend` / `sleep` / `request`) is injected into `createHitlClient` on the workflow side; `HitlResolver` (`resolve`) is passed to `new Hitl()` on the server side. For WDK: a hook for `suspend`, `sleep` for the timer, your `"use step"` `fetch` for `request`, and `resumeHook` for `resolve`. `@hitl/resolver-workflow-sdk` packages this as `workflowHitl()` + `workflowResolver()`.
 
 The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back.
 
-Switching engines means switching one import (`@hitl/resolver-workflow-sdk` → `@hitl/resolver-temporal-sdk`) and the `resolver` entry in `createHitl`. Plugins, the approval state, the inbox, the workflow client — all shared. Today ships the Workflow DevKit binding (`@hitl/resolver-workflow-sdk`) only; the interfaces exist from day one so the others stay an honest estimate of 50–100 lines each.
+Switching engines means switching one import (`@hitl/resolver-workflow-sdk` → `@hitl/resolver-temporal-sdk`) and the `resolver` entry in `new Hitl()`. Plugins, the approval state, the inbox, the workflow client — all shared. Today ships the Workflow DevKit binding (`@hitl/resolver-workflow-sdk`) only; the interfaces exist from day one so the others stay an honest estimate of 50–100 lines each.
 
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
 - **Environment:** set `HITLDEV_SECRET` to the same value for the server and the workflow client — it authenticates the internal `.well-known/hitldev/v1` API. Without it the API is open (and logs a warning), which is fine for local dev. Set `HITLDEV_URL` if the server's base URL isn't the deployment's own URL (`workflowHitl` reads it from the run metadata by default).
-- hitldev needs a state backend for approvals, held by the **server** (`createHitl`). It defaults to one in-memory state per process; pass a `@hitl/state-pg` or `@hitl/state-sqlite` implementation for persistence and to share state across server instances.
+- hitldev needs a state backend for approvals, held by the **server** (`new Hitl()`). It defaults to one in-memory state per process; pass a `@hitl/state-pg` or `@hitl/state-sqlite` implementation for persistence and to share state across server instances.
 - **Custom `State` implementations:** beyond the single-approval methods, a state backend implements `findByToken` (idempotent request creation keys on the resume token) and the batch methods (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) — two extra columns plus a companion `<table>_batches` table in the SQL schema, applied automatically by the bundled backends. `describeStateContract` from `hitl/state-contract` covers the expected behavior.
 - **SQLite** — schema is created automatically in the constructor; no extra step:
 
@@ -427,7 +427,7 @@ Batches (`waitForBatchApprovals`) are delivered per item (one approval card each
 
 | Package | Contents |
 |---|---|
-| `hitl` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, always-on web inbox + `hitl.inbox`, inbox + internal API, `State` interface + `InMemoryState`, `hitl/testing` |
+| `hitl` | Core: `Hitl` (server) + `createHitlClient` (workflow), `field.*` field builders, always-on web inbox + `hitl.inbox`, inbox + internal API, `State` interface + `InMemoryState`, `hitl/testing` |
 | `@hitl/resolver-workflow-sdk` | `workflowHitl()` (workflow client) + `workflowResolver()` (server) — Workflow DevKit engine binding |
 | `@hitl/state-pg` | `PostgresState` — bring your own pg-compatible pool |
 | `@hitl/state-sqlite` | `SqliteState` — `node:sqlite`, zero dependencies |
@@ -450,7 +450,7 @@ Batches (`waitForBatchApprovals`) are delivered per item (one approval card each
 examples/
   hello-world/      # Next.js + Workflow DevKit + web inbox minimal example
 packages/
-  hitl/             # hitl (core: createHitl, createHitlClient, field builders, web inbox + hitl.inbox)
+  hitl/             # hitl (core: Hitl, createHitlClient, field builders, web inbox + hitl.inbox)
   resolver-workflow-sdk/  # @hitl/resolver-workflow-sdk (Workflow DevKit binding: workflowHitl + workflowResolver)
   state-pg/               # @hitl/state-pg (PostgresState)
   state-sqlite/           # @hitl/state-sqlite (SqliteState on node:sqlite)

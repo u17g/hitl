@@ -11,7 +11,7 @@ const wired = new WeakSet<object>();
 /**
  * Wire approve/deny clicks and modal submits on a Chat instance to the inbox.
  * The inbox is resolved lazily so it can be created after the plugins (which
- * `createHitl` requires up front). Idempotent per bot.
+ * `new Hitl()` requires up front). Idempotent per bot.
  */
 export function registerHitlHandlers(bot: Chat, getInbox: () => HitlInbox): void {
   if (wired.has(bot)) return;

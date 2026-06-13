@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { HitlResolver, HitlSuspension } from "./binding";
 import { createHitlClient, type HitlClient } from "./client";
 import { resolveApproval, resolveBatchApproval } from "./core";
-import { createHitl, type HitlApp } from "./create-hitl";
+import { Hitl, type HitlInstance } from "./hitl";
 import { field } from "./fields";
 import { InMemoryState } from "./state";
 import type {
@@ -110,7 +110,7 @@ function fakePlugin(id: string, opts?: { batch?: boolean }): FakePlugin {
 function makeHarness(opts?: { pluginIds?: string[]; secret?: string; clientSecret?: string }) {
   const engine = new FakeEngine();
   const plugins = (opts?.pluginIds ?? ["a"]).map((id) => fakePlugin(id));
-  const app: HitlApp = createHitl({
+  const hitl: HitlInstance = new Hitl({
     plugins,
     state: new InMemoryState(),
     resolver: engine.resolver,
@@ -122,7 +122,7 @@ function makeHarness(opts?: { pluginIds?: string[]; secret?: string; clientSecre
     sleep: (ms) => engine.sleep(ms),
     async request(req) {
       requestCalls.push(req);
-      const res = await app.fetch(
+      const res = await hitl.fetch(
         new Request(req.url, { method: req.method, headers: req.headers, body: req.body }),
       );
       return { status: res.status, ok: res.ok, body: await res.text() };
@@ -130,7 +130,7 @@ function makeHarness(opts?: { pluginIds?: string[]; secret?: string; clientSecre
     url: "http://hitl.test",
     secret: opts?.clientSecret,
   });
-  return { engine, plugins, app, client, requestCalls };
+  return { engine, plugins, hitl, client, requestCalls };
 }
 
 const fields = {
@@ -140,7 +140,7 @@ const fields = {
 
 describe("waitForApproval", () => {
   it("POSTs the resume token to /requests and resolves on callback", async () => {
-    const { plugins, app, client, requestCalls } = makeHarness();
+    const { plugins, hitl, client, requestCalls } = makeHarness();
 
     const pending = client.waitForApproval({ message: "Approve?", fields });
     await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
@@ -150,7 +150,7 @@ describe("waitForApproval", () => {
     expect(sentBody.token).toBe("tok_1");
 
     const requestId = plugins[0]!.sent[0]!.id;
-    const result = await resolveApproval(app.runtime, {
+    const result = await resolveApproval(hitl.runtime, {
       requestId,
       decision: "approve",
       by: { name: "ryosuke" },
@@ -161,12 +161,12 @@ describe("waitForApproval", () => {
   });
 
   it("typed feedbacks flow back on REVIEWED", async () => {
-    const { plugins, app, client } = makeHarness();
+    const { plugins, hitl, client } = makeHarness();
 
     const pending = client.waitForApproval({ message: "m", fields });
     await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
 
-    await resolveApproval(app.runtime, {
+    await resolveApproval(hitl.runtime, {
       requestId: plugins[0]!.sent[0]!.id,
       decision: "approve",
       feedbacks: { subject: "Edited", body: "Hello there" },
@@ -180,7 +180,7 @@ describe("waitForApproval", () => {
   });
 
   it("sends the bearer secret with every API call", async () => {
-    const { plugins, app, client, requestCalls } = makeHarness({
+    const { plugins, hitl, client, requestCalls } = makeHarness({
       secret: "s3cret",
       clientSecret: "s3cret",
     });
@@ -190,7 +190,7 @@ describe("waitForApproval", () => {
 
     expect(requestCalls[0]!.headers.authorization).toBe("Bearer s3cret");
 
-    await resolveApproval(app.runtime, {
+    await resolveApproval(hitl.runtime, {
       requestId: plugins[0]!.sent[0]!.id,
       decision: "approve",
     });
@@ -203,24 +203,24 @@ describe("waitForApproval", () => {
   });
 
   it("resolves as TIMED_OUT when the timeout elapses first", async () => {
-    const { engine, plugins, app, client } = makeHarness();
+    const { engine, plugins, hitl, client } = makeHarness();
     engine.autoResolveSleep();
 
     const result = await client.waitForApproval({ message: "m", timeout: "72h" });
 
     expect(engine.sleepCalls).toEqual([72 * 60 * 60 * 1000]);
     expect(result.type).toBe("TIMED_OUT");
-    expect((await app.state.get(result.id))?.status).toBe("resolved");
+    expect((await hitl.state.get(result.id))?.status).toBe("resolved");
     expect(plugins[0]!.updates).toEqual([[`ext_${result.id}`, result]]);
   });
 
   it("returns the callback result when it wins the race against the timeout", async () => {
-    const { engine, plugins, app, client } = makeHarness();
+    const { engine, plugins, hitl, client } = makeHarness();
 
     const pending = client.waitForApproval({ message: "m", timeout: "72h" });
     await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
 
-    const result = await resolveApproval(app.runtime, {
+    const result = await resolveApproval(hitl.runtime, {
       requestId: plugins[0]!.sent[0]!.id,
       decision: "approve",
     });
@@ -229,7 +229,7 @@ describe("waitForApproval", () => {
   });
 
   it("fires the remind endpoint when the timer elapses while pending", async () => {
-    const { engine, plugins, app, client } = makeHarness();
+    const { engine, plugins, hitl, client } = makeHarness();
 
     const pending = client.waitForApproval({
       message: "Approve?",
@@ -249,19 +249,19 @@ describe("waitForApproval", () => {
       parentExternalId: `ext_${requestId}`,
     });
 
-    await resolveApproval(app.runtime, { requestId, decision: "approve" });
+    await resolveApproval(hitl.runtime, { requestId, decision: "approve" });
     await pending;
   });
 
   it("skips the reminder server-side after the approval is resolved", async () => {
-    const { engine, plugins, app, client } = makeHarness();
+    const { engine, plugins, hitl, client } = makeHarness();
     const pending = client.waitForApproval({
       message: "m",
       reminder: [{ after: "1h", message: "ping" }],
     });
     await vi.waitFor(() => expect(plugins[0]!.sent).toHaveLength(1));
 
-    await resolveApproval(app.runtime, {
+    await resolveApproval(hitl.runtime, {
       requestId: plugins[0]!.sent[0]!.id,
       decision: "approve",
     });
@@ -285,7 +285,7 @@ describe("waitForApproval", () => {
   });
 
   it("fires same-time reminders in array order", async () => {
-    const { engine, plugins, app, client } = makeHarness({ pluginIds: ["a", "oncall"] });
+    const { engine, plugins, hitl, client } = makeHarness({ pluginIds: ["a", "oncall"] });
     const pending = client.waitForApproval({
       message: "m",
       reminder: [
@@ -300,7 +300,7 @@ describe("waitForApproval", () => {
     expect(plugins[0]!.notifications[0]?.message).toBe("first");
     expect(plugins[1]!.notifications[0]?.message).toBe("second");
 
-    await resolveApproval(app.runtime, {
+    await resolveApproval(hitl.runtime, {
       requestId: plugins[0]!.sent[0]!.id,
       decision: "approve",
     });
@@ -308,7 +308,7 @@ describe("waitForApproval", () => {
   });
 
   it("escalates with redeliver on the fallback channel", async () => {
-    const { engine, plugins, app, client } = makeHarness({ pluginIds: ["primary", "oncall"] });
+    const { engine, plugins, hitl, client } = makeHarness({ pluginIds: ["primary", "oncall"] });
     const pending = client.waitForApproval({
       message: "Escalate me",
       channel: "primary",
@@ -326,7 +326,7 @@ describe("waitForApproval", () => {
       message: "Escalate me",
     });
 
-    await resolveApproval(app.runtime, { requestId, decision: "approve" });
+    await resolveApproval(hitl.runtime, { requestId, decision: "approve" });
     await pending;
 
     expect(plugins[0]!.updates).toHaveLength(1);
@@ -336,7 +336,7 @@ describe("waitForApproval", () => {
 
 describe("waitForBatchApprovals", () => {
   it("creates one suspension per item and resolves in item order", async () => {
-    const { plugins, app, client, requestCalls } = makeHarness();
+    const { plugins, hitl, client, requestCalls } = makeHarness();
 
     const pending = client.waitForBatchApprovals({
       title: "Outbound emails",
@@ -355,7 +355,7 @@ describe("waitForBatchApprovals", () => {
     expect(body.items[0]!.fields.subject).toMatchObject({ default: "Hello ACME" });
 
     const batchId = plugins[0]!.sentBatches[0]!.batchId;
-    const results = await resolveBatchApproval(app.runtime, {
+    const results = await resolveBatchApproval(hitl.runtime, {
       batchId,
       decisions: [
         { requestId: `${batchId}:0`, decision: "approve" },
@@ -376,7 +376,7 @@ describe("waitForBatchApprovals", () => {
   });
 
   it("times out pending items and keeps resolved ones", async () => {
-    const { engine, plugins, app, client } = makeHarness();
+    const { engine, plugins, hitl, client } = makeHarness();
 
     const pending = client.waitForBatchApprovals({
       fields,
@@ -386,7 +386,7 @@ describe("waitForBatchApprovals", () => {
     await vi.waitFor(() => expect(plugins[0]!.sentBatches).toHaveLength(1));
     const batchId = plugins[0]!.sentBatches[0]!.batchId;
 
-    await resolveApproval(app.runtime, { requestId: `${batchId}:0`, decision: "approve" });
+    await resolveApproval(hitl.runtime, { requestId: `${batchId}:0`, decision: "approve" });
     engine.flushSleep();
 
     const results = await pending;
@@ -395,7 +395,7 @@ describe("waitForBatchApprovals", () => {
   });
 
   it("threads a reminder notify under the batch message", async () => {
-    const { engine, plugins, app, client } = makeHarness();
+    const { engine, plugins, hitl, client } = makeHarness();
 
     const pending = client.waitForBatchApprovals({
       fields,
@@ -414,7 +414,7 @@ describe("waitForBatchApprovals", () => {
       parentExternalId: `bext_${batchId}`,
     });
 
-    await resolveBatchApproval(app.runtime, {
+    await resolveBatchApproval(hitl.runtime, {
       batchId,
       decisions: [
         { requestId: `${batchId}:0`, decision: "approve" },

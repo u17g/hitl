@@ -1,6 +1,6 @@
 import type { HitlResolver, HitlSuspension } from "./binding";
 import { createHitlClient, type HitlClient } from "./client";
-import { createHitl, type HitlApp } from "./create-hitl";
+import { Hitl, type HitlInstance } from "./hitl";
 import type { State } from "./state";
 import type { HitlPlugin } from "./types";
 
@@ -12,9 +12,9 @@ export interface CreateTestHitlOptions {
 }
 
 export interface TestHitl {
-  /** The server, as `createHitl` builds it. */
-  app: HitlApp;
-  /** A workflow client whose fetch is wired straight into `app.fetch` — no network. */
+  /** The server instance built by `new Hitl()`. */
+  hitl: HitlInstance;
+  /** A workflow client whose fetch is wired straight into `hitl.fetch` — no network. */
   client: HitlClient;
   /** Resolves the next pending durable `sleep()` (drives timeout/reminder paths). */
   flushSleep(): void;
@@ -42,7 +42,7 @@ export function createTestHitl(options: CreateTestHitlOptions): TestHitl {
     },
   };
 
-  const app = createHitl({
+  const hitl = new Hitl({
     plugins: options.plugins,
     state: options.state,
     resolver,
@@ -64,7 +64,7 @@ export function createTestHitl(options: CreateTestHitlOptions): TestHitl {
       });
     },
     async request({ url, method, headers, body }) {
-      const res = await app.fetch(new Request(url, { method, headers, body }));
+      const res = await hitl.fetch(new Request(url, { method, headers, body }));
       return { status: res.status, ok: res.ok, body: await res.text() };
     },
     url: "http://hitl.test",
@@ -72,7 +72,7 @@ export function createTestHitl(options: CreateTestHitlOptions): TestHitl {
   });
 
   return {
-    app,
+    hitl,
     client,
     flushSleep: () => sleepResolvers.shift()?.(),
     sleepCalls,

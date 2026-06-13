@@ -2,7 +2,7 @@ import type { HitlResolver } from "hitl";
 
 /**
  * Server-side resolver for Workflow DevKit: resumes the hook a workflow
- * suspended on. Pass to `createHitl({ resolver: workflowResolver() })`.
+ * suspended on. Pass to `new Hitl({ resolver: workflowResolver() })`.
  * `workflow/api` is imported lazily so route modules stay light until a
  * callback actually resolves something.
  */

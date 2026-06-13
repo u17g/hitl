@@ -38,7 +38,7 @@ export class NotFoundError extends Error {
 
 export function pickPlugin(plugins: HitlPlugin[], channel?: string): HitlPlugin {
   if (plugins.length === 0) {
-    throw new Error("No hitldev plugins configured. Pass at least one to createHitl().");
+    throw new Error("No hitldev plugins configured. Pass at least one to new Hitl().");
   }
   if (channel === undefined) return plugins[0]!;
   const plugin = plugins.find((p) => p.id === channel);

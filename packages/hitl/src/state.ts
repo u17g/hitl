@@ -153,7 +153,7 @@ export class InMemoryState implements State {
 
 const processStateKey = Symbol.for("hitldev.inMemoryState");
 
-/** Default when `createHitl` gets no state: one in-memory state per process. */
+/** Default when `new Hitl()` gets no state: one in-memory state per process. */
 export function defaultInMemoryState(): InMemoryState {
   const g = globalThis as Record<symbol, InMemoryState | undefined>;
   g[processStateKey] ??= new InMemoryState();

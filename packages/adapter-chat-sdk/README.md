@@ -13,7 +13,7 @@ pnpm add @hitl/adapter-chat-sdk chat @chat-adapter/slack
 ## Usage
 
 ```ts
-import { createHitl } from "hitl";
+import { Hitl } from "hitl";
 import { chatHitl } from "@hitl/adapter-chat-sdk";
 import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { Chat } from "chat";
@@ -24,10 +24,10 @@ const bot = new Chat({
   state: createRedisState(), // any Chat SDK state adapter
 });
 
-export const hitl = createHitl({
+export const hitl = new Hitl({
   resolver: workflowResolver(),
   plugins: [
-    // `inbox` is lazy: createHitl needs the plugins before hitl.inbox exists.
+    // `inbox` is lazy: `new Hitl()` needs the plugins before hitl.inbox exists.
     chatHitl({ id: "approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
   ],
 });

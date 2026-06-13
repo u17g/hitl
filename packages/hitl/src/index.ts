@@ -8,8 +8,8 @@ export type {
   TextField,
 } from "./fields";
 
-export { createHitl, createHitlApp, createHitlRuntime } from "./create-hitl";
-export type { CreateHitlOptions, HitlApp } from "./create-hitl";
+export { Hitl } from "./hitl";
+export type { HitlOptions, HitlInstance } from "./hitl";
 
 export { createInbox } from "./inbox";
 export type { BatchDecision, HitlInbox } from "./inbox";

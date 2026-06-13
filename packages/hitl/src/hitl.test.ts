@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HitlResolver } from "./binding";
-import { createHitl } from "./create-hitl";
+import { Hitl } from "./hitl";
 import { field } from "./fields";
 import { InMemoryState } from "./state";
 import type {
@@ -68,22 +68,22 @@ function jsonPlugin(id: string): FakePlugin {
 function setup(opts?: { secret?: string; pluginIds?: string[] }) {
   const resolver = new FakeResolver();
   const plugins = (opts?.pluginIds ?? ["a", "b"]).map(jsonPlugin);
-  const app = createHitl({
+  const hitl = new Hitl({
     plugins,
     state: new InMemoryState(),
     resolver,
     secret: opts?.secret,
   });
-  return { resolver, plugins, app };
+  return { resolver, plugins, hitl };
 }
 
 function post(
-  app: ReturnType<typeof createHitl>,
+  hitl: Hitl,
   path: string,
   body: unknown,
   headers?: Record<string, string>,
 ): Promise<Response> {
-  return app.fetch(
+  return hitl.fetch(
     new Request(`${BASE}${path}`, {
       method: "POST",
       body: typeof body === "string" ? body : JSON.stringify(body),
@@ -94,14 +94,14 @@ function post(
 
 const fields = { subject: field.textField({ label: "Subject", default: "Hi" }) };
 
-async function createRequest(app: ReturnType<typeof createHitl>, token = "tok_1") {
-  const res = await post(app, "/requests", { token, message: "Approve?", fields });
+async function createRequest(hitl: Hitl, token = "tok_1") {
+  const res = await post(hitl, "/requests", { token, message: "Approve?", fields });
   expect(res.status).toBe(201);
   return ((await res.json()) as { id: string }).id;
 }
 
-async function createBatch(app: ReturnType<typeof createHitl>) {
-  const res = await post(app, "/batches", {
+async function createBatch(hitl: Hitl) {
+  const res = await post(hitl, "/batches", {
     title: "Outbound emails",
     fields,
     items: [
@@ -115,48 +115,48 @@ async function createBatch(app: ReturnType<typeof createHitl>) {
 
 describe("internal API: requests", () => {
   it("POST /requests creates and delivers an approval", async () => {
-    const { app, plugins } = setup();
+    const { hitl, plugins } = setup();
 
-    const id = await createRequest(app);
+    const id = await createRequest(hitl);
 
     expect(plugins[0]!.sent).toHaveLength(1);
     expect(plugins[0]!.sent[0]).toMatchObject({ id, message: "Approve?" });
-    const record = await app.state.get(id);
+    const record = await hitl.state.get(id);
     expect(record).toMatchObject({ token: "tok_1", status: "pending" });
   });
 
   it("is idempotent on the resume token", async () => {
-    const { app, plugins } = setup();
+    const { hitl, plugins } = setup();
 
-    const first = await createRequest(app);
-    const second = await createRequest(app);
+    const first = await createRequest(hitl);
+    const second = await createRequest(hitl);
 
     expect(second).toBe(first);
     expect(plugins[0]!.sent).toHaveLength(1);
   });
 
   it("POST /requests/:id/timeout resolves a pending approval", async () => {
-    const { app } = setup();
-    const id = await createRequest(app);
+    const { hitl } = setup();
+    const id = await createRequest(hitl);
 
-    const res = await post(app, `/requests/${id}/timeout`, {});
+    const res = await post(hitl, `/requests/${id}/timeout`, {});
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ result: { type: "TIMED_OUT", id } });
-    expect((await app.state.get(id))?.status).toBe("resolved");
+    expect((await hitl.state.get(id))?.status).toBe("resolved");
   });
 
   it("POST /requests/:id/timeout returns 404 for an unknown id", async () => {
-    const { app } = setup();
-    const res = await post(app, "/requests/missing/timeout", {});
+    const { hitl } = setup();
+    const res = await post(hitl, "/requests/missing/timeout", {});
     expect(res.status).toBe(404);
   });
 
   it("POST /requests/:id/remind sends a reminder while pending", async () => {
-    const { app, plugins } = setup();
-    const id = await createRequest(app);
+    const { hitl, plugins } = setup();
+    const id = await createRequest(hitl);
 
-    const res = await post(app, `/requests/${id}/remind`, {
+    const res = await post(hitl, `/requests/${id}/remind`, {
       kind: "remind",
       message: "Still waiting",
     });
@@ -167,31 +167,31 @@ describe("internal API: requests", () => {
   });
 
   it("returns 400 on malformed JSON", async () => {
-    const { app } = setup();
-    const res = await post(app, "/requests", "{nope");
+    const { hitl } = setup();
+    const res = await post(hitl, "/requests", "{nope");
     expect(res.status).toBe(400);
   });
 });
 
 describe("internal API: batches", () => {
   it("POST /batches creates and delivers a batch", async () => {
-    const { app, plugins } = setup();
+    const { hitl, plugins } = setup();
 
-    const { batchId, ids } = await createBatch(app);
+    const { batchId, ids } = await createBatch(hitl);
 
     expect(ids).toEqual([`${batchId}:0`, `${batchId}:1`]);
     expect(plugins[0]!.sentBatches).toHaveLength(1);
-    expect((await app.state.listByBatch(batchId)).map((r) => r.token)).toEqual([
+    expect((await hitl.state.listByBatch(batchId)).map((r) => r.token)).toEqual([
       "tok_0",
       "tok_1",
     ]);
   });
 
   it("POST /batches/:id/timeout resolves pending items", async () => {
-    const { app } = setup();
-    const { batchId } = await createBatch(app);
+    const { hitl } = setup();
+    const { batchId } = await createBatch(hitl);
 
-    const res = await post(app, `/batches/${batchId}/timeout`, {});
+    const res = await post(hitl, `/batches/${batchId}/timeout`, {});
 
     expect(res.status).toBe(200);
     const { results } = (await res.json()) as { results: { type: string }[] };
@@ -199,10 +199,10 @@ describe("internal API: batches", () => {
   });
 
   it("POST /batches/:id/remind reports pending state", async () => {
-    const { app, plugins } = setup();
-    const { batchId } = await createBatch(app);
+    const { hitl, plugins } = setup();
+    const { batchId } = await createBatch(hitl);
 
-    const res = await post(app, `/batches/${batchId}/remind`, { kind: "remind" });
+    const res = await post(hitl, `/batches/${batchId}/remind`, { kind: "remind" });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ pending: true });
@@ -212,9 +212,9 @@ describe("internal API: batches", () => {
 
 describe("internal API: notifications", () => {
   it("POST /notifications routes a notify", async () => {
-    const { app, plugins } = setup();
+    const { hitl, plugins } = setup();
 
-    const res = await post(app, "/notifications", { message: "progress", channel: "b" });
+    const res = await post(hitl, "/notifications", { message: "progress", channel: "b" });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
@@ -226,13 +226,13 @@ describe("internal API auth", () => {
   const auth = { authorization: "Bearer s3cret" };
 
   it("rejects a missing or wrong bearer with 401 when a secret is configured", async () => {
-    const { app } = setup({ secret: "s3cret" });
+    const { hitl } = setup({ secret: "s3cret" });
 
-    const missing = await post(app, "/requests", { token: "t", message: "m", fields: {} });
+    const missing = await post(hitl, "/requests", { token: "t", message: "m", fields: {} });
     expect(missing.status).toBe(401);
 
     const wrong = await post(
-      app,
+      hitl,
       "/requests",
       { token: "t", message: "m", fields: {} },
       { authorization: "Bearer nope" },
@@ -241,39 +241,39 @@ describe("internal API auth", () => {
   });
 
   it("accepts the matching bearer", async () => {
-    const { app } = setup({ secret: "s3cret" });
-    const res = await post(app, "/requests", { token: "t", message: "m", fields: {} }, auth);
+    const { hitl } = setup({ secret: "s3cret" });
+    const res = await post(hitl, "/requests", { token: "t", message: "m", fields: {} }, auth);
     expect(res.status).toBe(201);
   });
 });
 
 describe("non-internal routes are not served", () => {
   it("returns 404 for a POST that matches no internal route", async () => {
-    const { app, resolver } = setup();
-    await createRequest(app);
+    const { hitl, resolver } = setup();
+    await createRequest(hitl);
 
-    const res = await post(app, "/callback", { requestId: "x", decision: "approve" });
+    const res = await post(hitl, "/callback", { requestId: "x", decision: "approve" });
 
     expect(res.status).toBe(404);
     expect(resolver.resolved).toHaveLength(0);
   });
 
   it("returns 404 for inbox-style resolve paths — use hitl.inbox instead", async () => {
-    const { app, resolver } = setup();
-    const id = await createRequest(app);
+    const { hitl, resolver } = setup();
+    const id = await createRequest(hitl);
 
-    const resolve = await post(app, `/approvals/${id}`, { decision: "approve" });
+    const resolve = await post(hitl, `/approvals/${id}`, { decision: "approve" });
     expect(resolve.status).toBe(404);
     expect(resolver.resolved).toHaveLength(0);
   });
 
   it("returns 405 for inbox-style read paths", async () => {
-    const { app } = setup();
+    const { hitl } = setup();
 
-    const list = await app.fetch(new Request(`${BASE}/approvals`));
+    const list = await hitl.fetch(new Request(`${BASE}/approvals`));
     expect(list.status).toBe(405);
 
-    const one = await app.fetch(new Request(`${BASE}/approvals/some-id`));
+    const one = await hitl.fetch(new Request(`${BASE}/approvals/some-id`));
     expect(one.status).toBe(405);
   });
 });
@@ -281,77 +281,77 @@ describe("non-internal routes are not served", () => {
 describe("inbox facade", () => {
   it("defaults the channel to the built-in web inbox when no plugins are given", async () => {
     const resolver = new FakeResolver();
-    const app = createHitl({ resolver, state: new InMemoryState() });
-    expect(app.plugins.map((p) => p.id)).toEqual(["inbox"]);
+    const hitl = new Hitl({ resolver, state: new InMemoryState() });
+    expect(hitl.plugins.map((p) => p.id)).toEqual(["inbox"]);
 
-    const id = await createRequest(app);
-    const result = await app.inbox.approve(id);
+    const id = await createRequest(hitl);
+    const result = await hitl.inbox.approve(id);
 
     expect(result).toMatchObject({ type: "APPROVED", id });
     expect(resolver.resolved).toHaveLength(1);
   });
 
   it("always includes the web inbox channel alongside configured plugins", () => {
-    const { app } = setup({ pluginIds: ["lead-approvals"] });
-    expect(app.plugins.map((p) => p.id)).toEqual(["lead-approvals", "inbox"]);
+    const { hitl } = setup({ pluginIds: ["lead-approvals"] });
+    expect(hitl.plugins.map((p) => p.id)).toEqual(["lead-approvals", "inbox"]);
   });
 
   it("lists approvals, filterable by status", async () => {
-    const { app } = setup();
-    const id = await createRequest(app);
+    const { hitl } = setup();
+    const id = await createRequest(hitl);
 
-    const pending = (await app.inbox.list({ status: "pending" })).map((a) => a.id);
+    const pending = (await hitl.inbox.list({ status: "pending" })).map((a) => a.id);
     expect(pending).toEqual([id]);
 
-    await app.inbox.approve(id);
+    await hitl.inbox.approve(id);
 
-    const stillPending = await app.inbox.list({ status: "pending" });
+    const stillPending = await hitl.inbox.list({ status: "pending" });
     expect(stillPending).toEqual([]);
   });
 
   it("returns a batch with its items", async () => {
-    const { app } = setup();
-    const { batchId } = await createBatch(app);
+    const { hitl } = setup();
+    const { batchId } = await createBatch(hitl);
 
-    const result = await app.inbox.getBatch(batchId);
+    const result = await hitl.inbox.getBatch(batchId);
     expect(result?.batch).toMatchObject({ id: batchId, title: "Outbound emails" });
     expect(result?.items.map((i) => i.id)).toEqual([`${batchId}:0`, `${batchId}:1`]);
-    expect(await app.inbox.getBatch("nope")).toBeNull();
+    expect(await hitl.inbox.getBatch("nope")).toBeNull();
   });
 
   it("returns a single approval for lookups", async () => {
-    const { app } = setup();
-    const id = await createRequest(app);
+    const { hitl } = setup();
+    const id = await createRequest(hitl);
 
-    expect((await app.inbox.get(id))?.id).toBe(id);
-    expect(await app.inbox.get("nope")).toBeNull();
+    expect((await hitl.inbox.get(id))?.id).toBe(id);
+    expect(await hitl.inbox.get("nope")).toBeNull();
   });
 
-  it("app.inbox.approve resolves the approval and resumes the engine", async () => {
-    const { app, resolver } = setup();
-    const id = await createRequest(app);
+  it("hitl.inbox.approve resolves the approval and resumes the engine", async () => {
+    const { hitl, resolver } = setup();
+    const id = await createRequest(hitl);
 
-    const result = await app.inbox.approve(id, { by: { name: "u" } });
+    const result = await hitl.inbox.approve(id, { by: { name: "u" } });
 
     expect(result).toMatchObject({ type: "APPROVED", id });
     expect(resolver.resolved).toEqual([{ token: "tok_1", payload: result }]);
-    expect((await app.inbox.get(id))?.status).toBe("resolved");
+    expect((await hitl.inbox.get(id))?.status).toBe("resolved");
   });
 
-  it("app.inbox.deny resolves with a reason", async () => {
-    const { app } = setup();
-    const id = await createRequest(app);
+  it("hitl.inbox.deny resolves with a reason", async () => {
+    const { hitl } = setup();
+    const id = await createRequest(hitl);
 
-    const result = await app.inbox.deny(id, { reason: "spam" });
+    const result = await hitl.inbox.deny(id, { reason: "spam" });
 
     expect(result).toMatchObject({ type: "DENIED", reason: "spam" });
   });
 
-  it("app.inbox.submitBatch resolves every item", async () => {
-    const { app, resolver } = setup();
-    const { batchId } = await createBatch(app);
+  it("hitl.inbox.submitBatch resolves every item", async () => {
+    const { hitl, resolver } = setup();
+    const { batchId } = await createBatch(hitl);
 
-    const results = await app.inbox.submitBatch(
+    const results = await hitl.inbox.submitBatch(
       batchId,
       [
         { requestId: `${batchId}:0`, decision: "approve" },
@@ -365,19 +365,19 @@ describe("inbox facade", () => {
   });
 
   it("rejects invalid feedbacks", async () => {
-    const { app } = setup();
-    const id = await createRequest(app);
+    const { hitl } = setup();
+    const id = await createRequest(hitl);
 
     await expect(
-      app.inbox.approve(id, { feedbacks: { bogus: "x" } }),
+      hitl.inbox.approve(id, { feedbacks: { bogus: "x" } }),
     ).rejects.toThrow();
   });
 });
 
 describe("adapters", () => {
   it("routeHandlers delegate to fetch", async () => {
-    const { app } = setup();
-    const res = await app.routeHandlers.POST(
+    const { hitl } = setup();
+    const res = await hitl.routeHandlers.POST(
       new Request(`${BASE}/requests`, {
         method: "POST",
         body: JSON.stringify({ token: "t", message: "m", fields }),
@@ -388,7 +388,7 @@ describe("adapters", () => {
   });
 
   it("the Node handler bridges req/res", async () => {
-    const { app } = setup();
+    const { hitl } = setup();
 
     const chunks: Buffer[] = [];
     let statusCode = 0;
@@ -416,7 +416,7 @@ describe("adapters", () => {
       },
     };
 
-    await app.handler(req as never, res as never);
+    await hitl.handler(req as never, res as never);
     expect(statusCode).toBe(201);
     expect(ended).toBe(true);
     expect(JSON.parse(Buffer.concat(chunks).toString())).toHaveProperty("id");
