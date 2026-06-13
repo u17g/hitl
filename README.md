@@ -16,7 +16,7 @@ One `await`. The workflow suspends — for hours or days, at zero cost, survivin
 
 hitldev is **not an agent framework**. Bring your own — the [AI SDK](https://ai-sdk.dev), Mastra, or anything that runs inside a [Workflow DevKit](https://workflow-sdk.dev) workflow. hitldev does one thing: the human part.
 
-> **Status: early.** The core, the Workflow DevKit binding, the Slack / Teams / Discord / webui plugins, and the SQLite / Postgres stores are implemented and tested; the runnable [`examples/hello-world`](examples/hello-world) exercises the full approve loop. The API below is still pre-1.0 and may change.
+> **Status: early.** The core, the Workflow DevKit binding, the Slack / Teams / Discord channels and the built-in web inbox, and the SQLite / Postgres stores are implemented and tested; the runnable [`examples/hello-world`](examples/hello-world) exercises the full approve loop. The API below is still pre-1.0 and may change.
 
 ## Why
 
@@ -120,7 +120,7 @@ export const hitl = createHitl({
 });
 
 // Mount it under /.well-known/hitldev/v1 — serves channel callbacks (Slack interactivity,
-// Teams Bot Framework, Discord interactions), the internal workflow API, and the webui inbox:
+// Teams Bot Framework, Discord interactions), the internal workflow API, and the web inbox:
 // Next.js:  export const { GET, POST } = hitl.routeHandlers   // app/.well-known/hitldev/v1/[[...path]]/route.ts
 // Express:  app.use("/.well-known/hitldev/v1", hitl.handler)
 ```
@@ -270,9 +270,9 @@ Official plugins:
 | `slackHitl()` | `@hitldev/slack` | Block Kit message with input fields and approve/deny buttons |
 | `discordHitl()` | `@hitldev/discord` | Embed message with approve/deny buttons; feedback fields open in a Modal |
 | `teamsHitl()` | `@hitldev/teams` | Adaptive Card with input fields and approve/deny actions |
-| `webui()` | built into `hitldev` | Approval inbox (React components from `@hitldev/ui`) |
+| Web inbox | built into `hitldev` (always on) | No external service; read and resolve via `hitl.inbox` (React components from `@hitldev/ui`) |
 
-One package per channel — install only what you use. Writing your own plugin is implementing the interface above.
+One package per external channel — install only what you use. The web inbox is always present, so the table's first three are the only ones you register. Writing your own plugin is implementing the interface above.
 
 ### `createHitl` (server side)
 
@@ -284,16 +284,19 @@ const hitl = createHitl({ resolver, store, plugins: [...], secret });
 hitl.fetch             // fetch-style handler — mount under any base path
 hitl.handler           // Node/Express-style handler
 hitl.routeHandlers     // Next.js route handlers
+hitl.inbox             // programmatic inbox: list / get / approve / deny / submitBatch
 hitl.runtime / hitl.store / hitl.plugins   // explicit access (advanced)
 ```
 
-`store` defaults to one in-memory store per process; `secret` defaults to `process.env.HITLDEV_SECRET`. Lower-level building blocks: `createHitlRuntime` and `createHitlApp`.
+`plugins` is optional — the web inbox channel is always included, so it adds Slack/Teams/Discord on top (the first entry is the default delivery channel). `store` defaults to one in-memory store per process; `secret` defaults to `process.env.HITLDEV_SECRET`. Lower-level building blocks: `createHitlRuntime` and `createHitlApp`.
+
+`hitl.inbox` is the programmatic way to drive an approval UI from your own handlers — `await hitl.inbox.list({ status: "pending" })`, `await hitl.inbox.approve(id, { by })`, `.deny(id, { reason })`, `.submitBatch(batchId, decisions)` — without going through the HTTP routes. The built-in inbox routes below are thin shells over it.
 
 The handler serves three things under its mount path:
 
 - **The internal workflow API** (`POST /requests`, `/batches`, `/requests/:id/timeout`, `/requests/:id/remind`, `/notifications`, …) — what the workflow client calls. Authenticated with the bearer `secret`; when no secret is set it is open and logs a warning (local dev only).
 - **Channel callbacks** (e.g. Slack interactivity) — authenticated by each channel's own scheme (Slack signing, Discord public key, …), so they are not behind the bearer.
-- **The inbox API** (`GET /approvals`, `GET /approvals/:id`, `GET /batches/:id`) — used by the webui plugin and available for your own integrations and audit lookups.
+- **The inbox API** — reads (`GET /approvals`, `GET /approvals/:id`, `GET /batches/:id`) and web-inbox writes (`POST /approvals/:id`, `POST /batches/:batchId`). Thin shells over `hitl.inbox`; available for your own integrations and audit lookups. Not behind the bearer.
 
 ### `workflowHitl` (workflow side)
 
@@ -341,7 +344,7 @@ What hitldev **owns** (all thin, bounded pieces):
 | Server (`createHitl`) | The `.well-known/hitldev/v1` API: request creation, timeout/remind, callbacks, inbox. Owns the store and plugins |
 | Workflow client (`createHitlClient` / `workflowHitl`) | `waitForApproval` / `waitForBatchApprovals` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
 | Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
-| Plugins | Slack / Teams / Discord / webui renderers and callback parsers |
+| Channels | Slack / Teams / Discord renderers + callback parsers, and the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
 | Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitldev/store-postgres` and `@hitldev/store-sqlite` for persistence |
 
@@ -412,7 +415,7 @@ DATABASE_URL=postgres://... npx hitldev setup
 
   Use `npx hitldev schema` to print idempotent DDL for your migration pipeline (`--dialect postgres|sqlite`, `--table hitldev.approvals`).
 
-- Local dev: the `webui()` plugin works with zero external services — approve from a local inbox page, no Slack required.
+- Local dev: the always-on web inbox works with zero external services — approve from a local inbox page via `hitl.inbox`, no Slack required.
 
 ### Discord setup
 
@@ -440,7 +443,7 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 
 | Package | Contents |
 |---|---|
-| `@hitldev/sdk` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, `webui()` plugin, inbox + internal API, `Store` interface + `InMemoryStore`, `@hitldev/sdk/testing` |
+| `@hitldev/sdk` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, always-on web inbox + `hitl.inbox`, inbox + internal API, `Store` interface + `InMemoryStore`, `@hitldev/sdk/testing` |
 | `@hitldev/vercel-workflow` | `workflowHitl()` (workflow client) + `workflowResolver()` (server) — Workflow DevKit engine binding |
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
@@ -463,9 +466,9 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 
 ```
 examples/
-  hello-world/      # Next.js + Workflow DevKit + webui minimal example
+  hello-world/      # Next.js + Workflow DevKit + web inbox minimal example
 packages/
-  sdk/              # @hitldev/sdk (core: createHitl, createHitlClient, field builders, webui)
+  sdk/              # @hitldev/sdk (core: createHitl, createHitlClient, field builders, web inbox + hitl.inbox)
   vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit binding: workflowHitl + workflowResolver)
   store-postgres/   # @hitldev/store-postgres (PostgresStore)
   store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)

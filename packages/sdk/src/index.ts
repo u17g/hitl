@@ -11,6 +11,9 @@ export type {
 export { createHitl, createHitlApp, createHitlRuntime } from "./create-hitl";
 export type { CreateHitlOptions, HitlApp } from "./create-hitl";
 
+export { createInbox } from "./inbox";
+export type { BatchDecision, HitlInbox } from "./inbox";
+
 export { createHitlClient, DEFAULT_BASE_PATH } from "./client";
 export type {
   ApprovalOptions,
@@ -33,9 +36,6 @@ export {
   timeoutBatch,
 } from "./core";
 export type { HitlRuntime } from "./core";
-
-export { webui } from "./webui";
-export type { WebuiOptions } from "./webui";
 
 export type {
   BatchTimeoutResponse,

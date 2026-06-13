@@ -1,8 +1,8 @@
 # hello-world
 
-Minimal [hitldev](https://github.com/hitldev/hitldev) example: a Workflow DevKit workflow suspends on `waitForApproval`, you approve via the built-in webui API, and the workflow resumes.
+Minimal [hitldev](https://github.com/hitldev/hitldev) example: a Workflow DevKit workflow suspends on `waitForApproval`, you approve through the programmatic `hitl.inbox` API, and the workflow resumes.
 
-No Slack, Discord, or Teams setup — only the built-in webui inbox API.
+No Slack, Discord, or Teams setup — only the built-in web inbox channel.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ With `pnpm dev` running, open [http://localhost:3000](http://localhost:3000):
 2. Approve the pending request in the list
 3. Check the dev server terminal for `Hello, …!`
 
-The page polls the hitl inbox API every 2 seconds.
+The page polls its own `/api/inbox` route (built on `hitl.inbox`) every 2 seconds.
 
 ## Try with curl
 
@@ -51,7 +51,7 @@ curl -s -X POST http://localhost:3000/api/run \
 **2. List pending approvals**
 
 ```bash
-curl -s 'http://localhost:3000/.well-known/hitldev/v1/approvals?status=pending'
+curl -s 'http://localhost:3000/api/inbox?status=pending'
 ```
 
 Copy the `id` from the first approval in the response.
@@ -59,9 +59,9 @@ Copy the `id` from the first approval in the response.
 **3. Approve**
 
 ```bash
-curl -s -X POST "http://localhost:3000/.well-known/hitldev/v1/webui/approvals/<id>" \
+curl -s -X POST "http://localhost:3000/api/inbox" \
   -H 'content-type: application/json' \
-  -d '{"decision":"approve","by":{"name":"you"}}'
+  -d '{"id":"<id>","decision":"approve","by":{"name":"you"}}'
 ```
 
 **4. Check the dev server logs**
@@ -72,7 +72,8 @@ You should see `Hello, world!` printed when the workflow resumes after approval.
 
 ## What this shows
 
-- [`lib/hitl.ts`](lib/hitl.ts) — the server: `createHitl({ plugins: [webui()], store, resolver: workflowResolver() })`
+- [`lib/hitl.ts`](lib/hitl.ts) — the server: `createHitl({ store, resolver: workflowResolver() })` — the web inbox is built in, no plugins needed
+- [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/approve/deny` (what the UI calls)
 - [`lib/hitl-store.ts`](lib/hitl-store.ts) — shared `SqliteStore` backed by `.hitldev/approvals.db`
 - [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForApproval`
 - [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForApproval` from the workflow client
