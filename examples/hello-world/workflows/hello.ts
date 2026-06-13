@@ -1,11 +1,11 @@
-import { field, actions, isResolved, remind } from "hitl";
-import { waitForHuman } from "@/lib/hitl-workflow";
+import { field, actions, isResolved, remind, } from "hitl";
+import { waitForHuman, notify } from "@/lib/hitl-workflow";
 
 
 export async function helloWorkflow(name: string) {
   "use workflow";
 
-  const approval = await waitForHuman({
+  const response = await waitForHuman({
     message: `Say hello to ${name}?`,
     actions: actions()
       .approve({ label: "Approve" })
@@ -17,12 +17,14 @@ export async function helloWorkflow(name: string) {
     reminders: [remind.after("1h", { message: "Still waiting for approval" })],
   });
 
-  if (!isResolved(approval, "approve")) {
+  if (!isResolved(response, "approve")) {
     return {
       ok: false,
-      actionId: approval.type === "RESOLVED" ? approval.actionId : approval.type,
+      actionId: response.type === "RESOLVED" ? response.actionId : response.type,
     };
   }
+
+  await notify({ after: response, message: "Approval granted" });
 
   await greet(name);
   return { ok: true, greeted: name };
