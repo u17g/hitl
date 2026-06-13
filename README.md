@@ -32,6 +32,7 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
     message: `Inbound lead: ${input.email}`,
     actions: actions()
       .approve({
+        label: "Review and send",
         fields: {
           subject: field.textField({ label: "Subject", default: input.draft.subject }),
           body: field.textArea({ label: "Body", default: input.draft.body }),
