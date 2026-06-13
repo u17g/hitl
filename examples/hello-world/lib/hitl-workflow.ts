@@ -11,4 +11,4 @@ async function hitlRequest(req: HitlRequest) {
   return { status: res.status, ok: res.ok, body: await res.text() };
 }
 
-export const { waitForHuman, notify } = workflowHitl({ request: hitlRequest });
+export const { waitForHuman, requestHuman, notify } = workflowHitl({ request: hitlRequest });
