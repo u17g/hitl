@@ -12,6 +12,10 @@
     "./store-contract": {
       "types": "./src/store-contract.ts",
       "default": "./src/store-contract.ts"
+    },
+    "./testing": {
+      "types": "./src/testing.ts",
+      "default": "./src/testing.ts"
     }
   },
   "scripts": {

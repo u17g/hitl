@@ -45,6 +45,8 @@ export interface Store {
   create(record: NewApprovalRecord): Promise<void>;
   get(id: string): Promise<ApprovalRecord | null>;
   findByExternalId(externalId: string): Promise<ApprovalRecord | null>;
+  /** Look up by resume token; powers idempotent request creation over at-least-once delivery. */
+  findByToken(token: string): Promise<ApprovalRecord | null>;
   setExternalId(id: string, externalId: string, pluginId?: string): Promise<void>;
   resolve(id: string, result: ApprovalResult): Promise<void>;
   list(filter?: { status?: ApprovalRecord["status"] }): Promise<ApprovalRecord[]>;
@@ -79,6 +81,13 @@ export class InMemoryStore implements Store {
           if (value === externalId) return record;
         }
       }
+    }
+    return null;
+  }
+
+  async findByToken(token: string): Promise<ApprovalRecord | null> {
+    for (const record of this.records.values()) {
+      if (record.token === token) return record;
     }
     return null;
   }
@@ -140,4 +149,13 @@ export class InMemoryStore implements Store {
     if (!record) throw new Error(`Unknown approval "${id}"`);
     return record;
   }
+}
+
+const processStoreKey = Symbol.for("hitldev.inMemoryStore");
+
+/** Default when `createHitl` gets no store: one in-memory store per process. */
+export function defaultInMemoryStore(): InMemoryStore {
+  const g = globalThis as Record<symbol, InMemoryStore | undefined>;
+  g[processStoreKey] ??= new InMemoryStore();
+  return g[processStoreKey]!;
 }

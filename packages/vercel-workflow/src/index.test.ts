@@ -1,61 +1,99 @@
+import type { HitlRequest } from "@hitldev/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { workflowHitl } from "./index";
 
-// Test list (thin: the binding only delegates to WDK primitives):
-// - suspend() creates a hook and exposes its token; the promise settles with the hook payload
-// - resolve() delegates to resumeHook(token, payload)
-// - sleep() converts milliseconds to a WDK duration string
-// - run() passes the function through (WDK workflow code may perform IO directly)
+// Test list:
+// - suspend() is a WDK hook: the hook token goes to POST /requests in the body
+// - the API URL comes from getWorkflowMetadata().url; HITLDEV_URL / options.url override it
+// - the secret is sent as a bearer; sleep maps ms -> WDK "Nms" strings
+// - timeout: sleeps, then returns the /timeout endpoint's result
+// - the user-provided `request` step is the only transport (no stdlib fetch)
 
-const { createHook, wdkSleep, resumeHook } = vi.hoisted(() => ({
-  createHook: vi.fn(),
-  wdkSleep: vi.fn(),
-  resumeHook: vi.fn(),
-}));
-
-vi.mock("workflow", () => ({ createHook, sleep: wdkSleep }));
-vi.mock("workflow/api", () => ({ resumeHook }));
-
-import { vercelWorkflowBinding } from "./index";
-
-const binding = vercelWorkflowBinding();
-
-beforeEach(() => {
-  vi.clearAllMocks();
+const hooks = vi.hoisted(() => {
+  let counter = 0;
+  return {
+    reset() {
+      counter = 0;
+    },
+    create<T>() {
+      counter += 1;
+      return { token: `hook_${counter}`, then: () => {} } as unknown as PromiseLike<T> & {
+        token: string;
+      };
+    },
+  };
 });
 
-describe("vercelWorkflowBinding", () => {
-  it("suspend creates a hook and resolves with its payload", async () => {
-    const hook = {
-      token: "hook-token-1",
-      then: (onFulfilled: (value: unknown) => unknown) =>
-        Promise.resolve({ type: "APPROVED" }).then(onFulfilled),
-    };
-    createHook.mockReturnValue(hook);
+const { sleepMock, metadataMock } = vi.hoisted(() => ({
+  sleepMock: vi.fn(async (_duration: string) => {}),
+  metadataMock: vi.fn(() => ({ url: "https://my-app.vercel.app" })),
+}));
 
-    const suspension = binding.suspend<{ type: string }>();
+vi.mock("workflow", () => ({
+  createHook: <T,>() => hooks.create<T>(),
+  sleep: sleepMock,
+  getWorkflowMetadata: metadataMock,
+}));
 
-    expect(createHook).toHaveBeenCalledOnce();
-    expect(suspension.token).toBe("hook-token-1");
-    await expect(suspension.promise).resolves.toEqual({ type: "APPROVED" });
+/** A fake "use step" request function backed by an array of canned JSON bodies. */
+function fakeRequest(bodies: unknown[]) {
+  const calls: HitlRequest[] = [];
+  let i = 0;
+  const request = vi.fn(async (req: HitlRequest) => {
+    calls.push(req);
+    return { status: 200, ok: true, body: JSON.stringify(bodies[i++]) };
+  });
+  return { request, calls };
+}
+
+beforeEach(() => {
+  hooks.reset();
+  sleepMock.mockClear();
+  delete process.env.HITLDEV_URL;
+  delete process.env.HITLDEV_SECRET;
+});
+
+describe("workflowHitl", () => {
+  it("POSTs the hook token to /requests at the deployment url with the bearer", async () => {
+    const { request, calls } = fakeRequest([{ id: "a1" }]);
+    const hitl = workflowHitl({ request, secret: "s3cret" });
+
+    void hitl.waitForApproval({ message: "Approve?" });
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+
+    expect(calls[0]!.url).toBe("https://my-app.vercel.app/.well-known/hitldev/v1/requests");
+    expect(calls[0]!.headers.authorization).toBe("Bearer s3cret");
+    expect(JSON.parse(calls[0]!.body)).toMatchObject({ token: "hook_1", message: "Approve?" });
   });
 
-  it("resolve delegates to resumeHook", async () => {
-    resumeHook.mockResolvedValue({ runId: "r1" });
+  it("prefers HITLDEV_URL, then an explicit url option", async () => {
+    process.env.HITLDEV_URL = "http://localhost:3000";
+    const a = fakeRequest([{ id: "a1" }]);
+    void workflowHitl({ request: a.request }).waitForApproval({ message: "m" });
+    await vi.waitFor(() => expect(a.calls).toHaveLength(1));
+    expect(a.calls[0]!.url).toBe("http://localhost:3000/.well-known/hitldev/v1/requests");
 
-    await binding.resolve("hook-token-1", { type: "DENIED" });
-
-    expect(resumeHook).toHaveBeenCalledWith("hook-token-1", { type: "DENIED" });
+    const b = fakeRequest([{ id: "a1" }]);
+    void workflowHitl({ request: b.request, url: "https://override.example" }).waitForApproval({
+      message: "m",
+    });
+    await vi.waitFor(() => expect(b.calls).toHaveLength(1));
+    expect(b.calls[0]!.url).toBe("https://override.example/.well-known/hitldev/v1/requests");
   });
 
-  it("sleep delegates with a millisecond duration string", async () => {
-    wdkSleep.mockResolvedValue(undefined);
+  it("times out via WDK sleep and the /timeout endpoint", async () => {
+    const { request, calls } = fakeRequest([
+      { id: "a1" },
+      { result: { type: "TIMED_OUT", id: "a1" } },
+    ]);
+    const hitl = workflowHitl({ request });
 
-    await binding.sleep(5000);
+    const result = await hitl.waitForApproval({ message: "m", timeout: "1h" });
 
-    expect(wdkSleep).toHaveBeenCalledWith("5000ms");
-  });
-
-  it("run passes the function through", async () => {
-    await expect(binding.run("hitldev:deliver", async () => 42)).resolves.toBe(42);
+    expect(sleepMock).toHaveBeenCalledWith("3600000ms");
+    expect(result).toEqual({ type: "TIMED_OUT", id: "a1" });
+    expect(calls[1]!.url).toBe(
+      "https://my-app.vercel.app/.well-known/hitldev/v1/requests/a1/timeout",
+    );
   });
 });

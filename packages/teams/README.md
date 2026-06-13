@@ -15,10 +15,11 @@ Wire the plugin once at your app edge alongside `createHitl`:
 ```ts
 import { createHitl } from "@hitldev/sdk";
 import { teamsHitl } from "@hitldev/teams";
-import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
+import { workflowResolver } from "@hitldev/vercel-workflow";
 
 export const hitlApp = createHitl({
-  binding: vercelWorkflowBinding(),
+  resolver: workflowResolver(),
+  secret: process.env.HITLDEV_SECRET,
   plugins: [
     // Team channel approvals
     teamsHitl({
@@ -39,14 +40,17 @@ export const hitlApp = createHitl({
   ],
 });
 
-// Mount the handler so Teams can POST Bot Framework activities:
-// Express:  app.use("/hitl", hitlApp.handler)
+// Mount under /.well-known/hitldev/v1 so Teams can POST Bot Framework activities:
+// Express:  app.use("/.well-known/hitldev/v1", hitlApp.handler)
 // Next.js:  export const { GET, POST } = hitlApp.routeHandlers
 ```
 
-Workflow code refers to the plugin by `id`:
+Workflow code refers to the plugin by `id` (import from your workflow-side module — see the root README):
 
 ```ts
+import { field } from "@hitldev/sdk";
+import { waitForApproval } from "../lib/hitl-workflow";
+
 const approval = await waitForApproval({
   channel: "lead-approvals",
   message: "Send this reply?",
@@ -60,7 +64,7 @@ const approval = await waitForApproval({
 
 1. Register an app in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) (or reuse an existing bot registration).
 2. Copy the **Microsoft App ID** and create a **Client secret** under **Certificates & secrets** → `MICROSOFT_APP_PASSWORD`.
-3. Under **Configuration**, set the **Messaging endpoint** to your mounted hitl handler URL, e.g. `https://your-app.example/hitl`.
+3. Under **Configuration**, set the **Messaging endpoint** to your mounted hitl handler URL, e.g. `https://your-app.example/.well-known/hitldev/v1`.
 4. Enable the **Microsoft Teams** channel for the bot.
 5. Create or update a Teams app package using [manifest.json](./manifest.json):
    - Replace placeholder `id` / `botId` with your App ID.

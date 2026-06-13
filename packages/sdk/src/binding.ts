@@ -1,37 +1,60 @@
 /**
- * The contract hitldev asks of a durable execution engine — exactly four things:
- * suspend with a token, resolve by token, a durable timer, and a durable step.
+ * The contract hitldev asks of a durable execution engine, split by side:
  *
- * The primitives split into two sides:
- * - Workflow side (`suspend`, `sleep`, `run`): called from inside workflow code,
- *   subject to the engine's determinism rules.
- * - Resolver side (`resolve`): called from a plain HTTP context when a channel
- *   callback arrives — never from workflow code.
+ * - Workflow side (`WorkflowPrimitives`): suspend with a token, a durable
+ *   timer, and a durable fetch. Injected into `createHitlClient` by an engine
+ *   package; called from inside workflow code under the engine's determinism
+ *   rules. All store/plugin IO happens behind the HTTP API, never here.
+ * - Server side (`HitlResolver`): resume a wait by token. Called from a plain
+ *   HTTP context when a channel callback arrives — never from workflow code.
  */
-export interface EngineSuspension<T> {
-  /** Opaque resume token. The core stores it and hands it back; only the binding interprets it. */
+export interface HitlSuspension<T> {
+  /** Opaque resume token. Sent to the server, stored, and handed back; only the engine interprets it. */
   token: string;
-  /** Resolves when an external process calls `resolve(token, payload)`. */
+  /** Resolves when the server calls `HitlResolver.resolve(token, payload)`. */
   promise: Promise<T>;
 }
 
-export interface EngineBinding {
+/** A request to the hitldev server. Plain, serializable data — easy to send from a durable step. */
+export interface HitlRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  /** JSON-encoded request body. */
+  body: string;
+}
+
+/**
+ * The server's reply, reduced to serializable fields. A `Response` cannot
+ * cross a durable step boundary; this can, so the engine's `request` can be an
+ * ordinary `"use step"` function.
+ */
+export interface HitlResponse {
+  status: number;
+  ok: boolean;
+  /** Raw response body; the client parses it as JSON. */
+  body: string;
+}
+
+export type HitlRequestFn = (request: HitlRequest) => Promise<HitlResponse>;
+
+export interface WorkflowPrimitives {
   /**
-   * Workflow side: create a durable wait and obtain its resume token.
+   * Create a durable wait and obtain its resume token.
    * The token must be stable across replays of the same call site.
    */
-  suspend<T>(): EngineSuspension<T>;
-  /** Resolver side: resume the wait identified by `token` with a payload. */
-  resolve(token: string, payload: unknown): Promise<void>;
-  /** Workflow side: durable timer used to implement `timeout`. */
+  suspend<T>(): HitlSuspension<T>;
+  /** Durable timer used to implement `timeout` and `reminder`. */
   sleep(ms: number): Promise<void>;
   /**
-   * Workflow side: run non-deterministic IO as a memoized durable step
-   * (Temporal activity, Inngest `step.run`, Restate `ctx.run`). The core may
-   * use the same label more than once per run; engines must disambiguate by
-   * call order. `fn` executes at-least-once and its return value must be
-   * serializable. Engines whose workflow code may perform IO directly (e.g.
-   * Workflow DevKit) implement this as a pass-through.
+   * Call the hitldev server. Engines implement this as a durable step (e.g. a
+   * Workflow DevKit `"use step"` function wrapping `fetch`) so the response is
+   * memoized across replays.
    */
-  run<T>(label: string, fn: () => Promise<T>): Promise<T>;
+  request: HitlRequestFn;
+}
+
+export interface HitlResolver {
+  /** Resume the wait identified by `token` with a payload. */
+  resolve(token: string, payload: unknown): Promise<void>;
 }

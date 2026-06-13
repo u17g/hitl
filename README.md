@@ -16,7 +16,7 @@ One `await`. The workflow suspends — for hours or days, at zero cost, survivin
 
 hitldev is **not an agent framework**. Bring your own — the [AI SDK](https://ai-sdk.dev), Mastra, or anything that runs inside a [Workflow DevKit](https://workflow-sdk.dev) workflow. hitldev does one thing: the human part.
 
-> **Status: design phase.** This README is the design document. The API described here is the target interface; implementation follows it.
+> **Status: early.** The core, the Workflow DevKit binding, the Slack / Teams / Discord / webui plugins, and the SQLite / Postgres stores are implemented and tested; the runnable [`examples/hello-world`](examples/hello-world) exercises the full approve loop. The API below is still pre-1.0 and may change.
 
 ## Why
 
@@ -45,7 +45,8 @@ A Workflow DevKit workflow using the plain AI SDK for drafting and hitldev for t
 // workflows/inbound-lead.ts
 import { z } from "zod";
 import { generateObject } from "ai";
-import { field, waitForApproval } from "@hitldev/sdk";
+import { field } from "@hitldev/sdk";
+import { waitForApproval } from "../lib/hitl-workflow";
 import { sendEmail } from "../lib/email";
 
 export async function inboundLead(input: { email: string; message: string }) {
@@ -81,18 +82,21 @@ export async function inboundLead(input: { email: string; message: string }) {
 }
 ```
 
-Wire the plugins once, at the app edge:
+hitldev has two sides. The **server** owns the store and the channel plugins and runs at the app edge. The **workflow client** knows neither — it is a thin HTTP client that reaches the server over a stable, secret-authenticated API.
+
+Wire the server once:
 
 ```ts
-// hitl.ts
+// lib/hitl.ts — the server: store + channel plugins, mounted as route handlers.
 import { createHitl } from "@hitldev/sdk";
 import { discordHitl } from "@hitldev/discord";
 import { slackHitl } from "@hitldev/slack";
 import { teamsHitl } from "@hitldev/teams";
-import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
+import { workflowResolver } from "@hitldev/vercel-workflow";
 
-export const hitlApp = createHitl({
-  binding: vercelWorkflowBinding(),
+export const hitl = createHitl({
+  resolver: workflowResolver(),         // resumes the suspended workflow when a callback lands
+  secret: process.env.HITLDEV_SECRET,   // bearer shared with the workflow client (optional in local dev)
   plugins: [
     slackHitl({
       id: "lead-approvals",
@@ -115,13 +119,37 @@ export const hitlApp = createHitl({
   ],
 });
 
-// Mount the callback handler (Slack interactivity, Teams Bot Framework, Discord interactions, webui inbox API) into your app:
-// Express:  app.use("/hitl", hitlApp.handler)
-// Hono:     app.route("/hitl", hitlApp.hono)
-// Next.js:  export const { GET, POST } = hitlApp.routeHandlers
+// Mount it under /.well-known/hitldev/v1 — serves channel callbacks (Slack interactivity,
+// Teams Bot Framework, Discord interactions), the internal workflow API, and the webui inbox:
+// Next.js:  export const { GET, POST } = hitl.routeHandlers   // app/.well-known/hitldev/v1/[[...path]]/route.ts
+// Express:  app.use("/.well-known/hitldev/v1", hitl.handler)
 ```
 
-Plugins are explicit instances: secrets are plain `process.env` references passed right here, and the same platform can be wired multiple times (two Slack workspaces, an approvals channel and an alerts channel, ...). Workflow code refers to plugins only by `id`. The `binding` picks the durable execution engine (see [Engine bindings](#engine-bindings)). No other configuration exists.
+Build the workflow client once too. It needs one durable step — a plain `"use step"` `fetch` to the server, defined in your app so the Workflow DevKit compiler picks up the directive:
+
+```ts
+// lib/hitl-workflow.ts — the workflow side: a thin HTTP client. No store, no plugins.
+import type { HitlRequest } from "@hitldev/sdk";
+import { workflowHitl } from "@hitldev/vercel-workflow";
+
+async function hitlRequest(req: HitlRequest) {
+  "use step";
+  const res = await fetch(req.url, { method: req.method, headers: req.headers, body: req.body });
+  return { status: res.status, ok: res.ok, body: await res.text() };
+}
+
+export const { waitForApproval, waitForBatchApprovals, notify } = workflowHitl({ request: hitlRequest });
+```
+
+Workflow code imports from there:
+
+```ts
+import { waitForApproval } from "../lib/hitl-workflow";
+
+const approval = await waitForApproval({ message: "..." });
+```
+
+The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the callback hits the server, which resolves the hook and resumes the run. The base URL defaults to the deployment's own URL (set `HITLDEV_URL` to override); the two sides share `HITLDEV_SECRET` to authenticate the internal API. The server's store can stay the default in-memory one for a single process, or be a shared `@hitldev/store-sqlite` / `@hitldev/store-postgres` for production.
 
 ## API
 
@@ -160,7 +188,7 @@ type ApprovalResult<F> =
   | { type: "TIMED_OUT"; id: string };
 ```
 
-Under the hood, `waitForApproval` is a Workflow DevKit hook: the workflow suspends, the plugin delivers the request, and the human's response resolves the hook and resumes the run — across restarts and deploys.
+Under the hood, `waitForApproval` suspends on a Workflow DevKit hook and POSTs the request to the server over a durable step; the server records it and delivers it via the plugin. The human's response resolves the hook and resumes the run — across restarts and deploys. `timeout` and `reminder` run on the workflow's durable timer, calling the server's API when they fire.
 
 ### `waitForBatchApprovals`
 
@@ -246,46 +274,74 @@ Official plugins:
 
 One package per channel — install only what you use. Writing your own plugin is implementing the interface above.
 
-### `createHitl`
+### `createHitl` (server side)
 
-The single wiring point. Takes the plugin list, returns mountable handlers:
+The server. Takes plugins, a store, and a resolver; returns mountable handlers:
 
 ```ts
-const hitlApp = createHitl({ plugins: [...] });
+const hitl = createHitl({ resolver, store, plugins: [...], secret });
 
-hitlApp.handler        // Node/Express-style handler
-hitlApp.hono           // Hono sub-app
-hitlApp.routeHandlers  // Next.js route handlers
+hitl.fetch             // fetch-style handler — mount under any base path
+hitl.handler           // Node/Express-style handler
+hitl.routeHandlers     // Next.js route handlers
+hitl.runtime / hitl.store / hitl.plugins   // explicit access (advanced)
 ```
 
-The handler serves: channel callbacks (e.g. Slack interactivity), the inbox API (`GET /approvals`, used by the webui plugin and available for your own integrations), and approval audit lookups.
+`store` defaults to one in-memory store per process; `secret` defaults to `process.env.HITLDEV_SECRET`. Lower-level building blocks: `createHitlRuntime` and `createHitlApp`.
+
+The handler serves three things under its mount path:
+
+- **The internal workflow API** (`POST /requests`, `/batches`, `/requests/:id/timeout`, `/requests/:id/remind`, `/notifications`, …) — what the workflow client calls. Authenticated with the bearer `secret`; when no secret is set it is open and logs a warning (local dev only).
+- **Channel callbacks** (e.g. Slack interactivity) — authenticated by each channel's own scheme (Slack signing, Discord public key, …), so they are not behind the bearer.
+- **The inbox API** (`GET /approvals`, `GET /approvals/:id`, `GET /batches/:id`) — used by the webui plugin and available for your own integrations and audit lookups.
+
+### `workflowHitl` (workflow side)
+
+The workflow client, built on the engine's primitives. Returns the workflow helpers:
+
+```ts
+const { waitForApproval, waitForBatchApprovals, notify } = workflowHitl({
+  request,             // your "use step" function that fetches the server (required)
+  url?,                // server base URL; defaults to HITLDEV_URL, then the deployment URL
+  basePath?,           // defaults to "/.well-known/hitldev/v1"
+  secret?,             // bearer for the internal API; defaults to HITLDEV_SECRET
+});
+```
+
+`request` is the one piece you write yourself: a `"use step"` function returning the response as plain `{ status, ok, body }` (a `Response` can't cross a step boundary). Defining it in your app — rather than importing a magic durable `fetch` — keeps it an ordinary step the Workflow DevKit compiler can see.
+
+For engines other than Workflow DevKit, drop down to `createHitlClient` from `@hitldev/sdk` and inject the engine's primitives directly (see [Engine bindings](#engine-bindings)).
 
 ## How it works
 
 ```mermaid
 sequenceDiagram
   participant W as Workflow (WDK run)
-  participant A as hitldev
+  participant H as hitldev server
   participant S as Slack
   participant R as Reviewer
-  W->>A: waitForApproval(fields)
-  A->>A: create WDK hook + record request
-  A->>S: plugin.send - Block Kit with fields
+  W->>W: suspend on a WDK hook (get resume token)
+  W->>H: POST /requests {token, fields} - durable step
+  H->>H: record request
+  H->>S: plugin.send - Block Kit with fields
   Note over W: suspended - event-sourced, zero cost
   R->>S: edits fields, clicks Approve
-  S->>A: interactivity callback
-  A->>A: validate + type feedbacks, resolve hook
-  A->>W: run resumes with ApprovalResult
-  A->>S: plugin.update - "Approved by @ryosuke"
+  S->>H: interactivity callback
+  H->>H: validate + type feedbacks, resolve hook
+  H->>W: run resumes with ApprovalResult
+  H->>S: plugin.update - "Approved by @ryosuke"
 ```
+
+The workflow and the server are separate processes (Workflow DevKit runs workflows in their own sandbox); the `.well-known/hitldev/v1` API is the only thing between them. The workflow client carries no store and no plugins.
 
 What hitldev **owns** (all thin, bounded pieces):
 
 | Piece | What it is |
 |---|---|
-| `hitl` core | `waitForApproval` / `notify` / field builders / result types, on top of the engine binding |
-| Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `EngineBinding` |
-| Plugins | Slack / Teams / webui renderers and callback parsers |
+| Server (`createHitl`) | The `.well-known/hitldev/v1` API: request creation, timeout/remind, callbacks, inbox. Owns the store and plugins |
+| Workflow client (`createHitlClient` / `workflowHitl`) | `waitForApproval` / `waitForBatchApprovals` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
+| Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
+| Plugins | Slack / Teams / Discord / webui renderers and callback parsers |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
 | Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitldev/store-postgres` and `@hitldev/store-sqlite` for persistence |
 
@@ -297,36 +353,37 @@ What it **deliberately does not own**:
 
 ## Engine bindings
 
-hitldev asks very little of the execution engine — exactly four things:
+hitldev asks very little of the execution engine — exactly four things, split across the two sides:
 
 1. **Suspend with a token** (workflow side): create a durable wait and obtain an opaque resume token
-2. **Resolve by token** (callback side): an external process resumes the wait with a payload
-3. **A durable timer** (for `timeout`)
-4. **A durable step** (workflow side): run non-deterministic IO (record the request, `plugin.send`) memoized across replays
+2. **A durable timer** (workflow side, for `timeout` and `reminder`)
+3. **A durable request** (workflow side): an HTTP call to the server, memoized across replays
+4. **Resolve by token** (server side): resume the wait with a payload when a callback arrives
 
-Every major durable execution engine has native primitives for all four:
+All store and plugin IO lives on the server, so the workflow side never runs arbitrary effects — it only suspends, sleeps, and makes durable HTTP calls. Every major durable execution engine has native primitives for all four:
 
-| Engine | Suspend | Resume | Timeout | Step |
+| Engine | Suspend | Timer | Request (durable step) | Resolve |
 |---|---|---|---|---|
-| Workflow DevKit (v0) | `createHook()` | `resolveHook(token, payload)` | `sleep()` + race | pass-through (workflow code may do IO) |
-| Temporal | signal + `condition()` | `handle.signal(workflowId, payload)` | `condition(pred, timeout)` | activity |
-| Inngest | `step.waitForEvent(...)` | `inngest.send(event)` with correlation | built-in (null → `TIMED_OUT`) | `step.run` |
-| Restate | `ctx.awakeable()` | `resolveAwakeable(id, payload)` | `ctx.sleep` + race | `ctx.run` |
+| Workflow DevKit | `createHook()` | `sleep()` | `"use step"` `fetch` | `resumeHook(token, payload)` |
+| Temporal | signal + `condition()` | `condition(pred, timeout)` | activity | `handle.signal(workflowId, payload)` |
+| Inngest | `step.waitForEvent(...)` | built-in (null → `TIMED_OUT`) | `step.run` `fetch` | `inngest.send(event)` with correlation |
+| Restate | `ctx.awakeable()` | `ctx.sleep` | `ctx.run` `fetch` | `resolveAwakeable(id, payload)` |
 
 The architecture is split along that contract:
 
-- **Core (engine-agnostic):** approval store, field builders, `ApprovalResult` typing and validation, plugin interface, `createHitl` callback handling, and the approval flow itself (`requestApproval`), which performs all IO through the binding's step primitive. The bulk of the code; knows nothing about engines.
-- **Binding (per engine, thin):** the `EngineBinding` interface, implemented by a dedicated package and passed to `createHitl({ binding })`. The *workflow side* is `suspend` / `sleep` / `run` — create the engine-native wait, run IO as durable steps. The *resolver side* is one function, `resolve(token, result)`, called by `createHitl` when a callback arrives — `resumeHook` for WDK, a signal for Temporal, an event for Inngest, `resolveAwakeable` for Restate.
+- **Core (engine-agnostic):** the approval store, field builders, `ApprovalResult` typing and validation, the plugin interface, the server services (`createApprovalRequest`, `resolveApproval`, `timeoutApproval`, …) and HTTP layer (`createHitl`), and the workflow-side client (`createHitlClient`) that drives the reminder/timeout loop and talks to the server. The bulk of the code; knows nothing about engines.
+- **Binding (per engine, thin):** two small interfaces. `WorkflowPrimitives` (`suspend` / `sleep` / `request`) is injected into `createHitlClient` on the workflow side; `HitlResolver` (`resolve`) is passed to `createHitl` on the server side. For WDK: a hook for `suspend`, `sleep` for the timer, your `"use step"` `fetch` for `request`, and `resumeHook` for `resolve`. `@hitldev/vercel-workflow` packages this as `workflowHitl()` + `workflowResolver()`.
 
-The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back. Differences that can't be absorbed surface honestly in the API — e.g. Inngest has no ambient workflow context, so its package ships its own entrypoint taking the step (`waitForApproval(step, opts)`), built from the exported `requestApproval` + `getRuntime`.
+The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back.
 
-Switching engines means switching one import (`@hitldev/vercel-workflow` → `@hitldev/temporal`) and the `binding` entry in `createHitl`. Plugins, the approval store, the inbox — all shared. v0 ships the Workflow DevKit binding (`@hitldev/vercel-workflow`) only; the binding interface exists from day one so the others stay an honest estimate of 50–100 lines each.
+Switching engines means switching one import (`@hitldev/vercel-workflow` → `@hitldev/temporal`) and the `resolver` entry in `createHitl`. Plugins, the approval store, the inbox, the workflow client — all shared. Today ships the Workflow DevKit binding (`@hitldev/vercel-workflow`) only; the interfaces exist from day one so the others stay an honest estimate of 50–100 lines each.
 
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
-- hitldev needs a store for approvals. `createHitl` defaults to the in-memory store; pass a `@hitldev/store-postgres` or `@hitldev/store-sqlite` store for persistence.
-- **Custom `Store` implementations:** batch support added four methods to the `Store` interface (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) and two columns plus a companion `<table>_batches` table to the SQL schema (migration `003_batches`, applied automatically by the bundled stores). Custom stores must implement them; `describeStoreContract` from `@hitldev/sdk/store-contract` covers the expected behavior.
+- **Environment:** set `HITLDEV_SECRET` to the same value for the server and the workflow client — it authenticates the internal `.well-known/hitldev/v1` API. Without it the API is open (and logs a warning), which is fine for local dev. Set `HITLDEV_URL` if the server's base URL isn't the deployment's own URL (`workflowHitl` reads it from the run metadata by default).
+- hitldev needs a store for approvals, held by the **server** (`createHitl`). It defaults to one in-memory store per process; pass a `@hitldev/store-postgres` or `@hitldev/store-sqlite` store for persistence and to share state across server instances.
+- **Custom `Store` implementations:** beyond the single-approval methods, a store implements `findByToken` (idempotent request creation keys on the resume token) and the batch methods (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) — two extra columns plus a companion `<table>_batches` table in the SQL schema, applied automatically by the bundled stores. `describeStoreContract` from `@hitldev/sdk/store-contract` covers the expected behavior.
 - **SQLite** — schema is created automatically in the constructor; no extra step:
 
 ```ts
@@ -362,7 +419,7 @@ DATABASE_URL=postgres://... npx hitldev setup
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications) and add a bot.
 2. Enable **Send Messages** and **Message Content Intent** (if reading message content).
 3. Copy the bot token to `DISCORD_BOT_TOKEN` and the application **Public Key** to `DISCORD_PUBLIC_KEY`.
-4. Set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/hitl`). Discord sends a PING on save; `@hitldev/discord` responds automatically.
+4. Set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/.well-known/hitldev/v1`). Discord sends a PING on save; `@hitldev/discord` responds automatically.
 5. Invite the bot to your server and pass the target channel id as `channelId`.
 
 When a reviewer clicks **Approve** and the request has feedback fields, Discord opens a Modal to collect edits before resolving the approval.
@@ -373,7 +430,7 @@ Batches (`waitForBatchApprovals`) render as a multi-select (every item preselect
 
 1. Register a bot in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) and enable the **Microsoft Teams** channel.
 2. Copy the **Microsoft App ID** and a client secret to `MICROSOFT_APP_ID` / `MICROSOFT_APP_PASSWORD`.
-3. Set the **Messaging endpoint** to your mounted hitl handler (e.g. `https://your-app.example/hitl`).
+3. Set the **Messaging endpoint** to your mounted hitl handler (e.g. `https://your-app.example/.well-known/hitldev/v1`).
 4. Package and install the Teams app (see [packages/teams/manifest.json](packages/teams/manifest.json)) in the target team and/or for individual reviewers.
 5. Pass `teamId` + `channelId` for channel approvals, or a reviewer's Azure AD object id for 1:1 DM approvals.
 
@@ -383,8 +440,8 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 
 | Package | Contents |
 |---|---|
-| `@hitldev/sdk` | Core: `waitForApproval`, `waitForBatchApprovals`, `notify`, `field.*` field builders, `createHitl`, `webui()` plugin, inbox API, `Store` interface + `InMemoryStore` |
-| `@hitldev/vercel-workflow` | `vercelWorkflowBinding()` — Workflow DevKit engine binding |
+| `@hitldev/sdk` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, `webui()` plugin, inbox + internal API, `Store` interface + `InMemoryStore`, `@hitldev/sdk/testing` |
+| `@hitldev/vercel-workflow` | `workflowHitl()` (workflow client) + `workflowResolver()` (server) — Workflow DevKit engine binding |
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
 | `@hitldev/cli` | `hitldev setup` / `hitldev schema` — Postgres setup and DDL export |
@@ -400,14 +457,16 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 - **Approval policies** — multi-approver, quorum, role routing, auto-approve rules (batched lists ship today as `waitForBatchApprovals`)
 - **Escalation** — SLA timers, reminder nudges (`waitForApproval({ reminder })`), fallback channels
 - **Audit export** — approval history as structured logs
-- **hitldev Cloud (hosted relay)** — a hosted server that owns the platform integrations, replacing per-platform setup with one `cloud({ apiKey })` plugin. One-click OAuth installs instead of hand-built Slack/Azure/Discord apps; resolutions delivered to your app as normalized, HMAC-signed callbacks at `.well-known/hitldev/v1/webhook/:token`; `hitldev listen` forwards them to localhost during development. Implements the same `HitlPlugin` interface and event schema as the in-process plugins — the relay is an alternative transport, not a fork. Library mode stays primary and fully self-contained.
+- **hitldev Cloud (hosted relay)** — a hosted server that owns the platform integrations, replacing per-platform setup with one `cloud({ apiKey })` plugin. One-click OAuth installs instead of hand-built Slack/Azure/Discord apps; resolutions delivered to your app as normalized, HMAC-signed callbacks; `hitldev listen` forwards them to localhost during development. Implements the same `HitlPlugin` interface and event schema as the in-process plugins — the relay is an alternative transport, not a fork. Library mode stays primary and fully self-contained.
 
 ## Repository layout
 
 ```
+examples/
+  hello-world/      # Next.js + Workflow DevKit + webui minimal example
 packages/
-  sdk/              # @hitldev/sdk (core: waitForApproval, notify, field builders, createHitl, webui)
-  vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit engine binding)
+  sdk/              # @hitldev/sdk (core: createHitl, createHitlClient, field builders, webui)
+  vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit binding: workflowHitl + workflowResolver)
   store-postgres/   # @hitldev/store-postgres (PostgresStore)
   store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)
   cli/              # @hitldev/cli (hitldev setup / schema)

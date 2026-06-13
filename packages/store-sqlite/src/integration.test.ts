@@ -1,38 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
+import { field, type HitlCallback, type HitlPlugin } from "@hitldev/sdk";
+import { createTestHitl } from "@hitldev/sdk/testing";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createHitl,
-  field,
-  waitForApproval,
-  type EngineBinding,
-  type EngineSuspension,
-  type HitlCallback,
-  type HitlPlugin,
-} from "@hitldev/sdk";
 import { SqliteStore } from "./index";
-
-class FakeBinding implements EngineBinding {
-  private waits = new Map<string, (payload: unknown) => void>();
-  private counter = 0;
-
-  suspend<T>(): EngineSuspension<T> {
-    const token = `tok_${++this.counter}`;
-    let resolveFn!: (payload: T) => void;
-    const promise = new Promise<T>((resolve) => (resolveFn = resolve));
-    this.waits.set(token, resolveFn as (payload: unknown) => void);
-    return { token, promise };
-  }
-
-  async resolve(token: string, payload: unknown): Promise<void> {
-    this.waits.get(token)?.(payload);
-  }
-
-  async sleep(): Promise<void> {}
-
-  async run<T>(_label: string, fn: () => Promise<T>): Promise<T> {
-    return fn();
-  }
-}
 
 function jsonPlugin(id: string): HitlPlugin {
   return {
@@ -56,13 +26,12 @@ function jsonPlugin(id: string): HitlPlugin {
 describe("createHitl with SqliteStore", () => {
   it("persists the approve round-trip in sqlite", async () => {
     const db = new DatabaseSync(":memory:");
-    const app = createHitl({
+    const { app, client } = createTestHitl({
       store: new SqliteStore(db),
       plugins: [jsonPlugin("a")],
-      binding: new FakeBinding(),
     });
 
-    const promise = waitForApproval({
+    const promise = client.waitForApproval({
       message: "Approve?",
       fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
     });

@@ -1,59 +1,21 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { EngineBinding, EngineSuspension } from "./binding";
-import {
-  createHitl,
-  field,
-  notify,
-  waitForApproval,
-  waitForBatchApprovals,
-  webui,
-  type ApprovalResult,
-} from "./index";
-import { resetRuntime } from "./create-hitl";
+import { field, InMemoryStore, webui, type ApprovalResult } from "./index";
+import { createTestHitl } from "./testing";
 
 // Test list:
-// - waitForApproval suspends and resumes through a createHitl-wired app (webui callback)
+// - the client's waitForApproval resolves through the webui callback on the server
 // - the result's feedbacks are typed from the field definitions
-// - waitForApproval before createHitl throws a configuration error
-// - notify routes through the configured plugin
-
-class ImmediateBinding implements EngineBinding {
-  waits = new Map<string, (payload: unknown) => void>();
-  private counter = 0;
-
-  suspend<T>(): EngineSuspension<T> {
-    const token = `tok_${++this.counter}`;
-    let resolveFn!: (payload: T) => void;
-    const promise = new Promise<T>((resolve) => (resolveFn = resolve));
-    this.waits.set(token, resolveFn as (payload: unknown) => void);
-    return { token, promise };
-  }
-
-  async resolve(token: string, payload: unknown): Promise<void> {
-    this.waits.get(token)?.(payload);
-  }
-
-  // A durable timer that never fires within the test.
-  sleep(): Promise<void> {
-    return new Promise(() => {});
-  }
-
-  async run<T>(_label: string, fn: () => Promise<T>): Promise<T> {
-    return fn();
-  }
-}
+// - notify threads through the configured plugin
+// - the batch loop resolves through the webui batch submit with typed results
 
 describe("public API", () => {
-  it("throws a configuration error before createHitl is called", async () => {
-    resetRuntime();
-    await expect(waitForApproval({ message: "m" })).rejects.toThrow(/createHitl/);
-  });
-
   it("runs the full approve-with-edits loop through the webui plugin", async () => {
-    resetRuntime();
-    const app = createHitl({ plugins: [webui()], binding: new ImmediateBinding() });
+    const { app, client } = createTestHitl({
+      plugins: [webui()],
+      store: new InMemoryStore(),
+    });
 
-    const pending = waitForApproval({
+    const pending = client.waitForApproval({
       message: "Send this reply?",
       fields: {
         subject: field.textField({ label: "Subject", default: "Hi" }),
@@ -70,10 +32,10 @@ describe("public API", () => {
       }
     })();
 
-    await notify({ parent: requestId, message: "Original message: hello" });
+    await client.notify({ parent: requestId, message: "Original message: hello" });
 
     const res = await app.fetch(
-      new Request(`http://x/hitl/webui/approvals/${requestId}`, {
+      new Request(`http://x/.well-known/hitldev/v1/webui/approvals/${requestId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -97,10 +59,12 @@ describe("public API", () => {
   });
 
   it("runs the batch loop through the webui plugin with typed results", async () => {
-    resetRuntime();
-    const app = createHitl({ plugins: [webui()], binding: new ImmediateBinding() });
+    const { app, client } = createTestHitl({
+      plugins: [webui()],
+      store: new InMemoryStore(),
+    });
 
-    const pending = waitForBatchApprovals({
+    const pending = client.waitForBatchApprovals({
       title: "Outbound emails",
       fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
       items: [
@@ -119,7 +83,7 @@ describe("public API", () => {
     })();
 
     const res = await app.fetch(
-      new Request(`http://x/hitl/webui/batches/${batchId}`, {
+      new Request(`http://x/.well-known/hitldev/v1/webui/batches/${batchId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

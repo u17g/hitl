@@ -15,10 +15,11 @@ Wire the plugin once at your app edge alongside `createHitl`:
 ```ts
 import { createHitl } from "@hitldev/sdk";
 import { discordHitl } from "@hitldev/discord";
-import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
+import { workflowResolver } from "@hitldev/vercel-workflow";
 
 export const hitlApp = createHitl({
-  binding: vercelWorkflowBinding(),
+  resolver: workflowResolver(),
+  secret: process.env.HITLDEV_SECRET,
   plugins: [
     discordHitl({
       id: "discord-approvals",
@@ -29,14 +30,17 @@ export const hitlApp = createHitl({
   ],
 });
 
-// Mount the handler so Discord can POST interactions:
-// Express:  app.use("/hitl", hitlApp.handler)
+// Mount under /.well-known/hitldev/v1 so Discord can POST interactions:
+// Express:  app.use("/.well-known/hitldev/v1", hitlApp.handler)
 // Next.js:  export const { GET, POST } = hitlApp.routeHandlers
 ```
 
-Workflow code refers to the plugin by `id`:
+Workflow code refers to the plugin by `id` (import from your workflow-side module — see the root README):
 
 ```ts
+import { field } from "@hitldev/sdk";
+import { waitForApproval } from "../lib/hitl-workflow";
+
 const approval = await waitForApproval({
   channel: "discord-approvals",
   message: "Send this reply?",
@@ -52,7 +56,7 @@ const approval = await waitForApproval({
 2. Under **Bot**, enable **Send Messages**. Enable **Message Content Intent** only if your app needs to read message content.
 3. Copy the bot token to `DISCORD_BOT_TOKEN`.
 4. Under **General Information**, copy the application **Public Key** (hex) to `DISCORD_PUBLIC_KEY`.
-5. Under **General Information**, set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/hitl`). Discord sends a PING on save; this plugin responds automatically.
+5. Under **General Information**, set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/.well-known/hitldev/v1`). Discord sends a PING on save; this plugin responds automatically.
 6. Invite the bot to your server with permissions to send messages in the target channel.
 7. Pass the channel id (Developer Mode → right-click channel → Copy Channel ID) as `channelId`.
 
