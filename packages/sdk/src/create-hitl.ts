@@ -9,8 +9,6 @@ import {
   notifyVia,
   remindApproval,
   remindBatch,
-  resolveApproval,
-  resolveBatchApproval,
   timeoutApproval,
   timeoutBatch,
   type HitlRuntime,
@@ -94,7 +92,10 @@ export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string 
       if (write) {
         return handleInboxWrite(inbox, req, write);
       }
-      return handleCallback(runtime, req, segments);
+      // The core no longer receives channel callbacks. Existing libraries
+      // (slack-bolt, discord.js, Bot Framework) verify and parse interactivity
+      // themselves, then resolve via `hitl.inbox`.
+      return json({ error: "Not found" }, 404);
     }
     return json({ error: "Method not allowed" }, 405);
   };
@@ -285,44 +286,6 @@ async function handleInboxWrite(
     if (error instanceof FeedbackValidationError) return json({ error: error.message }, 400);
     throw error;
   }
-}
-
-async function handleCallback(
-  runtime: HitlRuntime,
-  req: Request,
-  segments: string[],
-): Promise<Response> {
-  // A trailing segment matching a registered plugin's `provider` scopes
-  // dispatch to that channel type — its callbacks never reach other plugins.
-  // No match (legacy shared endpoint) falls back to trying every plugin.
-  const last = segments.at(-1);
-  const scoped = runtime.plugins.filter((p) => p.provider !== undefined && p.provider === last);
-  const candidates = scoped.length > 0 ? scoped : runtime.plugins;
-
-  for (const plugin of candidates) {
-    if (!plugin.handleCallback) continue;
-
-    const callback = await plugin.handleCallback(req.clone());
-    if (!callback) continue;
-
-    try {
-      if (callback.ackOnly) {
-        return callback.response ?? new Response(null, { status: 204 });
-      }
-      if ("decisions" in callback) {
-        const results = await resolveBatchApproval(runtime, callback);
-        return callback.response ?? json({ ok: true, results });
-      }
-      const result = await resolveApproval(runtime, callback);
-      return callback.response ?? json({ ok: true, result });
-    } catch (error) {
-      if (error instanceof FeedbackValidationError) {
-        return json({ error: error.message }, 400);
-      }
-      throw error;
-    }
-  }
-  return json({ error: "No plugin recognized this callback" }, 404);
 }
 
 function json(body: unknown, status = 200): Response {

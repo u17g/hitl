@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { field, type HitlCallback, type HitlPlugin } from "@hitldev/sdk";
+import { field, type HitlPlugin } from "@hitldev/sdk";
 import { createTestHitl } from "@hitldev/sdk/testing";
 import { describe, expect, it, vi } from "vitest";
 import { SqliteStore } from "./index";
@@ -11,15 +11,6 @@ function jsonPlugin(id: string): HitlPlugin {
       return { externalId: `ext_${request.id}` };
     },
     async notify() {},
-    async handleCallback(req): Promise<HitlCallback | null> {
-      const body = (await req.clone().json()) as Record<string, unknown>;
-      if (body.pluginId !== id) return null;
-      return {
-        requestId: body.requestId as string,
-        decision: body.decision as "approve" | "deny",
-        feedbacks: body.feedbacks as Record<string, unknown> | undefined,
-      };
-    },
   };
 }
 
@@ -46,13 +37,15 @@ describe("createHitl with SqliteStore", () => {
     const body = (await inbox.json()) as { approvals: { id: string }[] };
     expect(body.approvals.map((a) => a.id)).toEqual([requestId]);
 
-    const callback = await app.fetch(
-      new Request("http://x/hitl/callback", {
+    // Resolve through the inbox write route — what an existing library calls
+    // after it receives and parses the channel interactivity itself.
+    const resolve = await app.fetch(
+      new Request(`http://x/hitl/approvals/${requestId}`, {
         method: "POST",
-        body: JSON.stringify({ pluginId: "a", requestId, decision: "approve" }),
+        body: JSON.stringify({ decision: "approve" }),
       }),
     );
-    expect(callback.status).toBe(200);
+    expect(resolve.status).toBe(200);
     expect(await promise).toMatchObject({ type: "APPROVED", id: requestId });
 
     // The outcome survives outside the app: a fresh store over the same

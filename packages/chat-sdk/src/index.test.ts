@@ -1,0 +1,107 @@
+import { field, type ApprovalRequest, type HitlInbox } from "@hitldev/sdk";
+import { toCardElement } from "chat";
+import { describe, expect, it, vi } from "vitest";
+import { chatHitl } from "./index";
+
+// Test list:
+// - send posts the approval card to the channel and returns "<channel>#<id>"
+// - update edits the stored handle with the result card (outcome shown)
+// - update on an unknown externalId is a no-op (handle lost after restart)
+// - notify posts to the channel root, or threads under parentExternalId
+// - constructing the plugin registers the bot handlers
+
+const request: ApprovalRequest = {
+  id: "req-1",
+  channel: "approvals",
+  message: "Inbound lead: a@b.com",
+  fields: { subject: field.textField({ label: "Subject" }) },
+};
+
+function fakeBot() {
+  const posted: { kind: string; ref: string; msg: unknown }[] = [];
+  const handles: { id: string; edit: ReturnType<typeof vi.fn> }[] = [];
+  const target = (kind: string, ref: string) => ({
+    post: vi.fn(async (msg: unknown) => {
+      posted.push({ kind, ref, msg });
+      const handle = { id: "msg-1", edit: vi.fn(async () => {}) };
+      handles.push(handle);
+      return handle;
+    }),
+  });
+  const bot = {
+    channel: vi.fn((ref: string) => target("channel", ref)),
+    thread: vi.fn((ref: string) => target("thread", ref)),
+    onAction: vi.fn(),
+    onModalSubmit: vi.fn(),
+  };
+  return { bot, posted, handles };
+}
+
+const inbox = {} as HitlInbox;
+
+function makePlugin(bot: ReturnType<typeof fakeBot>["bot"]) {
+  return chatHitl({ id: "approvals", bot: bot as never, channel: "slack:C123", inbox: () => inbox });
+}
+
+describe("chatHitl send", () => {
+  it("posts the approval card and returns channel#id as externalId", async () => {
+    const { bot, posted } = fakeBot();
+    const { externalId } = await makePlugin(bot).send(request);
+
+    expect(externalId).toBe("slack:C123#msg-1");
+    expect(bot.channel).toHaveBeenCalledWith("slack:C123");
+    expect(posted[0]?.kind).toBe("channel");
+    expect(toCardElement(posted[0]?.msg)?.type).toBe("card");
+  });
+});
+
+describe("chatHitl update", () => {
+  it("edits the stored message handle with the result card", async () => {
+    const { bot, handles } = fakeBot();
+    const plugin = makePlugin(bot);
+    const { externalId } = await plugin.send(request);
+
+    await plugin.update?.(externalId, { type: "APPROVED", id: "req-1", by: { name: "Ryo" } });
+
+    expect(handles[0]?.edit).toHaveBeenCalledTimes(1);
+    const edited = handles[0]?.edit.mock.calls[0]?.[0];
+    expect(JSON.stringify(toCardElement(edited))).toContain("Approved by Ryo");
+  });
+
+  it("is a no-op when the externalId has no live handle", async () => {
+    const { bot, handles } = fakeBot();
+    const plugin = makePlugin(bot);
+
+    await expect(
+      plugin.update?.("slack:C123#gone", { type: "APPROVED", id: "x" }),
+    ).resolves.toBeUndefined();
+    expect(handles).toHaveLength(0);
+  });
+});
+
+describe("chatHitl notify", () => {
+  it("posts to the channel root when there is no parent", async () => {
+    const { bot, posted } = fakeBot();
+    await makePlugin(bot).notify({ message: "Still waiting" });
+
+    expect(bot.channel).toHaveBeenCalledWith("slack:C123");
+    expect(posted[0]).toMatchObject({ kind: "channel", msg: "Still waiting" });
+  });
+
+  it("threads under the parent message when parentExternalId is set", async () => {
+    const { bot, posted } = fakeBot();
+    await makePlugin(bot).notify({ message: "Reminder", parentExternalId: "slack:C123#ts-1" });
+
+    expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
+    expect(posted[0]).toMatchObject({ kind: "thread", msg: "Reminder" });
+  });
+});
+
+describe("chatHitl wiring", () => {
+  it("registers approve/deny and modal handlers on the bot", () => {
+    const { bot } = fakeBot();
+    makePlugin(bot);
+    expect(bot.onAction).toHaveBeenCalledTimes(1);
+    expect(bot.onModalSubmit).toHaveBeenCalledTimes(1);
+  });
+});

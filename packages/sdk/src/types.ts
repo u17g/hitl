@@ -46,8 +46,9 @@ export interface Notification {
 }
 
 /**
- * Parsed inbound interaction, returned by `plugin.handleCallback`.
- * Feedback values are raw; the core validates and types them.
+ * A parsed inbound interaction resolved through `hitl.inbox` (`approve` /
+ * `deny` / `submitBatch`). Feedback values are raw; the core validates and
+ * types them.
  */
 export interface HitlCallback {
   requestId: string;
@@ -63,8 +64,8 @@ export interface HitlCallback {
 }
 
 /**
- * Parsed inbound batch interaction: one submit carrying a decision for every
- * item of a batch. Returned by `plugin.handleCallback`.
+ * A parsed inbound batch interaction: one submit carrying a decision for every
+ * item of a batch. Returned by a channel's parse helper; resolve via `hitl.inbox`.
  */
 export interface HitlBatchCallback {
   batchId: string;
@@ -85,23 +86,11 @@ export interface HitlBatchCallback {
 export interface HitlPlugin {
   /** Routing key used by `waitForApproval({ channel })` / `notify({ channel })`. */
   id: string;
-  /**
-   * Stable callback-path segment for this channel type (e.g. `"slack"`,
-   * `"discord"`). When set, the channel's interactivity URL is `<base>/<provider>`
-   * and inbound callbacks POSTed there dispatch straight to this plugin — no
-   * content-sniffing across other channels. Multiple instances of the same
-   * channel type share one provider segment; the core still disambiguates
-   * instances by callback content. Plugins without a `provider` fall back to the
-   * shared `<base>` endpoint, where every plugin's `handleCallback` is tried.
-   */
-  provider?: string;
   /** Render and deliver an approval request. */
   send(request: ApprovalRequest): Promise<{ externalId: string }>;
   /** Reflect resolution back into the channel (e.g. replace buttons with "Approved by @ryosuke"). */
   update?(externalId: string, result: ApprovalResult): Promise<void>;
   notify(notification: Notification): Promise<void>;
-  /** Parse an inbound interaction callback; return null if the request is not for this plugin. */
-  handleCallback?(req: Request): Promise<HitlCallback | HitlBatchCallback | null>;
   /** Render and deliver a batch as a single message. Absent → the core sends items one by one. */
   sendBatch?(request: BatchApprovalRequest): Promise<{ externalId: string }>;
   /**

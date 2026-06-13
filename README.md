@@ -16,7 +16,7 @@ One `await`. The workflow suspends — for hours or days, at zero cost, survivin
 
 hitldev is **not an agent framework**. Bring your own — the [AI SDK](https://ai-sdk.dev), Mastra, or anything that runs inside a [Workflow DevKit](https://workflow-sdk.dev) workflow. hitldev does one thing: the human part.
 
-> **Status: early.** The core, the Workflow DevKit binding, the Slack / Teams / Discord channels and the built-in web inbox, and the SQLite / Postgres stores are implemented and tested; the runnable [`examples/hello-world`](examples/hello-world) exercises the full approve loop. The API below is still pre-1.0 and may change.
+> **Status: early.** The core, the Workflow DevKit binding, the Chat SDK channel (Slack / Teams / Discord and more via the Vercel Chat SDK) and the built-in web inbox, and the SQLite / Postgres stores are implemented and tested; the runnable [`examples/hello-world`](examples/hello-world) exercises the full approve loop. The API below is still pre-1.0 and may change.
 
 ## Why
 
@@ -87,42 +87,36 @@ hitldev has two sides. The **server** owns the store and the channel plugins and
 Wire the server once:
 
 ```ts
-// lib/hitl.ts — the server: store + channel plugins, mounted as route handlers.
+// lib/hitl.ts — the server: store + channel plugin, mounted as route handlers.
 import { createHitl } from "@hitldev/sdk";
-import { discordHitl } from "@hitldev/discord";
-import { slackHitl } from "@hitldev/slack";
-import { teamsHitl } from "@hitldev/teams";
+import { chatHitl } from "@hitldev/chat-sdk";
 import { workflowResolver } from "@hitldev/vercel-workflow";
+import { Chat } from "chat";
+import { createSlackAdapter } from "@chat-adapter/slack";
+import { createTeamsAdapter } from "@chat-adapter/teams";
+
+// One Chat SDK instance owns webhook verification, payload parsing, and native
+// card rendering (Block Kit, Adaptive Cards, …) for every platform you enable.
+const bot = new Chat({
+  adapters: { slack: createSlackAdapter(), teams: createTeamsAdapter() },
+  state: createRedisState(),            // any Chat SDK state adapter
+});
 
 export const hitl = createHitl({
   resolver: workflowResolver(),         // resumes the suspended workflow when a callback lands
   secret: process.env.HITLDEV_SECRET,   // bearer shared with the workflow client (optional in local dev)
   plugins: [
-    slackHitl({
-      id: "lead-approvals",
-      channel: "#inbound-leads",
-      token: process.env.SLACK_BOT_TOKEN,
-    }),
-    teamsHitl({
-      id: "teams-approvals",
-      target: { type: "channel", teamId: process.env.TEAMS_TEAM_ID!, channelId: process.env.TEAMS_CHANNEL_ID! },
-      appId: process.env.MICROSOFT_APP_ID,
-      appPassword: process.env.MICROSOFT_APP_PASSWORD,
-      tenantId: process.env.MICROSOFT_APP_TENANT_ID,
-    }),
-    discordHitl({
-      id: "discord-approvals",
-      channelId: process.env.DISCORD_CHANNEL_ID!,
-      token: process.env.DISCORD_BOT_TOKEN,
-      publicKey: process.env.DISCORD_PUBLIC_KEY,
-    }),
+    // `channel` is a Chat SDK channel ref; `inbox` is lazy because createHitl
+    // needs the plugins before hitl.inbox exists.
+    chatHitl({ id: "lead-approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
+    chatHitl({ id: "teams-approvals", bot, channel: "teams:19:...", inbox: () => hitl.inbox }),
   ],
 });
 
-// Mount it under /.well-known/hitldev/v1 — serves channel callbacks (Slack interactivity,
-// Teams Bot Framework, Discord interactions), the internal workflow API, and the web inbox.
-// Each channel POSTs to its own segment under the base — /.well-known/hitldev/v1/slack,
-// /discord, /teams — so configure that URL in the provider's app settings:
+// Mount hitldev under /.well-known/hitldev/v1 — it serves the internal
+// workflow→server API and the web inbox. Channel interactivity is owned by the
+// Chat SDK bot, not hitldev:
+//   export const POST = bot.webhooks.slack    // app/api/webhooks/slack/route.ts
 // Next.js:  export const { GET, POST } = hitl.routeHandlers   // app/.well-known/hitldev/v1/[[...path]]/route.ts
 // Express:  app.use("/.well-known/hitldev/v1", hitl.handler)
 ```
@@ -151,7 +145,7 @@ import { waitForApproval } from "../lib/hitl-workflow";
 const approval = await waitForApproval({ message: "..." });
 ```
 
-The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the callback hits the server, which resolves the hook and resumes the run. The base URL defaults to the deployment's own URL (set `HITLDEV_URL` to override); the two sides share `HITLDEV_SECRET` to authenticate the internal API. The server's store can stay the default in-memory one for a single process, or be a shared `@hitldev/store-sqlite` / `@hitldev/store-postgres` for production.
+The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the Chat SDK bot receives the interactivity (it owns webhook verification and payload parsing for every platform) and resolves via `hitl.inbox` — which resumes the suspended run. The base URL defaults to the deployment's own URL (set `HITLDEV_URL` to override); the two sides share `HITLDEV_SECRET` to authenticate the internal API. The server's store can stay the default in-memory one for a single process, or be a shared `@hitldev/store-sqlite` / `@hitldev/store-postgres` for production.
 
 ## API
 
@@ -218,7 +212,7 @@ const results = await waitForBatchApprovals({
 - **All-items completion.** The workflow suspends until every item is resolved and returns results in input order. On `timeout`, items already resolved keep their result; the rest become `TIMED_OUT`.
 - **Fallback delivery.** Channels that can't render the batch as one message (no `sendBatch`, or `canSendBatch` returns `false` — e.g. over the channel's size limits) receive one regular approval message per item; the batch still waits for all of them.
 
-Channel limits: Slack renders up to the 50-block message limit (roughly 15 items with one field); Teams up to the ~28 KB card limit; Discord renders field-less batches of up to 25 items as a multi-select + Submit (batches **with** fields fall back to per-item delivery, where edits use the modal).
+With the `@hitldev/chat-sdk` plugin, batches are always delivered per item — each item is its own approval card, reviewed and resolved independently (the batch still waits for all of them). A single-message batch UI isn't used because Chat SDK cards can't read multi-select state on submit.
 
 ### Field builders
 
@@ -229,7 +223,7 @@ field.select({ label, options, default? })
 field.confirm({ label, default? })
 ```
 
-Each field renders natively per channel (Slack Block Kit inputs, Teams Adaptive Card fields, web form controls) and contributes its type to `feedbacks`.
+Each field renders natively per platform via the Chat SDK — text inputs in a modal, selects and confirms as native controls — and contributes its type to `feedbacks`.
 
 ### `notify`
 
@@ -241,7 +235,7 @@ await notify({ message: string, parent?: string, channel?: string });
 
 ### Plugin interface
 
-Workflow code declares intent; a plugin — instantiated in `createHitl`, never imported by workflow code — owns rendering and callbacks:
+Workflow code declares intent; a plugin — instantiated in `createHitl`, never imported by workflow code — owns rendering and delivery. With the Chat SDK plugin, receiving interactivity is owned by the Chat SDK bot, which resolves via `hitl.inbox` (see [Receiving interactivity](#receiving-interactivity-existing-bots) below).
 
 ```ts
 interface HitlPlugin {
@@ -252,10 +246,6 @@ interface HitlPlugin {
   // Reflect resolution back into the channel (e.g. replace buttons with "Approved by @ryosuke")
   update?(externalId: string, result: ApprovalResult): Promise<void>;
   notify(notification: Notification): Promise<void>;
-  // Parse inbound interaction callbacks (Slack interactivity payloads etc.)
-  // The runtime resolves the matching Workflow DevKit hook, resuming the workflow.
-  // A batch submit comes back as one HitlBatchCallback carrying every item's decision.
-  handleCallback?(req: Request): Promise<HitlCallback | HitlBatchCallback | null>;
   // Batch capability (optional): render a whole batch as a single message.
   // Absent sendBatch — or canSendBatch returning false — makes the core
   // fall back to one send() per item.
@@ -265,16 +255,17 @@ interface HitlPlugin {
 }
 ```
 
-Official plugins:
+Official plugin:
 
 | Plugin | Package | Renders as |
 |---|---|---|
-| `slackHitl()` | `@hitldev/slack` | Block Kit message with input fields and approve/deny buttons |
-| `discordHitl()` | `@hitldev/discord` | Embed message with approve/deny buttons; feedback fields open in a Modal |
-| `teamsHitl()` | `@hitldev/teams` | Adaptive Card with input fields and approve/deny actions |
+| `chatHitl()` | `@hitldev/chat-sdk` | Native cards on every [Chat SDK](https://chat-sdk.dev) platform — Block Kit (Slack), Adaptive Cards (Teams), embeds + modal (Discord), and more. Approve/Deny buttons; feedback fields open in a modal |
 | Web inbox | built into `hitldev` (always on) | No external service; read and resolve via `hitl.inbox` (React components from `@hitldev/ui`) |
 
-One package per external channel — install only what you use. The web inbox is always present, so the table's first three are the only ones you register. Writing your own plugin is implementing the interface above.
+`@hitldev/chat-sdk` wraps the Vercel Chat SDK, so one plugin covers every platform its adapters support — you enable platforms by registering their adapters on the `Chat` instance, not by installing more hitldev packages. The web inbox is always present. Writing your own plugin is implementing the interface above.
+
+<a id="receiving-interactivity-existing-bots"></a>
+**Receiving interactivity (the Chat SDK bot).** Each platform exposes a single interactivity endpoint; the Chat SDK `bot` owns it through `bot.webhooks.<adapter>`, handling signature verification (Slack HMAC, Teams JWT, Discord Ed25519) and payload parsing for every platform. `chatHitl` registers approve/deny and modal handlers on that bot which resolve through the framework-agnostic `hitl.inbox` (`approve` / `deny` / `submitBatch`). hitldev's own handler is just a fetch handler for the internal API + inbox, so it co-hosts inside your existing server alongside the webhook route — one process, one port.
 
 ### `createHitl` (server side)
 
@@ -294,10 +285,9 @@ hitl.runtime / hitl.store / hitl.plugins   // explicit access (advanced)
 
 `hitl.inbox` is the programmatic way to drive an approval UI from your own handlers — `await hitl.inbox.list({ status: "pending" })`, `await hitl.inbox.approve(id, { by })`, `.deny(id, { reason })`, `.submitBatch(batchId, decisions)` — without going through the HTTP routes. The built-in inbox routes below are thin shells over it.
 
-The handler serves three things under its mount path:
+The handler serves two things under its mount path (channel interactivity is **not** one of them — the Chat SDK bot receives that and calls `hitl.inbox`):
 
 - **The internal workflow API** (`POST /requests`, `/batches`, `/requests/:id/timeout`, `/requests/:id/remind`, `/notifications`, …) — what the workflow client calls. Authenticated with the bearer `secret`; when no secret is set it is open and logs a warning (local dev only).
-- **Channel callbacks** (e.g. Slack interactivity) — authenticated by each channel's own scheme (Slack signing, Discord public key, …), so they are not behind the bearer.
 - **The inbox API** — reads (`GET /approvals`, `GET /approvals/:id`, `GET /batches/:id`) and web-inbox writes (`POST /approvals/:id`, `POST /batches/:batchId`). Thin shells over `hitl.inbox`; available for your own integrations and audit lookups. Not behind the bearer.
 
 ### `workflowHitl` (workflow side)
@@ -323,16 +313,17 @@ For engines other than Workflow DevKit, drop down to `createHitlClient` from `@h
 sequenceDiagram
   participant W as Workflow (WDK run)
   participant H as hitldev server
+  participant B as Chat SDK bot
   participant S as Slack
   participant R as Reviewer
   W->>W: suspend on a WDK hook (get resume token)
   W->>H: POST /requests {token, fields} - durable step
   H->>H: record request
-  H->>S: plugin.send - Block Kit with fields
+  H->>S: plugin.send - native card with Approve/Deny
   Note over W: suspended - event-sourced, zero cost
-  R->>S: edits fields, clicks Approve
-  S->>H: interactivity callback
-  H->>H: validate + type feedbacks, resolve hook
+  R->>S: clicks Approve, edits fields in the modal
+  S->>B: interactivity (bot.webhooks.slack verifies + parses)
+  B->>H: hitl.inbox.approve(id, {feedbacks}) - validates + resolves hook
   H->>W: run resumes with ApprovalResult
   H->>S: plugin.update - "Approved by @ryosuke"
 ```
@@ -343,10 +334,10 @@ What hitldev **owns** (all thin, bounded pieces):
 
 | Piece | What it is |
 |---|---|
-| Server (`createHitl`) | The `.well-known/hitldev/v1` API: request creation, timeout/remind, callbacks, inbox. Owns the store and plugins |
+| Server (`createHitl`) | The `.well-known/hitldev/v1` API: request creation, timeout/remind, inbox. Owns the store and plugins |
 | Workflow client (`createHitlClient` / `workflowHitl`) | `waitForApproval` / `waitForBatchApprovals` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
 | Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
-| Channels | Slack / Teams / Discord renderers + callback parsers, and the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
+| Channels | `@hitldev/chat-sdk` — one Chat SDK-backed plugin that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
 | Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitldev/store-postgres` and `@hitldev/store-sqlite` for persistence |
 
@@ -419,27 +410,19 @@ DATABASE_URL=postgres://... npx hitldev setup
 
 - Local dev: the always-on web inbox works with zero external services — approve from a local inbox page via `hitl.inbox`, no Slack required.
 
-### Discord setup
+### Channel setup (Chat SDK)
 
-1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications) and add a bot.
-2. Enable **Send Messages** and **Message Content Intent** (if reading message content).
-3. Copy the bot token to `DISCORD_BOT_TOKEN` and the application **Public Key** to `DISCORD_PUBLIC_KEY`.
-4. Set **Interactions Endpoint URL** to your mounted hitl handler with the `discord` callback segment (e.g. `https://your-app.example/.well-known/hitldev/v1/discord`). Discord sends a PING on save; `@hitldev/discord` responds automatically.
-5. Invite the bot to your server and pass the target channel id as `channelId`.
+`@hitldev/chat-sdk` delivers through the [Vercel Chat SDK](https://chat-sdk.dev). Install `chat` and the adapters for the platforms you want (`@chat-adapter/slack`, `@chat-adapter/teams`, `@chat-adapter/discord`, …), create one `Chat` instance, and mount its webhook per adapter:
 
-When a reviewer clicks **Approve** and the request has feedback fields, Discord opens a Modal to collect edits before resolving the approval.
+```ts
+export const POST = bot.webhooks.slack;   // app/api/webhooks/slack/route.ts
+```
 
-Batches (`waitForBatchApprovals`) render as a multi-select (every item preselected = approve) plus a **Submit** button, for up to 25 field-less items. Discord has no message-level form, so batches **with** fields fall back to per-item delivery automatically — edits then use the modal as usual.
+Each adapter auto-detects its credentials from environment variables and owns signature verification (Slack HMAC, Teams JWT, Discord Ed25519) and payload parsing. Follow the Chat SDK adapter docs for each platform's app/bot registration and point its interactivity / messaging endpoint at the `bot.webhooks.<adapter>` route.
 
-### Teams setup
+Pass each platform's channel ref to `chatHitl({ channel })` — e.g. `"slack:C123"`, `"teams:19:..."`, `"discord:<channelId>"`. When a reviewer clicks **Approve** and the request has feedback fields, a modal opens to collect edits before resolving — on every platform, because Chat SDK cards can't hold inline text inputs.
 
-1. Register a bot in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) and enable the **Microsoft Teams** channel.
-2. Copy the **Microsoft App ID** and a client secret to `MICROSOFT_APP_ID` / `MICROSOFT_APP_PASSWORD`.
-3. Set the **Messaging endpoint** to your mounted hitl handler with the `teams` callback segment (e.g. `https://your-app.example/.well-known/hitldev/v1/teams`).
-4. Package and install the Teams app (see [packages/teams/manifest.json](packages/teams/manifest.json)) in the target team and/or for individual reviewers.
-5. Pass `teamId` + `channelId` for channel approvals, or a reviewer's Azure AD object id for 1:1 DM approvals.
-
-Teams renders feedback fields inline in the Adaptive Card — no modal step is needed. Batches render as one card with per-item inputs and a single **Submit**; batches over the ~28 KB card limit fall back to per-item delivery.
+Batches (`waitForBatchApprovals`) are delivered per item (one approval card each), reviewed and resolved independently; the batch still waits for all of them.
 
 ## Packages
 
@@ -450,9 +433,7 @@ Teams renders feedback fields inline in the Adaptive Card — no modal step is n
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
 | `@hitldev/cli` | `hitldev setup` / `hitldev schema` — Postgres setup and DDL export |
-| `@hitldev/slack` | `slackHitl()` |
-| `@hitldev/discord` | `discordHitl()` |
-| `@hitldev/teams` | `teamsHitl()` |
+| `@hitldev/chat-sdk` | `chatHitl()` — one [Chat SDK](https://chat-sdk.dev)-backed plugin for Slack, Teams, Discord, and every other adapter |
 | `@hitldev/ui` | Inbox React components |
 
 ## Roadmap
@@ -475,8 +456,6 @@ packages/
   store-postgres/   # @hitldev/store-postgres (PostgresStore)
   store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)
   cli/              # @hitldev/cli (hitldev setup / schema)
-  slack/            # @hitldev/slack
-  discord/          # @hitldev/discord
-  teams/            # @hitldev/teams
+  chat-sdk/         # @hitldev/chat-sdk (Chat SDK-backed plugin: Slack/Teams/Discord/…)
   ...               # @hitldev/ui follows as it is implemented
 ```
