@@ -8,7 +8,12 @@ import type {
 } from "./api-types";
 import type { WorkflowPrimitives } from "./binding";
 import { parseDuration, type Duration } from "./duration";
-import type { HumanItem, WaitForHumanOptions } from "./human-options";
+import type {
+  HumanItem,
+  HumanWaitOptions,
+  RequestHumanOptions,
+  WaitForHumanOptions,
+} from "./human-options";
 import { validateWaitForHumanOptions } from "./human-options";
 import type { HumanActionDef } from "./human-actions";
 import type { HumanResult } from "./human-result";
@@ -18,6 +23,24 @@ import type { Notification, ThreadAnchor } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
 
+const HumanPendingBrand = Symbol.for("hitl.HumanPending");
+
+interface HumanPendingHandle {
+  batch: boolean;
+  wait(opts?: HumanWaitOptions): Promise<HumanResult<HumanActionDef[]> | HumanResult<HumanActionDef[]>[]>;
+}
+
+/** Pending human request. Pass as `ThreadAnchor` to `notify` or chained `waitForHuman`. */
+export interface HumanPending<Actions extends readonly HumanActionDef[]> extends ThreadAnchor {
+  readonly [HumanPendingBrand]: HumanPendingHandle;
+}
+
+/** Pending batch request. Anchor id is the batch id. */
+export interface HumanBatchPending<Actions extends readonly HumanActionDef[]> extends ThreadAnchor {
+  readonly [HumanPendingBrand]: HumanPendingHandle;
+  readonly batch: true;
+}
+
 type NotifyBase = {
   message: string;
   channel?: string;
@@ -26,7 +49,7 @@ type NotifyBase = {
 
 /** Workflow-side notify options. Prefer `after` once a human step has resolved. */
 export type NotifyOptions =
-  | (NotifyBase & { after: HumanResult | ThreadAnchor })
+  | (NotifyBase & { after: HumanResult | ThreadAnchor | HumanPending<readonly HumanActionDef[]> })
   | (NotifyBase & { on: string })
   | (NotifyBase & { threadId?: string; threadRef?: string });
 
@@ -45,6 +68,14 @@ export interface CreateHitlClientOptions extends WorkflowPrimitives {
  * adapters live only on the server.
  */
 export interface HitlClient {
+  requestHuman<const Actions extends readonly HumanActionDef[]>(
+    opts: RequestHumanOptions<Actions> & { items?: undefined },
+  ): Promise<HumanPending<Actions>>;
+
+  requestHuman<const Actions extends readonly HumanActionDef[]>(
+    opts: RequestHumanOptions<Actions> & { items: ReadonlyArray<HumanItem<Actions>> },
+  ): Promise<HumanBatchPending<Actions>>;
+
   waitForHuman<const Actions extends readonly HumanActionDef[]>(
     opts: WaitForHumanOptions<Actions> & { items?: undefined },
   ): Promise<HumanResult<Actions>>;
@@ -53,7 +84,37 @@ export interface HitlClient {
     opts: WaitForHumanOptions<Actions> & { items: ReadonlyArray<HumanItem<Actions>> },
   ): Promise<HumanResult<Actions>[]>;
 
+  waitForHuman<const Actions extends readonly HumanActionDef[]>(
+    pending: HumanPending<Actions>,
+    opts?: HumanWaitOptions,
+  ): Promise<HumanResult<Actions>>;
+
+  waitForHuman<const Actions extends readonly HumanActionDef[]>(
+    pending: HumanBatchPending<Actions>,
+    opts?: HumanWaitOptions,
+  ): Promise<HumanResult<Actions>[]>;
+
   notify(notification: NotifyOptions): Promise<ThreadAnchor>;
+}
+
+function isHumanPending(
+  value: unknown,
+): value is HumanPending<readonly HumanActionDef[]> | HumanBatchPending<readonly HumanActionDef[]> {
+  return typeof value === "object" && value !== null && HumanPendingBrand in value;
+}
+
+function createPending<Actions extends readonly HumanActionDef[]>(
+  id: string,
+  handle: HumanPendingHandle,
+): HumanPending<Actions> {
+  return { id, [HumanPendingBrand]: handle };
+}
+
+function createBatchPending<Actions extends readonly HumanActionDef[]>(
+  id: string,
+  handle: HumanPendingHandle,
+): HumanBatchPending<Actions> {
+  return { id, batch: true, [HumanPendingBrand]: handle };
 }
 
 export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
@@ -78,17 +139,25 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     return JSON.parse(res.body) as T;
   }
 
-  async function waitForHuman<const Actions extends readonly HumanActionDef[]>(
-    opts: WaitForHumanOptions<Actions>,
-  ): Promise<HumanResult<Actions> | HumanResult<Actions>[]> {
+  async function requestHuman<const Actions extends readonly HumanActionDef[]>(
+    opts: RequestHumanOptions<Actions>,
+  ): Promise<HumanPending<Actions>> {
     validateWaitForHumanOptions(opts);
 
     if (opts.items !== undefined) {
-      return waitForHumanBatch(opts as WaitForHumanOptions<Actions> & {
-        items: NonNullable<WaitForHumanOptions<Actions>["items"]>;
+      return requestHumanBatch(opts as RequestHumanOptions<Actions> & {
+        items: NonNullable<RequestHumanOptions<Actions>["items"]>;
       });
     }
 
+    return requestHumanSingle(
+      opts as RequestHumanOptions<Actions> & { items?: undefined },
+    );
+  }
+
+  async function requestHumanSingle<const Actions extends readonly HumanActionDef[]>(
+    opts: RequestHumanOptions<Actions> & { items?: undefined },
+  ): Promise<HumanPending<Actions>> {
     const suspension = suspend<HumanResult<Actions>>();
     const { id } = await callApi<CreateRequestResponse>("/requests", {
       token: suspension.token,
@@ -100,21 +169,24 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       inThread: opts.inThread,
     });
 
-    return waitWithReminders(opts, {
-      promise: suspension.promise,
-      remind: (entry) => callApi(`/requests/${id}/remind`, toRemindBody(entry)),
-      timeout: async () =>
-        (await callApi<TimeoutResponse>(`/requests/${id}/timeout`, {}))
-          .result as HumanResult<Actions>,
+    return createPending(id, {
+      batch: false,
+      wait: (waitOpts) =>
+        waitWithReminders(waitOpts ?? {}, {
+          promise: suspension.promise,
+          remind: (entry) => callApi(`/requests/${id}/remind`, toRemindBody(entry)),
+          timeout: async () =>
+            (await callApi<TimeoutResponse>(`/requests/${id}/timeout`, {}))
+              .result as HumanResult<Actions>,
+        }),
     });
   }
 
-  async function waitForHumanBatch<const Actions extends readonly HumanActionDef[]>(
-    opts: WaitForHumanOptions<Actions> & {
-      items: NonNullable<WaitForHumanOptions<Actions>["items"]>;
+  async function requestHumanBatch<const Actions extends readonly HumanActionDef[]>(
+    opts: RequestHumanOptions<Actions> & {
+      items: NonNullable<RequestHumanOptions<Actions>["items"]>;
     },
-  ): Promise<HumanResult<Actions>[]> {
-    // One durable wait per item, created serially: token order must be stable across replays.
+  ): Promise<HumanBatchPending<Actions>> {
     const suspensions = opts.items.map(() => suspend<HumanResult<Actions>>());
 
     const { batchId } = await callApi<CreateBatchResponse>("/batches", {
@@ -132,17 +204,43 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       })),
     });
 
-    return waitWithReminders(opts, {
-      promise: Promise.all(suspensions.map((s) => s.promise)),
-      remind: (entry) => callApi(`/batches/${batchId}/remind`, toRemindBody(entry)),
-      timeout: async () =>
-        (await callApi<BatchTimeoutResponse>(`/batches/${batchId}/timeout`, {}))
-          .results as HumanResult<Actions>[],
+    return createBatchPending(batchId, {
+      batch: true,
+      wait: (waitOpts) =>
+        waitWithReminders(waitOpts ?? {}, {
+          promise: Promise.all(suspensions.map((s) => s.promise)),
+          remind: (entry) => callApi(`/batches/${batchId}/remind`, toRemindBody(entry)),
+          timeout: async () =>
+            (await callApi<BatchTimeoutResponse>(`/batches/${batchId}/timeout`, {}))
+              .results as HumanResult<Actions>[],
+        }),
     });
   }
 
+  async function waitForHuman<const Actions extends readonly HumanActionDef[]>(
+    optsOrPending:
+      | WaitForHumanOptions<Actions>
+      | HumanPending<Actions>
+      | HumanBatchPending<Actions>,
+    waitOpts?: HumanWaitOptions,
+  ): Promise<HumanResult<Actions> | HumanResult<Actions>[]> {
+    if (isHumanPending(optsOrPending)) {
+      return optsOrPending[HumanPendingBrand].wait(waitOpts) as Promise<
+        HumanResult<Actions> | HumanResult<Actions>[]
+      >;
+    }
+
+    const opts = optsOrPending;
+    validateWaitForHumanOptions(opts);
+    const pending = await requestHuman(opts);
+    return pending[HumanPendingBrand].wait({
+      timeout: opts.timeout,
+      reminders: opts.reminders,
+    }) as Promise<HumanResult<Actions> | HumanResult<Actions>[]>;
+  }
+
   async function waitWithReminders<T>(
-    opts: { timeout?: Duration; reminders?: ReminderEntry[] },
+    opts: HumanWaitOptions,
     subject: {
       promise: Promise<T>;
       remind(entry: ReminderEntry): Promise<unknown>;
@@ -204,6 +302,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
   }
 
   return {
+    requestHuman: requestHuman as HitlClient["requestHuman"],
     waitForHuman: waitForHuman as HitlClient["waitForHuman"],
     notify: (notification) =>
       callApi<NotifyResponse>("/notifications", toNotifyBody(notification)).then((res) => ({

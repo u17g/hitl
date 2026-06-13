@@ -16,7 +16,8 @@ export interface HumanItem<Actions extends readonly HumanActionDef[]> {
   defaults?: Partial<FeedbackValues<ApproveFields<Actions>>>;
 }
 
-export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]> {
+/** Options for the create phase (`requestHuman`). */
+export interface RequestHumanOptions<Actions extends readonly HumanActionDef[]> {
   message?: string;
   actions: Actions;
   items?: ReadonlyArray<HumanItem<Actions>>;
@@ -24,13 +25,20 @@ export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]> 
   defaultsActionId?: string;
   context?: Record<string, unknown>;
   channel?: string;
-  timeout?: Duration;
-  reminders?: ReminderEntry[];
   /** Post under the same chat thread as a prior human step or notify. */
   after?: HumanResult<Actions> | ThreadAnchor;
   /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
   inThread?: string;
 }
+
+/** Options for the wait phase (`waitForHuman(pending, …)`). */
+export interface HumanWaitOptions {
+  timeout?: Duration;
+  reminders?: ReminderEntry[];
+}
+
+export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]>
+  extends RequestHumanOptions<Actions>, HumanWaitOptions {}
 
 export function validateWaitForHumanOptions<Actions extends readonly HumanActionDef[]>(
   opts: WaitForHumanOptions<Actions>,

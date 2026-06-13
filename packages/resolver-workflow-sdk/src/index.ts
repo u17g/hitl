@@ -51,4 +51,4 @@ export function workflowHitl(options: WorkflowHitlOptions): HitlClient {
   });
 }
 
-export type { HitlClient, HitlRequestFn, HitlResolver };
+export type { HitlClient, HitlRequestFn, HitlResolver, HumanBatchPending, HumanPending } from "hitl";

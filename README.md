@@ -56,6 +56,16 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
 }
 ```
 
+For one-shot approval, `waitForHuman({ … })` is enough. To post follow-up details while the request is still pending — for example after fetching logs in another step — split the flow:
+
+```ts
+const pending = await requestHuman({ message: "Approve deploy?", actions });
+
+await notify({ after: pending, message: "Diff summary", detail: { url: diffUrl } });
+
+const approval = await waitForHuman(pending, { timeout: "24h", reminders: [remind.after("1h")] });
+```
+
 See [`examples/hello-world`](examples/hello-world) for a full walkthrough — server setup, workflow client, and web inbox.
 
 Actions with `fields` open a modal on Slack and other Chat SDK platforms. The card button uses `label`; the modal title and submit button default to the same `label` (override with `submitLabel` / `closeLabel`).

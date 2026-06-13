@@ -5,7 +5,7 @@ import { createTestHitl } from "./testing";
 // Test list:
 // - the client's waitForHuman resolves through hitl.inbox
 // - the result's feedbacks are typed from the field definitions
-// - notify threads through the always-on web inbox channel
+// - requestHuman → notify → waitForHuman(pending) while still pending
 // - the batch loop resolves through hitl.inbox.resolveBatch with typed results
 
 const approvalActions = actions()
@@ -60,6 +60,37 @@ describe("public API", () => {
     if (approval.type === "RESOLVED" && approval.actionId === "approve") {
       expectTypeOf(approval.feedbacks).toEqualTypeOf<{ subject: string; body: string }>();
     }
+  });
+
+  it("notifies while pending via requestHuman then waitForHuman(pending)", async () => {
+    const { hitl, client } = createTestHitl({
+      state: new InMemoryState(),
+    });
+
+    const pending = await client.requestHuman({
+      message: "Send this reply?",
+      actions: approvalActions,
+    });
+
+    await client.notify({
+      after: pending,
+      message: "Original message: hello",
+      detail: { source: "inbox" },
+    });
+
+    await hitl.inbox.resolve(pending.id, {
+      actionId: "approve",
+      feedbacks: { subject: "Edited subject", body: "Hello" },
+      by: { name: "ryosuke" },
+    });
+
+    const approval = await client.waitForHuman(pending, { timeout: "72h" });
+    expect(approval).toMatchObject({
+      type: "RESOLVED",
+      actionId: "approve",
+      feedbacks: { subject: "Edited subject", body: "Hello" },
+      edited: true,
+    });
   });
 
   it("runs the batch loop through hitl.inbox.resolveBatch with typed results", async () => {

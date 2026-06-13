@@ -561,3 +561,64 @@ describe("notify", () => {
     expect(body.inThread).toBe("slack:C123:ts-1");
   });
 });
+
+describe("requestHuman", () => {
+  it("returns a pending anchor before suspension resolves", async () => {
+    const { adapters, client, hitl } = makeHarness();
+
+    const pending = await client.requestHuman({ message: "Approve?", actions: approvalActions });
+    await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
+
+    expect(pending.id).toBe(adapters[0]!.sent[0]!.id);
+
+    await client.notify({ after: pending, message: "Extra context while pending" });
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "Extra context while pending",
+      threadId: pending.id,
+      threadRef: `ext_${pending.id}`,
+    });
+
+    const waiting = client.waitForHuman(pending);
+    await resolveHumanRequest(hitl.runtime, { requestId: pending.id, actionId: "approve" });
+    await expect(waiting).resolves.toMatchObject({ type: "RESOLVED", actionId: "approve" });
+  });
+
+  it("waitForHuman(opts) delegates to requestHuman then waitForHuman(pending)", async () => {
+    const { adapters, hitl, client } = makeHarness();
+
+    const pending = client.waitForHuman({ message: "Approve?", actions: approveOnly, timeout: "72h" });
+    await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
+    const requestId = adapters[0]!.sent[0]!.id;
+
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
+    await expect(pending).resolves.toMatchObject({ type: "RESOLVED", actionId: "approve" });
+  });
+
+  it("supports batch pending with notify then waitForHuman(pending)", async () => {
+    const { adapters, client, hitl } = makeHarness();
+
+    const pending = await client.requestHuman({
+      actions: approvalActions,
+      items: [{ message: "A" }, { message: "B" }],
+    });
+    await vi.waitFor(() => expect(adapters[0]!.sentBatches).toHaveLength(1));
+    const batchId = adapters[0]!.sentBatches[0]!.batchId;
+    expect(pending.id).toBe(batchId);
+
+    await client.notify({ after: pending, message: "Batch context" });
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "Batch context",
+      threadId: batchId,
+    });
+
+    const waiting = client.waitForHuman(pending);
+    await resolveBatchHumanRequest(hitl.runtime, {
+      batchId,
+      decisions: [
+        { requestId: `${batchId}:0`, actionId: "approve" },
+        { requestId: `${batchId}:1`, actionId: "approve" },
+      ],
+    });
+    await expect(waiting).resolves.toHaveLength(2);
+  });
+});

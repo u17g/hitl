@@ -15,7 +15,13 @@ export { createInbox } from "./inbox";
 export type { BatchDecision, HitlInbox } from "./inbox";
 
 export { createHitlClient, DEFAULT_BASE_PATH } from "./client";
-export type { CreateHitlClientOptions, HitlClient, NotifyOptions } from "./client";
+export type {
+  CreateHitlClientOptions,
+  HitlClient,
+  HumanBatchPending,
+  HumanPending,
+  NotifyOptions,
+} from "./client";
 
 export type { ActionStyle, HumanActionDef, HumanActionOpts, HumanActions } from "./human-actions";
 export {
@@ -38,7 +44,7 @@ export {
 export { ActionsBuilder, actions } from "./human-actions-builder";
 export type { HumanResult } from "./human-result";
 export { isResolved } from "./human-result";
-export type { HumanItem, WaitForHumanOptions } from "./human-options";
+export type { HumanItem, HumanWaitOptions, RequestHumanOptions, WaitForHumanOptions } from "./human-options";
 export type { TimelineEntry } from "./timeline";
 
 export {
