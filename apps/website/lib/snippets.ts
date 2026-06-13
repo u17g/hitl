@@ -29,6 +29,7 @@ export async function inboundLead(input: {
     message: \`Inbound lead: \${input.email}\`,
     actions: actions()
       .approve({
+        label: "Review and send",
         fields: {
           subject: field.textField({ label: "Subject" }),
           body: field.textArea({ label: "Body" }),

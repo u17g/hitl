@@ -8,9 +8,21 @@ export interface HumanActionDef<
 > {
   id: Id;
   label?: string;
+  /** Modal submit button label. Defaults to `label`, then the action id default. */
+  submitLabel?: string;
+  /** Modal close/cancel button label. Defaults to `"Cancel"`. */
+  closeLabel?: string;
   style?: ActionStyle;
   fields?: F;
 }
+
+export type HumanActionOpts<F extends Record<string, HitlField> = Record<string, never>> = {
+  label?: string;
+  submitLabel?: string;
+  closeLabel?: string;
+  style?: ActionStyle;
+  fields?: F;
+};
 
 /** Ordered list — index 0 renders first (left / top). */
 export type HumanActions = readonly HumanActionDef[];
@@ -53,10 +65,28 @@ export function effectiveStyle(def: HumanActionDef): ActionStyle {
   return def.style ?? defaultStyle(def.id);
 }
 
+export function defaultLabel(id: string): string {
+  if (id === "approve") return "Approve";
+  if (id === "deny") return "Deny";
+  return id;
+}
+
+export function effectiveActionLabel(def: HumanActionDef): string {
+  return def.label ?? defaultLabel(def.id);
+}
+
+export function effectiveSubmitLabel(def: HumanActionDef): string {
+  return def.submitLabel ?? def.label ?? defaultLabel(def.id);
+}
+
+export function effectiveCloseLabel(def: HumanActionDef): string {
+  return def.closeLabel ?? "Cancel";
+}
+
 /** Lightweight helper for tuple inference with `as const`. */
 export function action<Id extends string, F extends Record<string, HitlField> = Record<string, never>>(
   id: Id,
-  opts?: { label?: string; style?: ActionStyle; fields?: F },
+  opts?: HumanActionOpts<F>,
 ): HumanActionDef<Id, F> {
   return { id, ...opts };
 }

@@ -17,15 +17,19 @@ export type { BatchDecision, HitlInbox } from "./inbox";
 export { createHitlClient, DEFAULT_BASE_PATH } from "./client";
 export type { CreateHitlClientOptions, HitlClient } from "./client";
 
-export type { ActionStyle, HumanActionDef, HumanActions } from "./human-actions";
+export type { ActionStyle, HumanActionDef, HumanActionOpts, HumanActions } from "./human-actions";
 export {
   action,
   actionById,
   actionFields,
+  defaultLabel,
   defaultStyle,
   denyAction,
   denyFields,
+  effectiveActionLabel,
+  effectiveCloseLabel,
   effectiveStyle,
+  effectiveSubmitLabel,
   approveAction,
   approveFields,
   validateActions,

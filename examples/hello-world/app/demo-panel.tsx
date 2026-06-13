@@ -1,6 +1,11 @@
 "use client";
 
-import { normalizeActions } from "hitl";
+import {
+  effectiveActionLabel,
+  effectiveCloseLabel,
+  effectiveSubmitLabel,
+  normalizeActions,
+} from "hitl";
 import type { HumanRequestRecord, HitlField, TimelineEntry } from "hitl";
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
@@ -101,12 +106,16 @@ function FieldInput({
 function FeedbackForm({
   title,
   fields,
+  submitLabel,
+  closeLabel,
   onSubmit,
   onCancel,
   busy,
 }: {
   title: string;
   fields: Record<string, HitlField>;
+  submitLabel: string;
+  closeLabel: string;
   onSubmit: (feedbacks: Record<string, unknown>) => void;
   onCancel: () => void;
   busy: boolean;
@@ -139,10 +148,10 @@ function FeedbackForm({
       ))}
       <div style={styles.actions}>
         <button type="submit" style={styles.primaryBtn} disabled={busy}>
-          Confirm
+          {submitLabel}
         </button>
         <button type="button" style={styles.ghostBtn} onClick={onCancel} disabled={busy}>
-          Cancel
+          {closeLabel}
         </button>
       </div>
     </form>
@@ -196,6 +205,8 @@ export function DemoPanel() {
     actionId: string;
     fields: Record<string, HitlField>;
     title: string;
+    submitLabel: string;
+    closeLabel: string;
   } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[] | null>(null);
@@ -310,7 +321,9 @@ export function DemoPanel() {
       id: item.id,
       actionId,
       fields,
-      title: def?.label ?? actionId,
+      title: effectiveActionLabel(def ?? { id: actionId }),
+      submitLabel: effectiveSubmitLabel(def ?? { id: actionId }),
+      closeLabel: effectiveCloseLabel(def ?? { id: actionId }),
     });
   }
 
@@ -386,7 +399,7 @@ export function DemoPanel() {
                       disabled={busy}
                       onClick={() => beginAction(item, def.id)}
                     >
-                      {def.label ?? (def.id === "approve" ? "Approve" : def.id === "deny" ? "Deny" : def.id)}
+                      {effectiveActionLabel(def)}
                     </button>
                   ))}
                   <button
@@ -408,6 +421,8 @@ export function DemoPanel() {
           <FeedbackForm
             title={activeForm.title}
             fields={activeForm.fields}
+            submitLabel={activeForm.submitLabel}
+            closeLabel={activeForm.closeLabel}
             busy={busy}
             onCancel={() => setActiveForm(null)}
             onSubmit={(feedbacks) => void resolve(activeForm.id, activeForm.actionId, feedbacks)}

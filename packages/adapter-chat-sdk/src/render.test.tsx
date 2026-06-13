@@ -56,6 +56,23 @@ describe("actionModal", () => {
     expect(modal?.type).toBe("modal");
     expect(modal?.callbackId).toBe(actionModalCallback("approve"));
     expect(modal?.privateMetadata).toBe(JSON.stringify({ requestId: "req-1", actionId: "approve" }));
+    expect(modal?.title).toBe("Approve");
+    expect(modal?.submitLabel).toBe("Approve");
+    expect(modal?.closeLabel).toBe("Cancel");
+  });
+
+  it("uses action labels for title, submit, and close overrides", () => {
+    const modal = toModalElement(
+      actionModal("req-1", "approve", fields, {
+        id: "approve",
+        label: "Review and send",
+        submitLabel: "Send now",
+        closeLabel: "Go back",
+      }),
+    );
+    expect(modal?.title).toBe("Review and send");
+    expect(modal?.submitLabel).toBe("Send now");
+    expect(modal?.closeLabel).toBe("Go back");
   });
 
   it("renders one input per field, mapped by kind and keyed by field name", () => {

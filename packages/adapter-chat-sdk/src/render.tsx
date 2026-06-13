@@ -1,7 +1,14 @@
 /** @jsxImportSource chat */
 import type { HumanRequest, HumanResult } from "hitl";
-import { actionById, actionFields, effectiveStyle } from "hitl";
-import type { HitlField } from "hitl";
+import {
+  actionById,
+  actionFields,
+  effectiveActionLabel,
+  effectiveCloseLabel,
+  effectiveStyle,
+  effectiveSubmitLabel,
+} from "hitl";
+import type { HitlField, HumanActionDef } from "hitl";
 import { Actions, Button, Card, CardText, Modal } from "chat";
 import { actionButtonId, actionModalCallback } from "./constants";
 import { fieldInputs } from "./fields";
@@ -19,7 +26,7 @@ export function humanRequestCard(request: HumanRequest) {
             value={request.id}
             style={effectiveStyle(def)}
           >
-            {def.label ?? defaultLabel(def.id)}
+            {effectiveActionLabel(def)}
           </Button>
         ))}
       </Actions>
@@ -27,22 +34,18 @@ export function humanRequestCard(request: HumanRequest) {
   );
 }
 
-function defaultLabel(id: string): string {
-  if (id === "approve") return "Approve";
-  if (id === "deny") return "Deny";
-  return id;
-}
-
 export function actionModal(
   requestId: string,
   actionId: string,
   fields: Record<string, HitlField>,
-  title?: string,
+  def: HumanActionDef = { id: actionId },
 ) {
   return (
     <Modal
       callbackId={actionModalCallback(actionId)}
-      title={title ?? defaultLabel(actionId)}
+      title={effectiveActionLabel(def)}
+      submitLabel={effectiveSubmitLabel(def)}
+      closeLabel={effectiveCloseLabel(def)}
       privateMetadata={JSON.stringify({ requestId, actionId })}
     >
       {fieldInputs(fields)}
@@ -55,8 +58,8 @@ export function actionModalFromRequest(
   actions: HumanRequest["actions"],
   actionId: string,
 ) {
-  const def = actionById(actions, actionId);
-  return actionModal(requestId, actionId, actionFields(def ?? { id: actionId }), def?.label);
+  const def = actionById(actions, actionId) ?? { id: actionId };
+  return actionModal(requestId, actionId, actionFields(def), def);
 }
 
 /** Replaces the approval card once resolved: message plus outcome, buttons removed. */
