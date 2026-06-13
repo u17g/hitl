@@ -114,6 +114,13 @@ export class SqliteStore implements Store {
     return null;
   }
 
+  async findByToken(token: string): Promise<ApprovalRecord | null> {
+    const row = this.db.prepare(`SELECT * FROM ${this.table.sql} WHERE token = ?`).get(token) as
+      | ApprovalRow
+      | undefined;
+    return row ? rowToRecord(row) : null;
+  }
+
   async setExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
     const record = await this.get(id);
     if (!record) throw new Error(`Unknown approval "${id}"`);

@@ -134,6 +134,20 @@ export function describeStoreContract(
       expect(await store.findByExternalId("missing")).toBeNull();
     });
 
+    it("finds a record by resume token", async () => {
+      const store = await factory();
+      await store.create(newRecord("a1"));
+      await store.create(newRecord("a2"));
+
+      expect(await store.findByToken("tok_a2")).toMatchObject({ id: "a2" });
+    });
+
+    it("returns null for an unknown token", async () => {
+      const store = await factory();
+      await store.create(newRecord("a1"));
+      expect(await store.findByToken("missing")).toBeNull();
+    });
+
     it("throws when attaching an external id to an unknown approval", async () => {
       const store = await factory();
       await expect(store.setExternalId("missing", "slack-ts-123")).rejects.toThrow(

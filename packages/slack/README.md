@@ -15,10 +15,11 @@ Wire the plugin once at your app edge alongside `createHitl`:
 ```ts
 import { createHitl } from "@hitldev/sdk";
 import { slackHitl } from "@hitldev/slack";
-import { vercelWorkflowBinding } from "@hitldev/vercel-workflow";
+import { workflowResolver } from "@hitldev/vercel-workflow";
 
 export const hitlApp = createHitl({
-  binding: vercelWorkflowBinding(),
+  resolver: workflowResolver(),
+  secret: process.env.HITLDEV_SECRET,
   plugins: [
     slackHitl({
       id: "lead-approvals",
@@ -28,14 +29,17 @@ export const hitlApp = createHitl({
   ],
 });
 
-// Mount the handler so Slack can POST interactivity payloads:
-// Express:  app.use("/hitl", hitlApp.handler)
+// Mount under /.well-known/hitldev/v1 so Slack can POST interactivity payloads:
+// Express:  app.use("/.well-known/hitldev/v1", hitlApp.handler)
 // Next.js:  export const { GET, POST } = hitlApp.routeHandlers
 ```
 
-Workflow code refers to the plugin by `id`:
+Workflow code refers to the plugin by `id` (import from your workflow-side module — see the root README):
 
 ```ts
+import { field } from "@hitldev/sdk";
+import { waitForApproval } from "../lib/hitl-workflow";
+
 const approval = await waitForApproval({
   channel: "lead-approvals",
   message: "Send this reply?",
@@ -51,7 +55,7 @@ The fastest path is to import the bundled [manifest.json](./manifest.json).
 
 1. Open [Slack API → Your Apps](https://api.slack.com/apps) and choose **Create New App** → **From an app manifest**.
 2. Pick your workspace, paste the contents of `manifest.json`, and create the app.
-3. Before saving in production, edit `settings.interactivity.request_url` in the manifest (or under **Interactivity & Shortcuts** in the app settings) to your mounted hitl handler URL, e.g. `https://your-app.example/hitl`.
+3. Before saving in production, edit `settings.interactivity.request_url` in the manifest (or under **Interactivity & Shortcuts** in the app settings) to your mounted hitl handler URL, e.g. `https://your-app.example/.well-known/hitldev/v1`.
 4. Under **OAuth & Permissions**, click **Install to Workspace** (or reinstall after scope changes).
 5. Copy the **Bot User OAuth Token** (`xoxb-...`) to `SLACK_BOT_TOKEN`.
 6. Invite the bot to your approval channel (`/invite @hitldev` in `#inbound-leads`), or rely on `chat:write.public` (included in the manifest) to post to public channels without joining.
@@ -63,7 +67,7 @@ If you prefer not to use the manifest:
 | Setting | Value |
 |---|---|
 | **Bot Token Scopes** | `chat:write`, `chat:write.public` |
-| **Interactivity** | Enabled; Request URL → `https://your-app.example/hitl` |
+| **Interactivity** | Enabled; Request URL → `https://your-app.example/.well-known/hitldev/v1` |
 | **Socket Mode** | Off (not used by this plugin) |
 
 ## Environment variables
