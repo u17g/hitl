@@ -104,7 +104,7 @@ const bot = new Chat({
 
 export const hitl = new Hitl({
   resolver: workflowResolver(),         // resumes the suspended workflow when a callback lands
-  secret: process.env.HITLDEV_SECRET,   // bearer shared with the workflow client (optional in local dev)
+  secret: process.env.HITL_SECRET,   // bearer shared with the workflow client (optional in local dev)
   adapters: [
     // `channel` is a Chat SDK channel ref; `inbox` is lazy because `new Hitl()`
     // needs the adapters before hitl.inbox exists.
@@ -145,7 +145,7 @@ import { waitForApproval } from "../lib/hitl-workflow";
 const approval = await waitForApproval({ message: "..." });
 ```
 
-The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the Chat SDK bot receives the interactivity (it owns webhook verification and payload parsing for every platform) and resolves via `hitl.inbox` — which resumes the suspended run. The base URL defaults to the deployment's own URL (set `HITLDEV_URL` to override); the two sides share `HITLDEV_SECRET` to authenticate the internal API. The server's state can stay the default in-memory one for a single process, or be a shared `@hitl/state-sqlite` / `@hitl/state-pg` for production.
+The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the Chat SDK bot receives the interactivity (it owns webhook verification and payload parsing for every platform) and resolves via `hitl.inbox` — which resumes the suspended run. The base URL defaults to the deployment's own URL (set `HITL_URL` to override); the two sides share `HITL_SECRET` to authenticate the internal API. The server's state can stay the default in-memory one for a single process, or be a shared `@hitl/state-sqlite` / `@hitl/state-pg` for production.
 
 ## API
 
@@ -281,7 +281,7 @@ hitl.inbox             // programmatic inbox: list / get / approve / deny / subm
 hitl.runtime / hitl.state / hitl.adapters   // explicit access (advanced)
 ```
 
-`adapters` is optional — the web inbox channel is always included, so it adds Slack/Teams/Discord on top (the first entry is the default delivery channel). `state` defaults to one in-memory state per process; `secret` defaults to `process.env.HITLDEV_SECRET`.
+`adapters` is optional — the web inbox channel is always included, so it adds Slack/Teams/Discord on top (the first entry is the default delivery channel). `state` defaults to one in-memory state per process; `secret` defaults to `process.env.HITL_SECRET`.
 
 `hitl.inbox` is how you drive an approval UI from your own handlers — `await hitl.inbox.list({ status: "pending" })`, `await hitl.inbox.approve(id, { by })`, `.deny(id, { reason })`, `.submitBatch(batchId, decisions)`. Build your own HTTP routes (see the hello-world example's `/api/inbox`) or wire the Chat SDK bot; hitldev does not expose inbox read/write over `.well-known`.
 
@@ -296,9 +296,9 @@ The workflow client, built on the engine's primitives. Returns the workflow help
 ```ts
 const { waitForApproval, waitForBatchApprovals, notify } = workflowHitl({
   request,             // your "use step" function that fetches the server (required)
-  url?,                // server base URL; defaults to HITLDEV_URL, then the deployment URL
+  url?,                // server base URL; defaults to HITL_URL, then the deployment URL
   basePath?,           // defaults to "/.well-known/hitldev/v1"
-  secret?,             // bearer for the internal API; defaults to HITLDEV_SECRET
+  secret?,             // bearer for the internal API; defaults to HITL_SECRET
 });
 ```
 
@@ -376,7 +376,7 @@ Switching engines means switching one import (`@hitl/resolver-workflow-sdk` → 
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
-- **Environment:** set `HITLDEV_SECRET` to the same value for the server and the workflow client — it authenticates the internal `.well-known/hitldev/v1` API. Without it the API is open (and logs a warning), which is fine for local dev. Set `HITLDEV_URL` if the server's base URL isn't the deployment's own URL (`workflowHitl` reads it from the run metadata by default).
+- **Environment:** set `HITL_SECRET` to the same value for the server and the workflow client — it authenticates the internal `.well-known/hitldev/v1` API. Without it the API is open (and logs a warning), which is fine for local dev. Set `HITL_URL` if the server's base URL isn't the deployment's own URL (`workflowHitl` reads it from the run metadata by default).
 - hitldev needs a state backend for approvals, held by the **server** (`new Hitl()`). It defaults to one in-memory state per process; pass a `@hitl/state-pg` or `@hitl/state-sqlite` implementation for persistence and to share state across server instances.
 - **Custom `State` implementations:** beyond the single-approval methods, a state backend implements `findByToken` (idempotent request creation keys on the resume token) and the batch methods (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) — two extra columns plus a companion `<table>_batches` table in the SQL schema, applied automatically by the bundled backends. `describeStateContract` from `hitl/state-contract` covers the expected behavior.
 - **SQLite** — schema is created automatically in the constructor; no extra step:
@@ -405,7 +405,7 @@ await state.ensureSchema();
 DATABASE_URL=postgres://... npx hitldev setup
 ```
 
-  Use `npx hitldev schema` to print idempotent DDL for your migration pipeline (`--dialect postgres|sqlite`, `--table hitldev.approvals`).
+  Use `npx hitldev schema` to print idempotent DDL for your migration pipeline (`--dialect postgres|sqlite`, `--table hitl.approvals`).
 
 - Local dev: the always-on web inbox works with zero external services — approve from a local inbox page via `hitl.inbox`, no Slack required.
 

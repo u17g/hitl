@@ -1,4 +1,4 @@
-export const DEFAULT_TABLE = "hitldev.approvals";
+export const DEFAULT_TABLE = "hitl.approvals";
 
 const IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const QUALIFIED = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/;
@@ -7,7 +7,7 @@ export interface ResolvedTable {
   tableName: string;
   sql: string;
   indexName: string;
-  /** Companion table grouping batch items, e.g. `hitldev.approvals_batches`. */
+  /** Companion table grouping batch items, e.g. `hitl.approvals_batches`. */
   batchesSql: string;
   batchIdIndexName: string;
   schema?: string;
@@ -51,7 +51,7 @@ export function resolveTableName(tableName: string): ResolvedTable {
 }
 
 export function metaTableSql(table: ResolvedTable): string {
-  return table.schema ? `${table.schema}.schema_migrations` : "_hitldev_schema_migrations";
+  return table.schema ? `${table.schema}.schema_migrations` : "_hitl_schema_migrations";
 }
 
 function assertIdentifier(name: string): void {

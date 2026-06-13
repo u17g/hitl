@@ -24,8 +24,8 @@ export function authorizeInternalApi(req: Request, secret: string | undefined): 
     if (!warnedMissingSecret) {
       warnedMissingSecret = true;
       console.warn(
-        "hitldev: HITLDEV_SECRET is not set; the internal API accepts unauthenticated requests. " +
-          "Set HITLDEV_SECRET (same value for server and workflows) before deploying.",
+        "hitldev: HITL_SECRET is not set; the internal API accepts unauthenticated requests. " +
+          "Set HITL_SECRET (same value for server and workflows) before deploying.",
       );
     }
     return true;

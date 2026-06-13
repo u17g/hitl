@@ -3,14 +3,14 @@ import { renderSchemaSql, resolveSchemaDialect, resolveSchemaTable } from "./sch
 
 describe("schema command", () => {
   it("defaults to postgres DDL", () => {
-    const sql = renderSchemaSql("hitldev.approvals", "postgres");
-    expect(sql).toContain("CREATE SCHEMA IF NOT EXISTS hitldev");
+    const sql = renderSchemaSql("hitl.approvals", "postgres");
+    expect(sql).toContain("CREATE SCHEMA IF NOT EXISTS hitl");
     expect(sql).toContain("JSONB NOT NULL");
   });
 
   it("supports sqlite DDL", () => {
-    const sql = renderSchemaSql("hitldev.approvals", "sqlite");
-    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "hitldev.approvals"');
+    const sql = renderSchemaSql("hitl.approvals", "sqlite");
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "hitl.approvals"');
     expect(sql).toContain("fields      TEXT NOT NULL");
   });
 

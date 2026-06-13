@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { State } from "hitl";
 import { SqliteState } from "@hitl/state-sqlite";
 
-const dbDir = join(process.cwd(), ".hitldev");
+const dbDir = join(process.cwd(), ".hitl");
 const dbPath = join(dbDir, "approvals.db");
 mkdirSync(dbDir, { recursive: true });
 

@@ -21,7 +21,7 @@ describe("postgres migrations", () => {
   });
 
   it("prints user-facing DDL without the migration ledger", () => {
-    expect(schemaSql(DEFAULT_TABLE)).toContain("CREATE SCHEMA IF NOT EXISTS hitldev");
+    expect(schemaSql(DEFAULT_TABLE)).toContain("CREATE SCHEMA IF NOT EXISTS hitl");
     expect(schemaSql(DEFAULT_TABLE)).not.toContain("schema_migrations");
   });
 
@@ -34,26 +34,26 @@ describe("postgres migrations", () => {
     await applyMigrations(pool, DEFAULT_TABLE);
     await applyMigrations(pool, DEFAULT_TABLE);
 
-    const { rows } = await pool.query("SELECT id FROM hitldev.schema_migrations ORDER BY id");
+    const { rows } = await pool.query("SELECT id FROM hitl.schema_migrations ORDER BY id");
     expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids", "003_batches"]);
   });
 
   it("upgrades a v2 database in place", async () => {
     const pool = newPool();
-    await pool.query("CREATE SCHEMA IF NOT EXISTS hitldev");
+    await pool.query("CREATE SCHEMA IF NOT EXISTS hitl");
     await pool.query(migrationSql("001_initial", DEFAULT_TABLE));
     await pool.query(migrationSql("002_external_ids", DEFAULT_TABLE));
     await pool.query(
-      "CREATE TABLE hitldev.schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
+      "CREATE TABLE hitl.schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
     );
     await pool.query(
-      "INSERT INTO hitldev.schema_migrations VALUES ('001_initial', 'x'), ('002_external_ids', 'x')",
+      "INSERT INTO hitl.schema_migrations VALUES ('001_initial', 'x'), ('002_external_ids', 'x')",
     );
 
     await applyMigrations(pool, DEFAULT_TABLE);
 
     // batch columns and the batches table now exist
-    await pool.query("SELECT batch_id, batch_index FROM hitldev.approvals LIMIT 0");
-    await pool.query("SELECT id, channel, title FROM hitldev.approvals_batches LIMIT 0");
+    await pool.query("SELECT batch_id, batch_index FROM hitl.approvals LIMIT 0");
+    await pool.query("SELECT id, channel, title FROM hitl.approvals_batches LIMIT 0");
   });
 });

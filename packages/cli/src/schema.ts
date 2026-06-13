@@ -2,7 +2,7 @@ import { schemaSql as postgresSchemaSql } from "@hitl/state-pg";
 import { schemaSql as sqliteSchemaSql } from "@hitl/state-sqlite";
 import { parseFlagValue } from "./args.js";
 
-const DEFAULT_TABLE = "hitldev.approvals";
+const DEFAULT_TABLE = "hitl.approvals";
 
 export type SchemaDialect = "postgres" | "sqlite";
 

@@ -16,7 +16,7 @@ export { SCHEMA_VERSION } from "./migrations/index.js";
 export { migrationSql } from "./schema-sql.js";
 
 export interface SqliteStateOptions {
-  /** Defaults to `hitldev.approvals`. */
+  /** Defaults to `hitl.approvals`. */
   tableName?: string;
 }
 

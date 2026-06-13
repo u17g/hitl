@@ -23,11 +23,11 @@ export interface WorkflowHitlOptions {
    * ```
    */
   request: HitlRequestFn;
-  /** Base URL of the app hosting the server. Defaults to `HITLDEV_URL`, then the deployment's own URL. */
+  /** Base URL of the app hosting the server. Defaults to `HITL_URL`, then the deployment's own URL. */
   url?: string;
   /** Where the server is mounted. Defaults to `/.well-known/hitldev/v1`. */
   basePath?: string;
-  /** Bearer secret of the internal API. Defaults to `HITLDEV_SECRET`. */
+  /** Bearer secret of the internal API. Defaults to `HITL_SECRET`. */
   secret?: string;
 }
 
@@ -45,7 +45,7 @@ export function workflowHitl(options: WorkflowHitlOptions): HitlClient {
     },
     sleep: (ms) => sleep(`${ms}ms`),
     request: options.request,
-    url: options.url ?? (() => process.env.HITLDEV_URL ?? getWorkflowMetadata().url),
+    url: options.url ?? (() => process.env.HITL_URL ?? getWorkflowMetadata().url),
     basePath: options.basePath,
     secret: options.secret,
   });

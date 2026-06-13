@@ -4,7 +4,7 @@ import { workflowHitl } from "./index";
 
 // Test list:
 // - suspend() is a WDK hook: the hook token goes to POST /requests in the body
-// - the API URL comes from getWorkflowMetadata().url; HITLDEV_URL / options.url override it
+// - the API URL comes from getWorkflowMetadata().url; HITL_URL / options.url override it
 // - the secret is sent as a bearer; sleep maps ms -> WDK "Nms" strings
 // - timeout: sleeps, then returns the /timeout endpoint's result
 // - the user-provided `request` step is the only transport (no stdlib fetch)
@@ -49,8 +49,8 @@ function fakeRequest(bodies: unknown[]) {
 beforeEach(() => {
   hooks.reset();
   sleepMock.mockClear();
-  delete process.env.HITLDEV_URL;
-  delete process.env.HITLDEV_SECRET;
+  delete process.env.HITL_URL;
+  delete process.env.HITL_SECRET;
 });
 
 describe("workflowHitl", () => {
@@ -66,8 +66,8 @@ describe("workflowHitl", () => {
     expect(JSON.parse(calls[0]!.body)).toMatchObject({ token: "hook_1", message: "Approve?" });
   });
 
-  it("prefers HITLDEV_URL, then an explicit url option", async () => {
-    process.env.HITLDEV_URL = "http://localhost:3000";
+  it("prefers HITL_URL, then an explicit url option", async () => {
+    process.env.HITL_URL = "http://localhost:3000";
     const a = fakeRequest([{ id: "a1" }]);
     void workflowHitl({ request: a.request }).waitForApproval({ message: "m" });
     await vi.waitFor(() => expect(a.calls).toHaveLength(1));

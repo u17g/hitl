@@ -31,7 +31,7 @@ export interface HitlOptions {
   resolver: HitlResolver;
   /**
    * Bearer secret of the internal workflow → server API.
-   * Defaults to `process.env.HITLDEV_SECRET`; without one the internal API is
+   * Defaults to `process.env.HITL_SECRET`; without one the internal API is
    * open (local development) and a warning is logged once.
    */
   secret?: string;
@@ -98,7 +98,7 @@ export class Hitl implements HitlInstance {
     this.state = this.runtime.state;
     this.adapters = this.runtime.adapters;
     this.inbox = createInbox(this.runtime);
-    const secret = options.secret ?? process.env.HITLDEV_SECRET;
+    const secret = options.secret ?? process.env.HITL_SECRET;
     const fetchHandler = createFetchHandler(this.runtime, secret);
     this.fetch = fetchHandler;
     this.routeHandlers = { POST: fetchHandler };

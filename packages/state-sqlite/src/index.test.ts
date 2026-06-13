@@ -60,8 +60,8 @@ describe("SqliteState specifics", () => {
   });
 
   it("exports idempotent schemaSql", () => {
-    expect(schemaSql("hitldev.approvals")).toContain(
-      'CREATE TABLE IF NOT EXISTS "hitldev.approvals"',
+    expect(schemaSql("hitl.approvals")).toContain(
+      'CREATE TABLE IF NOT EXISTS "hitl.approvals"',
     );
     expect(schemaSql("custom_approvals")).toContain("CREATE TABLE IF NOT EXISTS custom_approvals");
   });

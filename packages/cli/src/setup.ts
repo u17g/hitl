@@ -4,7 +4,7 @@ import { PostgresState, type PgQueryable } from "@hitl/state-pg";
 import { hasFlag, parseFlagValue } from "./args.js";
 import { getDatabaseUrl } from "./db-url.js";
 
-const DEFAULT_TABLE = "hitldev.approvals";
+const DEFAULT_TABLE = "hitl.approvals";
 
 export async function ensureHitldevSchema(
   pool: PgQueryable,

@@ -49,7 +49,7 @@ export interface CreateHitlClientOptions extends WorkflowPrimitives {
   url: string | (() => string);
   /** Where the server is mounted. Defaults to `/.well-known/hitldev/v1`. */
   basePath?: string;
-  /** Bearer secret of the internal API. Defaults to `process.env.HITLDEV_SECRET`, read lazily. */
+  /** Bearer secret of the internal API. Defaults to `process.env.HITL_SECRET`, read lazily. */
   secret?: string | (() => string | undefined);
 }
 
@@ -77,7 +77,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     const secret =
       typeof options.secret === "function"
         ? options.secret()
-        : (options.secret ?? process.env.HITLDEV_SECRET);
+        : (options.secret ?? process.env.HITL_SECRET);
 
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (secret) headers.authorization = `Bearer ${secret}`;

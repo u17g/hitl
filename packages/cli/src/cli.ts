@@ -5,8 +5,8 @@ function printHelp(): void {
   process.stdout.write(`hitldev — database setup and schema export
 
 Usage:
-  hitldev setup [--table hitldev.approvals] [--skip-workflow]
-  hitldev schema [--table hitldev.approvals] [--dialect postgres|sqlite]
+  hitldev setup [--table hitl.approvals] [--skip-workflow]
+  hitldev schema [--table hitl.approvals] [--dialect postgres|sqlite]
 
 Environment:
   DATABASE_URL or WORKFLOW_POSTGRES_URL   Postgres connection string (setup)

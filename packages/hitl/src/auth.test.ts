@@ -58,6 +58,6 @@ describe("authorizeInternalApi", () => {
     expect(authorizeInternalApi(request(), undefined)).toBe(true);
 
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0]?.[0]).toMatch(/HITLDEV_SECRET/);
+    expect(warn.mock.calls[0]?.[0]).toMatch(/HITL_SECRET/);
   });
 });
