@@ -5,7 +5,7 @@ Postgres-backed `State` for Hitl. Bring your own `pg` pool — the package imple
 ## Install
 
 ```bash
-npm install hitl @hitl-sdk/state-pg pg
+npm install @hitl-sdk/hitl @hitl-sdk/state-pg pg
 ```
 
 `hitl` and `pg` are peer dependencies in practice: you need a Postgres client to construct `PostgresState`.
@@ -57,7 +57,7 @@ npx workflow-postgres-setup
 
 ```ts
 import pg from "pg";
-import { Hitl } from "hitl";
+import { Hitl } from "@hitl-sdk/hitl";
 import { PostgresState } from "@hitl-sdk/state-pg";
 
 const pool = new pg.Pool({

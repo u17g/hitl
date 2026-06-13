@@ -1,5 +1,5 @@
-import { createHitlClient, type HitlClient } from "hitl/client";
-import type { HitlRequestFn, HitlResolver } from "hitl/core";
+import { createHitlClient, type HitlClient } from "@hitl-sdk/hitl/client";
+import type { HitlRequestFn, HitlResolver } from "@hitl-sdk/hitl/core";
 import { createHook, getWorkflowMetadata, sleep } from "workflow";
 
 export { workflowResolver } from "./resolver";
@@ -49,5 +49,5 @@ export function createWorkflowSdkHitlClient(
   });
 }
 
-export type { HitlClient, HumanBatchPending, HumanPending } from "hitl/client";
-export type { HitlRequestFn, HitlResolver } from "hitl/core";
+export type { HitlClient, HumanBatchPending, HumanPending } from "@hitl-sdk/hitl/client";
+export type { HitlRequestFn, HitlResolver } from "@hitl-sdk/hitl/core";

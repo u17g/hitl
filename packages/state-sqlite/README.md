@@ -7,7 +7,7 @@ Requires **Node.js 22.13.0+**.
 ## Install
 
 ```bash
-npm install hitl @hitl-sdk/state-sqlite
+npm install @hitl-sdk/hitl @hitl-sdk/state-sqlite
 ```
 
 ## Setup
@@ -54,7 +54,7 @@ migrationSql("001_initial", "hitl.human_requests");
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { Hitl } from "hitl";
+import { Hitl } from "@hitl-sdk/hitl";
 import { SqliteState } from "@hitl-sdk/state-sqlite";
 
 const dbPath = join(process.cwd(), ".hitl", "human_requests.db");

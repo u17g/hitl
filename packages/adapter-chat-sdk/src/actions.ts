@@ -1,5 +1,5 @@
-import { actionById, actionFields, type Reviewer } from "hitl/adapter";
-import type { HitlInbox } from "hitl/state";
+import { actionById, actionFields, type Reviewer } from "@hitl-sdk/hitl/adapter";
+import type { HitlInbox } from "@hitl-sdk/hitl/state";
 import type { ActionEvent, Chat, ModalSubmitEvent } from "chat";
 import {
   actionButtonId,

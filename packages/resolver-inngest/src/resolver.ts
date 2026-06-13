@@ -1,5 +1,5 @@
 import type { Inngest } from "inngest";
-import type { HitlResolver } from "hitl/core";
+import type { HitlResolver } from "@hitl-sdk/hitl/core";
 import { HITL_RESUME_EVENT } from "./constants";
 
 export interface InngestResolverOptions {

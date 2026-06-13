@@ -4,7 +4,7 @@
   "commit": false,
   "fixed": [
     [
-      "hitl",
+      "@hitl-sdk/hitl",
       "@hitl-sdk/*"
     ]
   ],

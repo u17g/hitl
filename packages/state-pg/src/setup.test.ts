@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actions } from "hitl";
+import { actions } from "@hitl-sdk/hitl";
 import { newDb } from "pg-mem";
 import { PostgresState, type PgQueryable } from "./index.js";
 import { ensureHitlSchema } from "./setup.js";

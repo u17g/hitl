@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: [
-    "hitl",
+    "@hitl-sdk/hitl",
     "@hitl-sdk/resolver-workflow-sdk",
     "workflow",
   ],

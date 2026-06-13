@@ -1,5 +1,5 @@
-import { actions } from "hitl";
-import type { HitlRequest } from "hitl/core";
+import { actions } from "@hitl-sdk/hitl";
+import type { HitlRequest } from "@hitl-sdk/hitl/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createInngestHitlClient, HITL_RESUME_EVENT, type InngestStep } from "./index";
 

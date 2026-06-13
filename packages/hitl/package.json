@@ -1,8 +1,11 @@
 {
-  "name": "hitl",
+  "name": "@hitl-sdk/hitl",
   "version": "0.0.1",
   "description": "Human-in-the-loop as a typed, durable primitive for TypeScript workflows.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "files": [
     "dist"

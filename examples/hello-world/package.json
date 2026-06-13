@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hitl": "workspace:*",
+    "@hitl-sdk/hitl": "workspace:*",
     "@hitl-sdk/resolver-workflow-sdk": "workspace:*",
     "next": "^15.3.3",
     "react": "^19.1.0",

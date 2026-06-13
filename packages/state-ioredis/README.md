@@ -5,7 +5,7 @@ Redis-backed `State` for Hitl. Bring your own [ioredis](https://github.com/redis
 ## Install
 
 ```bash
-npm install hitl @hitl-sdk/state-ioredis ioredis
+npm install @hitl-sdk/hitl @hitl-sdk/state-ioredis ioredis
 ```
 
 `hitl` is a peer dependency. You construct and own the Redis connection.
@@ -16,7 +16,7 @@ For most apps, migrations run automatically on the first operation (or call `ens
 
 ```ts
 import Redis from "ioredis";
-import { Hitl } from "hitl";
+import { Hitl } from "@hitl-sdk/hitl";
 import { IoredisState } from "@hitl-sdk/state-ioredis";
 
 const redis = new Redis(process.env.REDIS_URL);

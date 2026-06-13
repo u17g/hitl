@@ -1,6 +1,6 @@
-import { field, actions } from "hitl";
-import { InMemoryState } from "hitl/state";
-import { createTestHitl } from "hitl/testing";
+import { field, actions } from "@hitl-sdk/hitl";
+import { InMemoryState } from "@hitl-sdk/hitl/state";
+import { createTestHitl } from "@hitl-sdk/hitl/testing";
 import { describe, expect, it } from "vitest";
 
 const approvalActions = actions()

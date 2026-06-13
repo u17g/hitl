@@ -23,11 +23,11 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "hitl": "workspace:*",
+    "@hitl-sdk/hitl": "workspace:*",
     "inngest": ">=3.0.0"
   },
   "devDependencies": {
-    "hitl": "workspace:*",
+    "@hitl-sdk/hitl": "workspace:*",
     "@types/node": "^25.9.3",
     "inngest": "^3.35.1",
     "typescript": "^5.8.3",

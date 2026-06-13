@@ -1,5 +1,5 @@
-import { field, actions } from "hitl/adapter";
-import type { HitlInbox } from "hitl/state";
+import { field, actions } from "@hitl-sdk/hitl/adapter";
+import type { HitlInbox } from "@hitl-sdk/hitl/state";
 import { describe, expect, it, vi } from "vitest";
 import { actionButtonId, actionModalCallback } from "./constants";
 import { registerHitlHandlers } from "./actions";

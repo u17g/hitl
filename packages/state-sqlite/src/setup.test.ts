@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { actions } from "hitl";
+import { actions } from "@hitl-sdk/hitl";
 import { DatabaseSync } from "node:sqlite";
 import { SqliteState } from "./index.js";
 import { runSetup } from "./setup.js";

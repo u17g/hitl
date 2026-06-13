@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { actions } from "hitl";
+import { actions } from "@hitl-sdk/hitl";
 import { newDb } from "pg-mem";
-import { describeStateContract } from "hitl/state-contract";
+import { describeStateContract } from "@hitl-sdk/hitl/state-contract";
 import { PostgresState, type PgQueryable } from "./index";
 
 function newPool(): PgQueryable {

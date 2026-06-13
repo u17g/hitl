@@ -87,12 +87,12 @@ importers:
 
   examples/hello-world:
     dependencies:
+      '@hitl-sdk/hitl':
+        specifier: workspace:*
+        version: link:../../packages/hitl
       '@hitl-sdk/resolver-workflow-sdk':
         specifier: workspace:*
         version: link:../../packages/resolver-workflow-sdk
-      hitl:
-        specifier: workspace:*
-        version: link:../../packages/hitl
       next:
         specifier: ^15.3.3
         version: 15.5.19(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -124,7 +124,7 @@ importers:
 
   packages/adapter-chat-sdk:
     dependencies:
-      hitl:
+      '@hitl-sdk/hitl':
         specifier: workspace:*
         version: link:../hitl
     devDependencies:
@@ -155,12 +155,12 @@ importers:
 
   packages/resolver-inngest:
     devDependencies:
+      '@hitl-sdk/hitl':
+        specifier: workspace:*
+        version: link:../hitl
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
-      hitl:
-        specifier: workspace:*
-        version: link:../hitl
       inngest:
         specifier: ^3.35.1
         version: 3.54.2(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(express@5.2.1)(next@15.5.19(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@5.9.3)(zod@4.3.6)
@@ -173,12 +173,12 @@ importers:
 
   packages/resolver-workflow-sdk:
     devDependencies:
+      '@hitl-sdk/hitl':
+        specifier: workspace:*
+        version: link:../hitl
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
-      hitl:
-        specifier: workspace:*
-        version: link:../hitl
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
@@ -195,15 +195,15 @@ importers:
         specifier: ^5.6.1
         version: 5.11.1
     devDependencies:
+      '@hitl-sdk/hitl':
+        specifier: workspace:*
+        version: link:../hitl
       '@types/ioredis-mock':
         specifier: ^8.2.7
         version: 8.2.7(ioredis@5.11.1)
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
-      hitl:
-        specifier: workspace:*
-        version: link:../hitl
       ioredis-mock:
         specifier: ^8.9.0
         version: 8.13.1(@types/ioredis-mock@8.2.7(ioredis@5.11.1))(ioredis@5.11.1)
@@ -220,15 +220,15 @@ importers:
         specifier: ^8.16.3
         version: 8.21.0
     devDependencies:
+      '@hitl-sdk/hitl':
+        specifier: workspace:*
+        version: link:../hitl
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
       '@types/pg':
         specifier: ^8.15.4
         version: 8.20.0
-      hitl:
-        specifier: workspace:*
-        version: link:../hitl
       pg-mem:
         specifier: ^3.0.5
         version: 3.0.14
@@ -241,12 +241,12 @@ importers:
 
   packages/state-sqlite:
     devDependencies:
+      '@hitl-sdk/hitl':
+        specifier: workspace:*
+        version: link:../hitl
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
-      hitl:
-        specifier: workspace:*
-        version: link:../hitl
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

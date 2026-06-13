@@ -1,4 +1,4 @@
-# hitl
+# @hitl-dev/hitl
 
 ## 0.0.1
 

@@ -1,5 +1,5 @@
 /** @jsxImportSource chat */
-import type { HumanRequest, HumanResult, HitlField, HumanActionDef } from "hitl/adapter";
+import type { HumanRequest, HumanResult, HitlField, HumanActionDef } from "@hitl-sdk/hitl/adapter";
 import {
   actionById,
   actionFields,
@@ -7,7 +7,7 @@ import {
   effectiveCloseLabel,
   effectiveStyle,
   effectiveSubmitLabel,
-} from "hitl/adapter";
+} from "@hitl-sdk/hitl/adapter";
 import { Actions, Button, Card, CardText, Modal } from "chat";
 import { actionButtonId, actionModalCallback } from "./constants";
 import { fieldInputs } from "./fields";

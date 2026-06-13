@@ -1,4 +1,4 @@
-import type { HitlRequest } from "hitl/core";
+import type { HitlRequest } from "@hitl-sdk/hitl/core";
 import { createWorkflowSdkHitlClient } from "@hitl-sdk/resolver-workflow-sdk";
 
 async function hitlRequest(req: HitlRequest) {

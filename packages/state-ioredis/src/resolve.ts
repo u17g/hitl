@@ -1,5 +1,5 @@
 import type Redis from "ioredis";
-import type { HumanResult } from "hitl";
+import type { HumanResult } from "@hitl-sdk/hitl";
 import type { ResolvedKeyPrefix } from "./keys.js";
 import { parseHumanRequest, type StoredHumanRequest } from "./serialize.js";
 

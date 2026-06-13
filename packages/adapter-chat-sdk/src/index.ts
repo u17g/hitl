@@ -1,5 +1,5 @@
-import type { HumanRequest, HumanResult, HitlAdapter, Notification } from "hitl/adapter";
-import type { HitlInbox } from "hitl/state";
+import type { HumanRequest, HumanResult, HitlAdapter, Notification } from "@hitl-sdk/hitl/adapter";
+import type { HitlInbox } from "@hitl-sdk/hitl/state";
 import type { Chat, SentMessage } from "chat";
 import { registerHitlHandlers } from "./actions";
 import { encodeExternalId, toChatThreadRef } from "./external-id";

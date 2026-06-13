@@ -15,9 +15,9 @@ export function docHref(locale: Locale, slug: DocSlug) {
 }
 
 export const snippets = {
-  install: `npm install hitl`,
+  install: `npm install @hitl-sdk/hitl`,
   installAdapters: `npm install @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams`,
-  workflowUsage: `import { field, actions, isResolved } from "hitl";
+  workflowUsage: `import { field, actions, isResolved } from "@hitl-sdk/hitl";
 import { waitForHuman } from "../lib/hitl-workflow";
 
 export async function inboundLead(input: {
@@ -67,7 +67,7 @@ await sendEmail({ ...edits });`,
 if (isResolved(approval, "approve") && approval.edited) {
   await sendEmail({ ...approval.feedbacks });
 }`,
-  serverSetup: `import { Hitl } from "hitl";
+  serverSetup: `import { Hitl } from "@hitl-sdk/hitl";
 import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
 import { SqliteState } from "@hitl-sdk/state-sqlite";
 

@@ -1,4 +1,4 @@
-import type { HumanResult } from "hitl";
+import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
@@ -6,10 +6,10 @@ import type {
   NewHumanRequestRecord,
   NewNotifyDeliveryRecord,
   NotifyDeliveryRecord,
-} from "hitl/state";
-import type { HumanActions } from "hitl/state";
-import { normalizeActions } from "hitl/state";
-import type { TimelineEntry } from "hitl/state";
+} from "@hitl-sdk/hitl/state";
+import type { HumanActions } from "@hitl-sdk/hitl/state";
+import { normalizeActions } from "@hitl-sdk/hitl/state";
+import type { TimelineEntry } from "@hitl-sdk/hitl/state";
 
 export interface StoredHumanRequest {
   id: string;

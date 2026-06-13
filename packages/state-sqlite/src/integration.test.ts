@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
-import { field, actions } from "hitl";
-import type { HitlAdapter } from "hitl/adapter";
-import { createTestHitl } from "hitl/testing";
+import { field, actions } from "@hitl-sdk/hitl";
+import type { HitlAdapter } from "@hitl-sdk/hitl/adapter";
+import { createTestHitl } from "@hitl-sdk/hitl/testing";
 import { describe, expect, it, vi } from "vitest";
 import { SqliteState } from "./index";
 

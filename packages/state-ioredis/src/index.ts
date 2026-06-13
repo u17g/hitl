@@ -1,5 +1,5 @@
 import type Redis from "ioredis";
-import type { HumanResult } from "hitl";
+import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
@@ -9,7 +9,7 @@ import type {
   NotifyDeliveryRecord,
   State,
   TimelineEntry,
-} from "hitl/state";
+} from "@hitl-sdk/hitl/state";
 import { applyMigrations } from "./migrate.js";
 import { DEFAULT_PREFIX, DEFAULT_TABLE, resolveKeyPrefix, type ResolvedKeyPrefix } from "./keys.js";
 import { SCHEMA_VERSION } from "./migrations/index.js";

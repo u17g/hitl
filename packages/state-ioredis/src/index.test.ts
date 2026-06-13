@@ -1,10 +1,10 @@
 import RedisMock from "ioredis-mock";
 import type Redis from "ioredis";
 import { describe, expect, it } from "vitest";
-import { field, actions } from "hitl";
-import { approveFields } from "hitl/adapter";
-import type { NewHumanRequestRecord } from "hitl/state";
-import { describeStateContract } from "hitl/state-contract";
+import { field, actions } from "@hitl-sdk/hitl";
+import { approveFields } from "@hitl-sdk/hitl/adapter";
+import type { NewHumanRequestRecord } from "@hitl-sdk/hitl/state";
+import { describeStateContract } from "@hitl-sdk/hitl/state-contract";
 import { IoredisState } from "./index";
 
 async function freshRedis(): Promise<Redis> {

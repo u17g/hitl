@@ -8,7 +8,7 @@ A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable
 ## Installation
 
 ```bash
-npm install hitl @hitl-sdk/resolver-workflow-sdk
+npm install @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk
 ```
 
 Install channel adapters for the platforms you want:
@@ -20,7 +20,7 @@ npm install @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/te
 ## Usage
 
 ```ts
-import { field, actions, isResolved } from "hitl";
+import { field, actions, isResolved } from "@hitl-sdk/hitl";
 import { waitForHuman } from "../lib/hitl-workflow";
 
 export async function inboundLead(input: { email: string; draft: { subject: string; body: string } }) {

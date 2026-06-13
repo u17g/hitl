@@ -1,5 +1,5 @@
 /** @jsxImportSource chat */
-import type { HitlField } from "hitl";
+import type { HitlField } from "@hitl-sdk/hitl";
 import { RadioSelect, Select, SelectOption, TextInput } from "chat";
 import { CONFIRM_NO, CONFIRM_YES } from "./constants";
 

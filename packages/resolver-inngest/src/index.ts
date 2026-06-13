@@ -1,5 +1,5 @@
-import { createHitlClient, type HitlClient } from "hitl/client";
-import type { HitlRequestFn, HitlResolver } from "hitl/core";
+import { createHitlClient, type HitlClient } from "@hitl-sdk/hitl/client";
+import type { HitlRequestFn, HitlResolver } from "@hitl-sdk/hitl/core";
 import type { GetStepTools, Inngest } from "inngest";
 import { HITL_RESUME_EVENT } from "./constants";
 
@@ -80,5 +80,5 @@ export function createInngestHitlClient(options: CreateInngestHitlClientOptions)
   });
 }
 
-export type { HitlClient, HumanBatchPending, HumanPending } from "hitl/client";
-export type { HitlRequestFn, HitlResolver } from "hitl/core";
+export type { HitlClient, HumanBatchPending, HumanPending } from "@hitl-sdk/hitl/client";
+export type { HitlRequestFn, HitlResolver } from "@hitl-sdk/hitl/core";

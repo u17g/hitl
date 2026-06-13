@@ -1,5 +1,5 @@
-import { Hitl } from "hitl";
-import { InMemoryState } from "hitl/state";
+import { Hitl } from "@hitl-sdk/hitl";
+import { InMemoryState } from "@hitl-sdk/hitl/state";
 import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
 
 // Server half: state + WDK resolver. Workflows POST to `.well-known/hitl/v1`;
