@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { HitlResolver } from "./binding";
 import { createHitl } from "./create-hitl";
 import { field } from "./fields";
-import { InMemoryStore } from "./store";
+import { InMemoryState } from "./state";
 import type {
   ApprovalRequest,
   BatchApprovalRequest,
@@ -70,7 +70,7 @@ function setup(opts?: { secret?: string; pluginIds?: string[] }) {
   const plugins = (opts?.pluginIds ?? ["a", "b"]).map(jsonPlugin);
   const app = createHitl({
     plugins,
-    store: new InMemoryStore(),
+    state: new InMemoryState(),
     resolver,
     secret: opts?.secret,
   });
@@ -121,7 +121,7 @@ describe("internal API: requests", () => {
 
     expect(plugins[0]!.sent).toHaveLength(1);
     expect(plugins[0]!.sent[0]).toMatchObject({ id, message: "Approve?" });
-    const record = await app.store.get(id);
+    const record = await app.state.get(id);
     expect(record).toMatchObject({ token: "tok_1", status: "pending" });
   });
 
@@ -143,7 +143,7 @@ describe("internal API: requests", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ result: { type: "TIMED_OUT", id } });
-    expect((await app.store.get(id))?.status).toBe("resolved");
+    expect((await app.state.get(id))?.status).toBe("resolved");
   });
 
   it("POST /requests/:id/timeout returns 404 for an unknown id", async () => {
@@ -181,7 +181,7 @@ describe("internal API: batches", () => {
 
     expect(ids).toEqual([`${batchId}:0`, `${batchId}:1`]);
     expect(plugins[0]!.sentBatches).toHaveLength(1);
-    expect((await app.store.listByBatch(batchId)).map((r) => r.token)).toEqual([
+    expect((await app.state.listByBatch(batchId)).map((r) => r.token)).toEqual([
       "tok_0",
       "tok_1",
     ]);
@@ -281,7 +281,7 @@ describe("non-internal routes are not served", () => {
 describe("inbox facade", () => {
   it("defaults the channel to the built-in web inbox when no plugins are given", async () => {
     const resolver = new FakeResolver();
-    const app = createHitl({ resolver, store: new InMemoryStore() });
+    const app = createHitl({ resolver, state: new InMemoryState() });
     expect(app.plugins.map((p) => p.id)).toEqual(["inbox"]);
 
     const id = await createRequest(app);

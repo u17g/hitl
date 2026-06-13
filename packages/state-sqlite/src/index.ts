@@ -5,7 +5,7 @@ import type {
   BatchRecord,
   NewApprovalRecord,
   NewBatchRecord,
-  Store,
+  State,
 } from "hitl";
 import { applyMigrations } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
@@ -15,7 +15,7 @@ export { DEFAULT_TABLE } from "./table.js";
 export { SCHEMA_VERSION } from "./migrations/index.js";
 export { migrationSql } from "./schema-sql.js";
 
-export interface SqliteStoreOptions {
+export interface SqliteStateOptions {
   /** Defaults to `hitldev.approvals`. */
   tableName?: string;
 }
@@ -51,16 +51,16 @@ interface BatchRow {
 }
 
 /**
- * `Store` backed by `node:sqlite`. The schema is created automatically in the
+ * `State` backed by `node:sqlite`. The schema is created automatically in the
  * constructor (synchronous and idempotent) — unlike `@hitl/state-pg`,
  * no explicit `ensureSchema()` call is needed.
  */
-export class SqliteStore implements Store {
+export class SqliteState implements State {
   private readonly db: DatabaseSync;
   private readonly tableName: string;
   private readonly table: ReturnType<typeof resolveTableName>;
 
-  constructor(database: DatabaseSync, options?: SqliteStoreOptions) {
+  constructor(database: DatabaseSync, options?: SqliteStateOptions) {
     this.db = database;
     this.tableName = options?.tableName ?? DEFAULT_TABLE;
     this.table = resolveTableName(this.tableName);

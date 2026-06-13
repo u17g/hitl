@@ -3,12 +3,12 @@ import type { HitlResolver } from "./binding";
 import { createApprovalRequest, createBatchRequest, type HitlRuntime } from "./core";
 import { field } from "./fields";
 import { createInbox } from "./inbox";
-import { InMemoryStore } from "./store";
+import { InMemoryState } from "./state";
 import type { ApprovalRequest, HitlPlugin, Notification } from "./types";
 import { FeedbackValidationError } from "./validate";
 
 // Test list:
-// - list() / list({ status }) forward to the store
+// - list() / list({ status }) forward to the state
 // - get(id) forwards; unknown id -> null
 // - getBatch(batchId) returns { batch, items } in item order; unknown -> null
 // - approve(id) -> APPROVED, resolver resumed with the stored token, plugin.update called
@@ -57,10 +57,10 @@ function fakePlugin(id: string): HitlPlugin & {
 
 function makeRuntime() {
   const resolver = new FakeResolver();
-  const store = new InMemoryStore();
+  const state = new InMemoryState();
   const plugin = fakePlugin("inbox");
-  const runtime: HitlRuntime = { resolver, store, plugins: [plugin] };
-  return { resolver, store, plugin, runtime, inbox: createInbox(runtime) };
+  const runtime: HitlRuntime = { resolver, state, plugins: [plugin] };
+  return { resolver, state, plugin, runtime, inbox: createInbox(runtime) };
 }
 
 const fields = {

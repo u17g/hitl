@@ -61,14 +61,14 @@ export type {
   Reviewer,
 } from "./types";
 
-export { InMemoryStore } from "./store";
+export { InMemoryState } from "./state";
 export type {
   ApprovalRecord,
   BatchRecord,
   NewApprovalRecord,
   NewBatchRecord,
-  Store,
-} from "./store";
+  State,
+} from "./state";
 
 export type {
   HitlRequest,

@@ -9,7 +9,7 @@ import {
   type HitlRuntime,
 } from "./core";
 import { field } from "./fields";
-import { InMemoryStore } from "./store";
+import { InMemoryState } from "./state";
 import type { ApprovalRequest, HitlPlugin, Notification } from "./types";
 
 // Test list:
@@ -65,10 +65,10 @@ function fakePlugin(id: string): HitlPlugin & {
 
 function makeRuntime(pluginIds: string[] = ["lead-approvals"]) {
   const resolver = new FakeResolver();
-  const store = new InMemoryStore();
+  const state = new InMemoryState();
   const plugins = pluginIds.map(fakePlugin);
-  const runtime: HitlRuntime = { resolver, store, plugins };
-  return { resolver, store, plugins, runtime };
+  const runtime: HitlRuntime = { resolver, state, plugins };
+  return { resolver, state, plugins, runtime };
 }
 
 const fields = {
@@ -78,7 +78,7 @@ const fields = {
 
 describe("createApprovalRequest", () => {
   it("records the request, sends via the default plugin, and stores the externalId", async () => {
-    const { runtime, store, plugins } = makeRuntime(["a", "b"]);
+    const { runtime, state, plugins } = makeRuntime(["a", "b"]);
 
     const { id } = await createApprovalRequest(runtime, {
       token: "tok_1",
@@ -90,7 +90,7 @@ describe("createApprovalRequest", () => {
     expect(plugins[0]!.sent[0]).toMatchObject({ id, message: "Approve?", channel: "a" });
     expect(plugins[1]!.sent).toHaveLength(0);
 
-    const record = await store.get(id);
+    const record = await state.get(id);
     expect(record).toMatchObject({
       status: "pending",
       token: "tok_1",
@@ -139,15 +139,15 @@ describe("createApprovalRequest", () => {
   });
 
   it("finishes the delivery when a retry finds a record without an externalId", async () => {
-    const { runtime, store, plugins } = makeRuntime();
+    const { runtime, state, plugins } = makeRuntime();
     // Simulate a crash between create and send: the record exists, no externalId.
-    await store.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", fields });
+    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", fields });
 
     const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
 
     expect(id).toBe("a1");
     expect(plugins[0]!.sent).toHaveLength(1);
-    expect((await store.get("a1"))?.externalId).toBe("ext_a1");
+    expect((await state.get("a1"))?.externalId).toBe("ext_a1");
   });
 });
 
@@ -211,7 +211,7 @@ describe("resolveApproval", () => {
   });
 
   it("rejects invalid feedbacks and leaves the request pending", async () => {
-    const { runtime, store, resolver } = makeRuntime();
+    const { runtime, state, resolver } = makeRuntime();
     const requestId = await startApproval(runtime);
 
     await expect(
@@ -222,7 +222,7 @@ describe("resolveApproval", () => {
       }),
     ).rejects.toThrow(/extra/);
 
-    expect((await store.get(requestId))?.status).toBe("pending");
+    expect((await state.get(requestId))?.status).toBe("pending");
     expect(resolver.resolved).toHaveLength(0);
   });
 
@@ -236,13 +236,13 @@ describe("resolveApproval", () => {
 
 describe("timeoutApproval", () => {
   it("resolves a pending approval as TIMED_OUT and updates the channel", async () => {
-    const { runtime, store, plugins } = makeRuntime();
+    const { runtime, state, plugins } = makeRuntime();
     const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
 
     const result = await timeoutApproval(runtime, id);
 
     expect(result).toEqual({ type: "TIMED_OUT", id });
-    expect((await store.get(id))?.status).toBe("resolved");
+    expect((await state.get(id))?.status).toBe("resolved");
     expect(plugins[0]!.updates).toEqual([[`ext_${id}`, result]]);
   });
 
@@ -259,12 +259,12 @@ describe("timeoutApproval", () => {
   });
 
   it("returns the winning result when it loses the resolve race", async () => {
-    const { runtime, store } = makeRuntime();
+    const { runtime, state } = makeRuntime();
     const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
 
     // Simulate a callback landing between the pending check and the CAS write.
-    const originalResolve = store.resolve.bind(store);
-    store.resolve = async () => {
+    const originalResolve = state.resolve.bind(state);
+    state.resolve = async () => {
       await originalResolve(id, { type: "APPROVED", id });
       throw new Error(`Approval "${id}" is already resolved`);
     };
@@ -348,7 +348,7 @@ describe("remindApproval", () => {
   });
 
   it("escalates with redeliver on the fallback channel", async () => {
-    const { runtime, store, plugins } = makeRuntime(["primary", "oncall"]);
+    const { runtime, state, plugins } = makeRuntime(["primary", "oncall"]);
     const { id } = await createApprovalRequest(runtime, {
       token: "tok_1",
       message: "Escalate me",
@@ -367,7 +367,7 @@ describe("remindApproval", () => {
       channel: "oncall",
       message: "Escalate me",
     });
-    expect((await store.get(id))?.externalIds?.oncall).toBe(`ext_${id}`);
+    expect((await state.get(id))?.externalIds?.oncall).toBe(`ext_${id}`);
 
     // Resolution updates both deliveries.
     await resolveApproval(runtime, { requestId: id, decision: "approve" });

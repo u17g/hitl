@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { field, type HitlPlugin } from "hitl";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it, vi } from "vitest";
-import { SqliteStore } from "./index";
+import { SqliteState } from "./index";
 
 function jsonPlugin(id: string): HitlPlugin {
   return {
@@ -14,11 +14,11 @@ function jsonPlugin(id: string): HitlPlugin {
   };
 }
 
-describe("createHitl with SqliteStore", () => {
+describe("createHitl with SqliteState", () => {
   it("persists the approve round-trip in sqlite", async () => {
     const db = new DatabaseSync(":memory:");
     const { app, client } = createTestHitl({
-      store: new SqliteStore(db),
+      state: new SqliteState(db),
       plugins: [jsonPlugin("a")],
     });
 
@@ -27,7 +27,7 @@ describe("createHitl with SqliteStore", () => {
       fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
     });
     const requestId = await vi.waitFor(async () => {
-      const [record] = await app.store.list({ status: "pending" });
+      const [record] = await app.state.list({ status: "pending" });
       expect(record).toBeTruthy();
       return record!.id;
     });
@@ -38,7 +38,7 @@ describe("createHitl with SqliteStore", () => {
     await app.inbox.approve(requestId);
     expect(await promise).toMatchObject({ type: "APPROVED", id: requestId });
 
-    const fresh = new SqliteStore(db);
+    const fresh = new SqliteState(db);
     expect(await fresh.get(requestId)).toMatchObject({
       status: "resolved",
       externalId: `ext_${requestId}`,

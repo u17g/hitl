@@ -1,5 +1,5 @@
 import { resolveApproval, resolveBatchApproval, type HitlRuntime } from "./core";
-import type { ApprovalRecord, BatchRecord } from "./store";
+import type { ApprovalRecord, BatchRecord } from "./state";
 import type { ApprovalResult, HitlBatchCallback, Reviewer } from "./types";
 
 /** One reviewer decision in a batch submit. Same shape as `HitlBatchCallback["decisions"][number]`. */
@@ -38,22 +38,22 @@ export interface HitlInbox {
 }
 
 /**
- * Build the inbox facade over a runtime. Reads forward to the store; writes go
+ * Build the inbox facade over a runtime. Reads forward to the state; writes go
  * through the core resolvers, which validate feedbacks, resume the engine, and
  * reflect the outcome back into the channel. Errors (unknown id, invalid
  * feedbacks) propagate unchanged for the caller to map.
  */
 export function createInbox(runtime: HitlRuntime): HitlInbox {
-  const { store } = runtime;
+  const { state } = runtime;
   return {
-    list: (filter) => store.list(filter),
+    list: (filter) => state.list(filter),
 
-    get: (id) => store.get(id),
+    get: (id) => state.get(id),
 
     async getBatch(batchId) {
-      const batch = await store.getBatch(batchId);
+      const batch = await state.getBatch(batchId);
       if (!batch) return null;
-      return { batch, items: await store.listByBatch(batchId) };
+      return { batch, items: await state.listByBatch(batchId) };
     },
 
     approve(id, opts) {

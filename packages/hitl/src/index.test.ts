@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { field, InMemoryStore, type ApprovalResult } from "./index";
+import { field, InMemoryState, type ApprovalResult } from "./index";
 import { createTestHitl } from "./testing";
 
 // Test list:
@@ -11,7 +11,7 @@ import { createTestHitl } from "./testing";
 describe("public API", () => {
   it("runs the full approve-with-edits loop through hitl.inbox", async () => {
     const { app, client } = createTestHitl({
-      store: new InMemoryStore(),
+      state: new InMemoryState(),
     });
 
     const pending = client.waitForApproval({
@@ -25,7 +25,7 @@ describe("public API", () => {
 
     const requestId = await (async () => {
       for (;;) {
-        const [record] = await app.store.list({ status: "pending" });
+        const [record] = await app.state.list({ status: "pending" });
         if (record) return record.id;
         await new Promise((r) => setTimeout(r, 1));
       }
@@ -51,7 +51,7 @@ describe("public API", () => {
 
   it("runs the batch loop through hitl.inbox.submitBatch with typed results", async () => {
     const { app, client } = createTestHitl({
-      store: new InMemoryStore(),
+      state: new InMemoryState(),
     });
 
     const pending = client.waitForBatchApprovals({
@@ -66,7 +66,7 @@ describe("public API", () => {
 
     const batchId = await (async () => {
       for (;;) {
-        const [record] = await app.store.list({ status: "pending" });
+        const [record] = await app.state.list({ status: "pending" });
         if (record?.batchId) return record.batchId;
         await new Promise((r) => setTimeout(r, 1));
       }

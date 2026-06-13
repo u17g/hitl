@@ -41,7 +41,7 @@ export interface ApprovalRecord extends NewApprovalRecord {
 }
 
 /** Persistence for pending/resolved approvals; powers the inbox and audit. */
-export interface Store {
+export interface State {
   create(record: NewApprovalRecord): Promise<void>;
   get(id: string): Promise<ApprovalRecord | null>;
   findByExternalId(externalId: string): Promise<ApprovalRecord | null>;
@@ -57,7 +57,7 @@ export interface Store {
   listByBatch(batchId: string): Promise<ApprovalRecord[]>;
 }
 
-export class InMemoryStore implements Store {
+export class InMemoryState implements State {
   private records = new Map<string, ApprovalRecord>();
   private batches = new Map<string, BatchRecord>();
 
@@ -151,11 +151,11 @@ export class InMemoryStore implements Store {
   }
 }
 
-const processStoreKey = Symbol.for("hitldev.inMemoryStore");
+const processStateKey = Symbol.for("hitldev.inMemoryState");
 
-/** Default when `createHitl` gets no store: one in-memory store per process. */
-export function defaultInMemoryStore(): InMemoryStore {
-  const g = globalThis as Record<symbol, InMemoryStore | undefined>;
-  g[processStoreKey] ??= new InMemoryStore();
-  return g[processStoreKey]!;
+/** Default when `createHitl` gets no state: one in-memory state per process. */
+export function defaultInMemoryState(): InMemoryState {
+  const g = globalThis as Record<symbol, InMemoryState | undefined>;
+  g[processStateKey] ??= new InMemoryState();
+  return g[processStateKey]!;
 }

@@ -10,7 +10,7 @@ import {
   type HitlRuntime,
 } from "./core";
 import { field, type HitlField } from "./fields";
-import { InMemoryStore } from "./store";
+import { InMemoryState } from "./state";
 import type {
   ApprovalRequest,
   ApprovalResult,
@@ -88,9 +88,9 @@ function fakePlugin(id: string, opts?: { batch?: boolean }): FakePlugin {
 
 function makeRuntime(plugins: FakePlugin[]) {
   const resolver = new FakeResolver();
-  const store = new InMemoryStore();
-  const runtime: HitlRuntime = { resolver, store, plugins };
-  return { resolver, store, plugins, runtime };
+  const state = new InMemoryState();
+  const runtime: HitlRuntime = { resolver, state, plugins };
+  return { resolver, state, plugins, runtime };
 }
 
 const fields = {
@@ -120,7 +120,7 @@ function emailBatch(): CreateBatchBody {
 
 describe("createBatchRequest", () => {
   it("delivers the batch as one message and records batch + items", async () => {
-    const { runtime, store, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state, plugins } = makeRuntime([fakePlugin("a")]);
 
     const { batchId, ids } = await createBatchRequest(runtime, emailBatch());
 
@@ -146,9 +146,9 @@ describe("createBatchRequest", () => {
       ],
     });
 
-    expect((await store.getBatch(batchId))?.externalId).toBe(`bext_${batchId}`);
+    expect((await state.getBatch(batchId))?.externalId).toBe(`bext_${batchId}`);
 
-    const items = await store.listByBatch(batchId);
+    const items = await state.listByBatch(batchId);
     expect(items.map((r) => r.id)).toEqual(ids);
     expect(items.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
     expect(items[0]!.fields.subject).toMatchObject({ kind: "text", default: "Hello ACME" });
@@ -156,13 +156,13 @@ describe("createBatchRequest", () => {
   });
 
   it("falls back to per-item send when the plugin has no sendBatch", async () => {
-    const { runtime, store, plugins } = makeRuntime([fakePlugin("a", { batch: false })]);
+    const { runtime, state, plugins } = makeRuntime([fakePlugin("a", { batch: false })]);
 
     const { batchId, ids } = await createBatchRequest(runtime, emailBatch());
 
     expect(plugins[0]!.sent.map((r) => r.id)).toEqual(ids);
-    expect((await store.get(`${batchId}:0`))?.externalId).toBe(`ext_${batchId}:0`);
-    expect((await store.getBatch(batchId))?.externalId).toBeUndefined();
+    expect((await state.get(`${batchId}:0`))?.externalId).toBe(`ext_${batchId}:0`);
+    expect((await state.getBatch(batchId))?.externalId).toBeUndefined();
   });
 
   it("falls back to per-item send when canSendBatch returns false", async () => {
@@ -253,7 +253,7 @@ describe("resolveBatchApproval", () => {
   });
 
   it("rejects invalid feedbacks and leaves every item pending", async () => {
-    const { runtime, store, resolver } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state, resolver } = makeRuntime([fakePlugin("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await expect(
@@ -266,7 +266,7 @@ describe("resolveBatchApproval", () => {
       }),
     ).rejects.toThrow(/bogus/);
 
-    const items = await store.listByBatch(batchId);
+    const items = await state.listByBatch(batchId);
     expect(items.every((r) => r.status === "pending")).toBe(true);
     expect(resolver.resolved).toHaveLength(0);
   });
@@ -291,7 +291,7 @@ describe("resolveBatchApproval", () => {
   });
 
   it("throws when a pending item has no decision", async () => {
-    const { runtime, store } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state } = makeRuntime([fakePlugin("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await expect(
@@ -301,7 +301,7 @@ describe("resolveBatchApproval", () => {
       }),
     ).rejects.toThrow(/missing decision/i);
 
-    const items = await store.listByBatch(batchId);
+    const items = await state.listByBatch(batchId);
     expect(items.every((r) => r.status === "pending")).toBe(true);
   });
 
@@ -333,7 +333,7 @@ describe("resolveBatchApproval", () => {
 
 describe("timeoutBatch", () => {
   it("times out pending items and keeps resolved ones", async () => {
-    const { runtime, store, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state, plugins } = makeRuntime([fakePlugin("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await resolveApproval(runtime, { requestId: `${batchId}:0`, decision: "approve" });
@@ -342,7 +342,7 @@ describe("timeoutBatch", () => {
 
     expect(results[0]).toMatchObject({ type: "APPROVED", id: `${batchId}:0` });
     expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
-    expect((await store.get(`${batchId}:1`))?.status).toBe("resolved");
+    expect((await state.get(`${batchId}:1`))?.status).toBe("resolved");
     expect(plugins[0]!.batchUpdates.at(-1)).toEqual([`bext_${batchId}`, results]);
   });
 
@@ -402,7 +402,7 @@ describe("remindBatch", () => {
   it("escalates with redeliver of the whole batch on the fallback channel", async () => {
     const primary = fakePlugin("primary");
     const oncall = fakePlugin("oncall");
-    const { runtime, store } = makeRuntime([primary, oncall]);
+    const { runtime, state } = makeRuntime([primary, oncall]);
     const { batchId } = await createBatchRequest(runtime, { ...emailBatch(), channel: "primary" });
 
     await remindBatch(runtime, batchId, {
@@ -412,7 +412,7 @@ describe("remindBatch", () => {
     });
 
     expect(oncall.sentBatches[0]).toMatchObject({ batchId, channel: "oncall" });
-    expect((await store.getBatch(batchId))?.externalIds?.oncall).toBe(`bext_${batchId}`);
+    expect((await state.getBatch(batchId))?.externalIds?.oncall).toBe(`bext_${batchId}`);
 
     const results = await resolveBatchApproval(runtime, {
       batchId,

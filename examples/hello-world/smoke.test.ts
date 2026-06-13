@@ -1,18 +1,18 @@
-import { InMemoryStore } from "hitl";
+import { InMemoryState } from "hitl";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it } from "vitest";
 
 describe("hello-world smoke", () => {
   it("runs the approve loop used by workflows/hello.ts", async () => {
     const { app, client } = createTestHitl({
-      store: new InMemoryStore(),
+      state: new InMemoryState(),
     });
 
     const pending = client.waitForApproval({ message: "Say hello to world?" });
 
     const record = await (async () => {
       for (;;) {
-        const [item] = await app.store.list({ status: "pending" });
+        const [item] = await app.state.list({ status: "pending" });
         if (item) return item;
         await new Promise((r) => setTimeout(r, 1));
       }

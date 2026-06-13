@@ -1,13 +1,13 @@
 import type { HitlResolver, HitlSuspension } from "./binding";
 import { createHitlClient, type HitlClient } from "./client";
 import { createHitl, type HitlApp } from "./create-hitl";
-import type { Store } from "./store";
+import type { State } from "./state";
 import type { HitlPlugin } from "./types";
 
 export interface CreateTestHitlOptions {
   /** Extra channels on top of the always-on web inbox. Optional. */
   plugins?: HitlPlugin[];
-  store?: Store;
+  state?: State;
   secret?: string;
 }
 
@@ -44,7 +44,7 @@ export function createTestHitl(options: CreateTestHitlOptions): TestHitl {
 
   const app = createHitl({
     plugins: options.plugins,
-    store: options.store,
+    state: options.state,
     resolver,
     secret: options.secret,
   });

@@ -68,13 +68,13 @@ curl -s -X POST "http://localhost:3000/api/inbox" \
 
 You should see `Hello, world!` printed when the workflow resumes after approval.
 
-> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no store — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitldev/approvals.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you approve.
+> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitldev/approvals.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you approve.
 
 ## What this shows
 
-- [`lib/hitl.ts`](lib/hitl.ts) — the server: `createHitl({ store, resolver: workflowResolver() })` — the web inbox is built in, no plugins needed
+- [`lib/hitl.ts`](lib/hitl.ts) — the server: `createHitl({ state, resolver: workflowResolver() })` — the web inbox is built in, no plugins needed
 - [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/approve/deny` (what the UI calls)
-- [`lib/hitl-store.ts`](lib/hitl-store.ts) — shared `SqliteStore` backed by `.hitldev/approvals.db`
+- [`lib/hitl-state.ts`](lib/hitl-state.ts) — shared `SqliteState` backed by `.hitldev/approvals.db`
 - [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForApproval`
 - [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForApproval` from the workflow client
 - [`app/.well-known/hitldev/v1/[[...path]]/route.ts`](app/.well-known/hitldev/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`

@@ -15,7 +15,7 @@ import {
 } from "./core";
 import { INBOX_CHANNEL_ID, inboxChannel } from "./inbox-channel";
 import { createInbox, type HitlInbox } from "./inbox";
-import { defaultInMemoryStore, type Store } from "./store";
+import { defaultInMemoryState, type State } from "./state";
 import type { HitlPlugin } from "./types";
 
 export interface CreateHitlOptions {
@@ -25,8 +25,8 @@ export interface CreateHitlOptions {
    * works with no plugins configured. The first entry is the default channel.
    */
   plugins?: HitlPlugin[];
-  /** Defaults to one in-memory store per process. Pass `@hitl/state-pg` or `@hitl/state-sqlite` for persistence. */
-  store?: Store;
+  /** Defaults to one in-memory state per process. Pass `@hitl/state-pg` or `@hitl/state-sqlite` for persistence. */
+  state?: State;
   /** Engine resolver from an engine package, e.g. `workflowResolver()` from `@hitl/resolver-workflow-sdk`. */
   resolver: HitlResolver;
   /**
@@ -47,7 +47,7 @@ export interface HitlApp {
     POST(req: Request): Promise<Response>;
   };
   runtime: HitlRuntime;
-  store: Store;
+  state: State;
   plugins: HitlPlugin[];
   /** Programmatic inbox: read state and resolve approvals from your own handlers. */
   inbox: HitlInbox;
@@ -62,13 +62,13 @@ export function createHitlRuntime(options: CreateHitlOptions): HitlRuntime {
     : [...configured, inboxChannel()];
   return {
     plugins,
-    store: options.store ?? defaultInMemoryStore(),
+    state: options.state ?? defaultInMemoryState(),
     resolver: options.resolver,
   };
 }
 
 export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string }): HitlApp {
-  const { store, plugins } = runtime;
+  const { state, plugins } = runtime;
   const inbox = createInbox(runtime);
   const secret = options?.secret ?? process.env.HITLDEV_SECRET;
 
@@ -92,7 +92,7 @@ export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string 
     routeHandlers: { POST: fetchHandler },
     handler: (req, res) => nodeHandler(fetchHandler, req, res),
     runtime,
-    store,
+    state,
     plugins,
     inbox,
   };

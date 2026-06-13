@@ -1,16 +1,16 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Store } from "hitl";
-import { SqliteStore } from "@hitl/state-sqlite";
+import type { State } from "hitl";
+import { SqliteState } from "@hitl/state-sqlite";
 
 const dbDir = join(process.cwd(), ".hitldev");
 const dbPath = join(dbDir, "approvals.db");
 mkdirSync(dbDir, { recursive: true });
 
-let store: Store | undefined;
+let state: State | undefined;
 
-export function getStore(): Store {
-  store ??= new SqliteStore(new DatabaseSync(dbPath));
-  return store;
+export function getState(): State {
+  state ??= new SqliteState(new DatabaseSync(dbPath));
+  return state;
 }

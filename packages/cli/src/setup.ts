@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import pg from "pg";
-import { PostgresStore, type PgQueryable } from "@hitl/state-pg";
+import { PostgresState, type PgQueryable } from "@hitl/state-pg";
 import { hasFlag, parseFlagValue } from "./args.js";
 import { getDatabaseUrl } from "./db-url.js";
 
@@ -10,8 +10,8 @@ export async function ensureHitldevSchema(
   pool: PgQueryable,
   tableName = DEFAULT_TABLE,
 ): Promise<void> {
-  const store = new PostgresStore(pool, { tableName });
-  await store.ensureSchema();
+  const state = new PostgresState(pool, { tableName });
+  await state.ensureSchema();
 }
 
 export async function runWorkflowSetup(connectionString: string): Promise<void> {

@@ -4,7 +4,7 @@ import type {
   BatchRecord,
   NewApprovalRecord,
   NewBatchRecord,
-  Store,
+  State,
 } from "hitl";
 import { applyMigrations, type PgQueryable } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
@@ -15,7 +15,7 @@ export { DEFAULT_TABLE } from "./table.js";
 export { SCHEMA_VERSION } from "./migrations/index.js";
 export { migrationSql } from "./schema-sql.js";
 
-export interface PostgresStoreOptions {
+export interface PostgresStateOptions {
   /** Defaults to `hitldev.approvals`. */
   tableName?: string;
 }
@@ -51,17 +51,17 @@ interface BatchRow {
 }
 
 /**
- * `Store` backed by Postgres. Call `await store.ensureSchema()` once at
+ * `State` backed by Postgres. Call `await state.ensureSchema()` once at
  * startup (or apply `schemaSql()` through your own migrations) — unlike
  * `@hitl/state-sqlite`, the constructor cannot create the schema because
  * queries are async.
  */
-export class PostgresStore implements Store {
+export class PostgresState implements State {
   private readonly pool: PgQueryable;
   private readonly table: ReturnType<typeof resolveTableName>;
   private readonly tableName: string;
 
-  constructor(pool: PgQueryable, options?: PostgresStoreOptions) {
+  constructor(pool: PgQueryable, options?: PostgresStateOptions) {
     this.pool = pool;
     this.tableName = options?.tableName ?? DEFAULT_TABLE;
     this.table = resolveTableName(this.tableName);

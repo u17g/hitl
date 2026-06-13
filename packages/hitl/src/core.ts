@@ -9,7 +9,7 @@ import type {
 import type { HitlResolver } from "./binding";
 import type { HitlField } from "./fields";
 import { DEFAULT_ESCALATE_MESSAGE, DEFAULT_REMIND_MESSAGE } from "./reminder";
-import type { ApprovalRecord, BatchRecord, Store } from "./store";
+import type { ApprovalRecord, BatchRecord, State } from "./state";
 import type {
   ApprovalResult,
   BatchApprovalRequest,
@@ -26,7 +26,7 @@ import { validateFeedbacks } from "./validate";
  * through the `.well-known/hitldev/v1` HTTP API.
  */
 export interface HitlRuntime {
-  store: Store;
+  state: State;
   plugins: HitlPlugin[];
   resolver: HitlResolver;
 }
@@ -60,7 +60,7 @@ export async function createApprovalRequest(
 ): Promise<CreateRequestResponse> {
   const plugin = pickPlugin(runtime.plugins, body.channel);
 
-  const existing = await runtime.store.findByToken(body.token);
+  const existing = await runtime.state.findByToken(body.token);
   if (existing) {
     // A retry that finds the record without an externalId crashed between
     // create and send on the previous attempt; finish the delivery.
@@ -78,7 +78,7 @@ export async function createApprovalRequest(
     message: body.message,
     fields: body.fields,
   };
-  await runtime.store.create(record);
+  await runtime.state.create(record);
   await deliverApproval(runtime, plugin, record);
   return { id };
 }
@@ -94,7 +94,7 @@ async function deliverApproval(
     message: record.message,
     fields: record.fields,
   });
-  await runtime.store.setExternalId(record.id, externalId);
+  await runtime.state.setExternalId(record.id, externalId);
 }
 
 function resolvedDefaults(fields: Record<string, HitlField>): Record<string, unknown> {
@@ -141,9 +141,9 @@ export async function createBatchRequest(
   }
   const plugin = pickPlugin(runtime.plugins, body.channel);
 
-  const existing = await runtime.store.findByToken(body.items[0]!.token);
+  const existing = await runtime.state.findByToken(body.items[0]!.token);
   if (existing?.batchId) {
-    const items = await runtime.store.listByBatch(existing.batchId);
+    const items = await runtime.state.listByBatch(existing.batchId);
     return { batchId: existing.batchId, ids: items.map((r) => r.id) };
   }
 
@@ -154,9 +154,9 @@ export async function createBatchRequest(
     fields: item.fields,
   }));
 
-  await runtime.store.createBatch({ id: batchId, channel: plugin.id, title: body.title });
+  await runtime.state.createBatch({ id: batchId, channel: plugin.id, title: body.title });
   for (const [index, item] of items.entries()) {
-    await runtime.store.create({
+    await runtime.state.create({
       id: item.id,
       token: body.items[index]!.token,
       channel: plugin.id,
@@ -170,7 +170,7 @@ export async function createBatchRequest(
   const request = toBatchRequest({ id: batchId, channel: plugin.id, title: body.title }, body.fields, items);
   if (canDeliverBatch(plugin, request)) {
     const { externalId } = await plugin.sendBatch!(request);
-    await runtime.store.setBatchExternalId(batchId, externalId);
+    await runtime.state.setBatchExternalId(batchId, externalId);
   } else {
     for (const item of items) {
       await deliverApproval(runtime, plugin, { ...item, channel: plugin.id });
@@ -182,19 +182,19 @@ export async function createBatchRequest(
 
 /**
  * `POST /requests/:id/timeout`: resolve as TIMED_OUT if still pending. The
- * store's conditional resolve is the atomicity guard — when a callback wins
+ * state's conditional resolve is the atomicity guard — when a callback wins
  * the race, the stored result is returned instead.
  */
 export async function timeoutApproval(runtime: HitlRuntime, id: string): Promise<ApprovalResult> {
-  const record = await runtime.store.get(id);
+  const record = await runtime.state.get(id);
   if (!record) throw new NotFoundError(`Unknown approval "${id}"`);
   if (record.status === "resolved" && record.result) return record.result;
 
   const result: ApprovalResult = { type: "TIMED_OUT", id };
   try {
-    await runtime.store.resolve(id, result);
+    await runtime.state.resolve(id, result);
   } catch {
-    const winner = await runtime.store.get(id);
+    const winner = await runtime.state.get(id);
     if (winner?.result) return winner.result;
     throw new Error(`Approval "${id}" could not be resolved as timed out`);
   }
@@ -204,9 +204,9 @@ export async function timeoutApproval(runtime: HitlRuntime, id: string): Promise
 
 /** `POST /batches/:batchId/timeout`: per-item `timeoutApproval` semantics, results in item order. */
 export async function timeoutBatch(runtime: HitlRuntime, batchId: string): Promise<ApprovalResult[]> {
-  const batch = await runtime.store.getBatch(batchId);
+  const batch = await runtime.state.getBatch(batchId);
   if (!batch) throw new NotFoundError(`Unknown batch "${batchId}"`);
-  const items = await runtime.store.listByBatch(batchId);
+  const items = await runtime.state.listByBatch(batchId);
 
   const results: ApprovalResult[] = [];
   for (const item of items) {
@@ -216,10 +216,10 @@ export async function timeoutBatch(runtime: HitlRuntime, batchId: string): Promi
     }
     const result: ApprovalResult = { type: "TIMED_OUT", id: item.id };
     try {
-      await runtime.store.resolve(item.id, result);
+      await runtime.state.resolve(item.id, result);
       results.push(result);
     } catch {
-      const winner = await runtime.store.get(item.id);
+      const winner = await runtime.state.get(item.id);
       results.push(winner?.result ?? result);
     }
   }
@@ -238,7 +238,7 @@ export async function remindApproval(
   id: string,
   body: RemindBody,
 ): Promise<RemindResponse> {
-  const record = await runtime.store.get(id);
+  const record = await runtime.state.get(id);
   if (!record) throw new NotFoundError(`Unknown approval "${id}"`);
   if (record.status === "resolved") return { pending: false };
 
@@ -250,7 +250,7 @@ export async function remindApproval(
       message: record.message,
       fields: record.fields,
     });
-    await runtime.store.setExternalId(record.id, externalId, body.channel);
+    await runtime.state.setExternalId(record.id, externalId, body.channel);
     return { pending: true };
   }
 
@@ -268,9 +268,9 @@ export async function remindBatch(
   batchId: string,
   body: RemindBody,
 ): Promise<RemindResponse> {
-  const batch = await runtime.store.getBatch(batchId);
+  const batch = await runtime.state.getBatch(batchId);
   if (!batch) throw new NotFoundError(`Unknown batch "${batchId}"`);
-  const items = await runtime.store.listByBatch(batchId);
+  const items = await runtime.state.listByBatch(batchId);
   if (!items.some((item) => item.status === "pending")) return { pending: false };
 
   if (body.kind === "escalate" && (body.mode ?? "notify") === "redeliver") {
@@ -319,7 +319,7 @@ async function redeliverBatch(
   );
   if (canDeliverBatch(escalatePlugin, request)) {
     const { externalId } = await escalatePlugin.sendBatch!(request);
-    await runtime.store.setBatchExternalId(batch.id, externalId, channel);
+    await runtime.state.setBatchExternalId(batch.id, externalId, channel);
     return;
   }
   for (const item of items) {
@@ -329,7 +329,7 @@ async function redeliverBatch(
       message: item.message,
       fields: item.fields,
     });
-    await runtime.store.setExternalId(item.id, externalId, channel);
+    await runtime.state.setExternalId(item.id, externalId, channel);
   }
 }
 
@@ -366,12 +366,12 @@ export async function resolveApproval(
   runtime: HitlRuntime,
   callback: HitlCallback,
 ): Promise<ApprovalResult> {
-  const record = await runtime.store.get(callback.requestId);
+  const record = await runtime.state.get(callback.requestId);
   if (!record) throw new NotFoundError(`Unknown approval "${callback.requestId}"`);
 
   const result = toResult(record.id, record.fields, callback);
 
-  await runtime.store.resolve(record.id, result);
+  await runtime.state.resolve(record.id, result);
   await runtime.resolver.resolve(record.token, result);
 
   await updateChannels(runtime, record, result);
@@ -387,9 +387,9 @@ export async function resolveBatchApproval(
   runtime: HitlRuntime,
   callback: HitlBatchCallback,
 ): Promise<ApprovalResult[]> {
-  const batch = await runtime.store.getBatch(callback.batchId);
+  const batch = await runtime.state.getBatch(callback.batchId);
   if (!batch) throw new NotFoundError(`Unknown batch "${callback.batchId}"`);
-  const items = await runtime.store.listByBatch(callback.batchId);
+  const items = await runtime.state.listByBatch(callback.batchId);
 
   const planned = items.map((item) => {
     if (item.status === "resolved" && item.result) {
@@ -414,7 +414,7 @@ export async function resolveBatchApproval(
 
   for (const { item, result, skip } of planned) {
     if (skip) continue;
-    await runtime.store.resolve(item.id, result);
+    await runtime.state.resolve(item.id, result);
     await runtime.resolver.resolve(item.token, result);
   }
 
@@ -486,18 +486,18 @@ export async function notifyVia(
   const plugin = pickPlugin(runtime.plugins, notification.channel);
   const enriched: Notification = { ...notification };
   if (notification.parent && !notification.parentExternalId) {
-    const externalId = await parentExternalId(runtime.store, notification.parent);
+    const externalId = await parentExternalId(runtime.state, notification.parent);
     if (externalId) enriched.parentExternalId = externalId;
   }
   await plugin.notify(enriched);
 }
 
-async function parentExternalId(store: Store, parent: string): Promise<string | undefined> {
-  const batch = await store.getBatch(parent);
+async function parentExternalId(state: State, parent: string): Promise<string | undefined> {
+  const batch = await state.getBatch(parent);
   if (batch?.externalId) return batch.externalId;
-  const record = await store.get(parent);
+  const record = await state.get(parent);
   if (record?.externalId) return record.externalId;
   // Per-item fallback delivery: thread under the first item's message.
-  const items = await store.listByBatch(parent);
+  const items = await state.listByBatch(parent);
   return items[0]?.externalId;
 }

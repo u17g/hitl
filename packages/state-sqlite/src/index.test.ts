@@ -1,13 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { field, type NewApprovalRecord } from "hitl";
-import { describeStoreContract } from "hitl/store-contract";
-import { SqliteStore, schemaSql } from "./index";
+import { describeStateContract } from "hitl/state-contract";
+import { SqliteState, schemaSql } from "./index";
 
-describeStoreContract(
-  "SqliteStore",
+describeStateContract(
+  "SqliteState",
   { describe, it, expect },
-  () => new SqliteStore(new DatabaseSync(":memory:")),
+  () => new SqliteState(new DatabaseSync(":memory:")),
 );
 
 function newRecord(id: string): NewApprovalRecord {
@@ -20,20 +20,20 @@ function newRecord(id: string): NewApprovalRecord {
   };
 }
 
-describe("SqliteStore specifics", () => {
+describe("SqliteState specifics", () => {
   it("shares records across instances on the same database", async () => {
     const db = new DatabaseSync(":memory:");
-    const first = new SqliteStore(db);
+    const first = new SqliteState(db);
     await first.create(newRecord("a1"));
 
-    const second = new SqliteStore(db);
+    const second = new SqliteState(db);
     expect(await second.get("a1")).toMatchObject({ id: "a1", status: "pending" });
   });
 
   it("isolates records under a custom table name", async () => {
     const db = new DatabaseSync(":memory:");
-    const defaultTable = new SqliteStore(db);
-    const customTable = new SqliteStore(db, { tableName: "custom_approvals" });
+    const defaultTable = new SqliteState(db);
+    const customTable = new SqliteState(db, { tableName: "custom_approvals" });
     await customTable.create(newRecord("a1"));
 
     expect(await customTable.get("a1")).not.toBeNull();
@@ -42,21 +42,21 @@ describe("SqliteStore specifics", () => {
 
   it("rejects table names that are not plain identifiers", () => {
     const db = new DatabaseSync(":memory:");
-    expect(() => new SqliteStore(db, { tableName: 'approvals"; DROP TABLE x' })).toThrow(
+    expect(() => new SqliteState(db, { tableName: 'approvals"; DROP TABLE x' })).toThrow(
       /invalid table name/i,
     );
   });
 
   it("round-trips nested field definitions through JSON", async () => {
-    const store = new SqliteStore(new DatabaseSync(":memory:"));
+    const state = new SqliteState(new DatabaseSync(":memory:"));
     const fields = {
       subject: field.textField({ label: "Subject", default: "Hello" }),
       tier: field.select({ label: "Tier", options: ["gold", "silver"], default: "silver" }),
       confirmed: field.confirm({ label: "Confirm?" }),
     };
-    await store.create({ ...newRecord("a1"), fields });
+    await state.create({ ...newRecord("a1"), fields });
 
-    expect((await store.get("a1"))?.fields).toEqual(fields);
+    expect((await state.get("a1"))?.fields).toEqual(fields);
   });
 
   it("exports idempotent schemaSql", () => {

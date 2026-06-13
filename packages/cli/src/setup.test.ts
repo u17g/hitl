@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { newDb } from "pg-mem";
-import { PostgresStore, type PgQueryable } from "@hitl/state-pg";
+import { PostgresState, type PgQueryable } from "@hitl/state-pg";
 import { ensureHitldevSchema } from "./setup";
 
 function newPool(): PgQueryable {
@@ -13,29 +13,29 @@ describe("setup command", () => {
     const pool = newPool();
     await ensureHitldevSchema(pool);
 
-    const store = new PostgresStore(pool);
-    await store.create({
+    const state = new PostgresState(pool);
+    await state.create({
       id: "a1",
       token: "tok_a1",
       channel: "lead-approvals",
       message: "Approve?",
       fields: {},
     });
-    expect(await store.get("a1")).toMatchObject({ id: "a1", status: "pending" });
+    expect(await state.get("a1")).toMatchObject({ id: "a1", status: "pending" });
   });
 
   it("supports a custom table name", async () => {
     const pool = newPool();
     await ensureHitldevSchema(pool, "custom_approvals");
 
-    const store = new PostgresStore(pool, { tableName: "custom_approvals" });
-    await store.create({
+    const state = new PostgresState(pool, { tableName: "custom_approvals" });
+    await state.create({
       id: "a1",
       token: "tok_a1",
       channel: "lead-approvals",
       message: "Approve?",
       fields: {},
     });
-    expect(await store.get("a1")).not.toBeNull();
+    expect(await state.get("a1")).not.toBeNull();
   });
 });

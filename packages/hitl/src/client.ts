@@ -55,7 +55,7 @@ export interface CreateHitlClientOptions extends WorkflowPrimitives {
 
 /**
  * The workflow-side API. A thin HTTP client: `suspend()` for the resume token,
- * one durable fetch to the server, then await the suspension. Store and
+ * one durable fetch to the server, then await the suspension. State and
  * plugins live only on the server.
  */
 export interface HitlClient {

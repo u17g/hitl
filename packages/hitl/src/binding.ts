@@ -4,7 +4,7 @@
  * - Workflow side (`WorkflowPrimitives`): suspend with a token, a durable
  *   timer, and a durable fetch. Injected into `createHitlClient` by an engine
  *   package; called from inside workflow code under the engine's determinism
- *   rules. All store/plugin IO happens behind the HTTP API, never here.
+ *   rules. All state/plugin IO happens behind the HTTP API, never here.
  * - Server side (`HitlResolver`): resume a wait by token. Called from a plain
  *   HTTP context when a channel callback arrives — never from workflow code.
  */

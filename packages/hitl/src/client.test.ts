@@ -4,7 +4,7 @@ import { createHitlClient, type HitlClient } from "./client";
 import { resolveApproval, resolveBatchApproval } from "./core";
 import { createHitl, type HitlApp } from "./create-hitl";
 import { field } from "./fields";
-import { InMemoryStore } from "./store";
+import { InMemoryState } from "./state";
 import type {
   ApprovalRequest,
   ApprovalResult,
@@ -112,7 +112,7 @@ function makeHarness(opts?: { pluginIds?: string[]; secret?: string; clientSecre
   const plugins = (opts?.pluginIds ?? ["a"]).map((id) => fakePlugin(id));
   const app: HitlApp = createHitl({
     plugins,
-    store: new InMemoryStore(),
+    state: new InMemoryState(),
     resolver: engine.resolver,
     secret: opts?.secret,
   });
@@ -210,7 +210,7 @@ describe("waitForApproval", () => {
 
     expect(engine.sleepCalls).toEqual([72 * 60 * 60 * 1000]);
     expect(result.type).toBe("TIMED_OUT");
-    expect((await app.store.get(result.id))?.status).toBe("resolved");
+    expect((await app.state.get(result.id))?.status).toBe("resolved");
     expect(plugins[0]!.updates).toEqual([[`ext_${result.id}`, result]]);
   });
 

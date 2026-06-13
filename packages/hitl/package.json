@@ -9,9 +9,9 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./store-contract": {
-      "types": "./src/store-contract.ts",
-      "default": "./src/store-contract.ts"
+    "./state-contract": {
+      "types": "./src/state-contract.ts",
+      "default": "./src/state-contract.ts"
     },
     "./testing": {
       "types": "./src/testing.ts",
