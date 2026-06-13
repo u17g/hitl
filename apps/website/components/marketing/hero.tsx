@@ -4,31 +4,40 @@ import { ArrowRight, Github } from "lucide-react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
 import { CodeBlock } from "@/components/docs/code-block";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Section,
+  SectionContainer,
+} from "@/components/section";
 import { snippets } from "@/lib/snippets";
 
 export function Hero() {
   const t = useInlineTranslation();
 
   return (
-    <section className="relative overflow-hidden border-b">
+    <Section variant="hero">
       <div className="absolute inset-0 grid-bg opacity-50" />
-      <div className="relative mx-auto max-w-6xl px-4 py-24 md:py-32">
-        <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-4xl font-bold tracking-tight md:text-6xl md:leading-tight">
+      <SectionContainer className="relative py-24 md:py-32">
+        <SectionContainer className="px-0">
+          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl md:leading-tight">
             {t({
-              en: "Make any workflow human-aware",
-              ja: "あらゆるワークフローを人間対応に",
+              en: "Human in the loop",
+              ja: "Human in the loop",
+            })}
+            <br />
+            {t({
+              en: "for AI and workflows",
+              ja: "for AI agents and workflows",
             })}
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground md:text-xl">
+          <p className="mt-6 text-lg text-muted-foreground md:text-xl max-w-2xl">
             {t({
-              en: "A unified human-in-the-loop layer for AI agents and durable workflows — one await, suspend for hours or days, resume when a human approves in Slack, Teams, Discord, or a web inbox.",
-              ja: "AI エージェントと耐久ワークフロー向けの統一 HITL レイヤー — 1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で人間が承認したら再開します。",
+              en: "A unified typescript SDK for human-in-the-loop in AI agents, durable workflows and any chat platforms - Slack, Teams, Dicord, Web app etc.",
+              ja: "信頼性のある AI エージェントとワークフローを作る TypeScript SDK。",
             })}
+            <br />
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button size="lg" asChild>
               <Link href="/docs/getting-started">
                 {t({ en: "Get started", ja: "はじめる" })}
@@ -46,11 +55,11 @@ export function Hero() {
               </a>
             </Button>
           </div>
-        </div>
-        <div className="mx-auto mt-16 max-w-2xl">
+        </SectionContainer>
+        <SectionContainer size="2xl" className="mt-16 px-0">
           <CodeBlock code={snippets.install} filename="terminal" />
-        </div>
-      </div>
-    </section>
+        </SectionContainer>
+      </SectionContainer>
+    </Section >
   );
 }

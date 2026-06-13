@@ -15,7 +15,7 @@ export function docHref(locale: Locale, slug: DocSlug) {
 }
 
 export const snippets = {
-  install: `npm install hitl @hitl/resolver-workflow-sdk`,
+  install: `npm install hitl`,
   installAdapters: `npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams`,
   workflowUsage: `import { field, actions, isResolved } from "hitl";
 import { waitForHuman } from "../lib/hitl-workflow";

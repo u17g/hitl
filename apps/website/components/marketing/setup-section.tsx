@@ -3,6 +3,13 @@
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { CodeBlock } from "@/components/docs/code-block";
 import {
+  Section,
+  SectionContainer,
+  SectionDescription,
+  SectionHeader,
+  SectionTitle,
+} from "@/components/section";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -45,19 +52,19 @@ export function SetupSection() {
   ];
 
   return (
-    <section className="border-y bg-muted/30 py-24">
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+    <Section variant="muted">
+      <SectionContainer>
+        <SectionHeader>
+          <SectionTitle>
             {t({ en: "Effortless setup", ja: "かんたんセットアップ" })}
-          </h2>
-          <p className="mt-4 text-muted-foreground">
+          </SectionTitle>
+          <SectionDescription>
             {t({
               en: "A simple declarative API to define and use human approval in your workflows.",
               ja: "シンプルな宣言的 API で、ワークフローに人間承認を組み込めます。",
             })}
-          </p>
-        </div>
+          </SectionDescription>
+        </SectionHeader>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {steps.map((step, i) => (
             <Card key={step.title} className="border bg-background">
@@ -74,7 +81,7 @@ export function SetupSection() {
             </Card>
           ))}
         </div>
-      </div>
-    </section>
+      </SectionContainer>
+    </Section>
   );
 }

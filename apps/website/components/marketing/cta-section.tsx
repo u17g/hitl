@@ -3,26 +3,32 @@
 import { ArrowRight } from "lucide-react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
+import {
+  Section,
+  SectionContainer,
+  SectionDescription,
+  SectionTitle,
+} from "@/components/section";
 import { Button } from "@/components/ui/button";
 
 export function CtaSection() {
   const t = useInlineTranslation();
 
   return (
-    <section className="border-t bg-muted/30 py-24">
-      <div className="mx-auto max-w-6xl px-4 text-center">
-        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+    <Section variant="muted" className="border-y-0 border-t">
+      <SectionContainer className="text-center">
+        <SectionTitle>
           {t({
             en: "Create your first approval flow today.",
             ja: "最初の承認フローを作りましょう。",
           })}
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+        </SectionTitle>
+        <SectionDescription className="mx-auto max-w-xl">
           {t({
             en: "See Hitl SDK in action with the hello-world example.",
             ja: "hello-world サンプルで Hitl SDK を試せます。",
           })}
-        </p>
+        </SectionDescription>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
             <Link href="/docs/getting-started">
@@ -40,7 +46,7 @@ export function CtaSection() {
             </a>
           </Button>
         </div>
-      </div>
-    </section>
+      </SectionContainer>
+    </Section>
   );
 }
