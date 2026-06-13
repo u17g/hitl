@@ -493,4 +493,26 @@ describe("notify", () => {
 
     expect(adapters[1]!.notifications).toEqual([{ message: "progress", channel: "b" }]);
   });
+
+  it("serializes after to { id } on the wire", async () => {
+    const { adapters, client, hitl } = makeHarness();
+
+    const pending = client.waitForHuman({
+      message: "Approve?",
+      actions: approvalActions,
+    });
+    await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
+    const requestId = adapters[0]!.sent[0]!.id;
+
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
+    const result = await pending;
+
+    await client.notify({ after: result, message: "Done" });
+
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "Done",
+      threadId: requestId,
+      threadRef: `ext_${requestId}`,
+    });
+  });
 });

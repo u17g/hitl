@@ -430,4 +430,30 @@ describe("notifyVia", () => {
       threadRef: `ext_${id}`,
     });
   });
+
+  it("resolves after id to the channel externalId", async () => {
+    const { runtime, adapters } = makeRuntime();
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+
+    await notifyVia(runtime, { message: "context", after: { id } });
+
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "context",
+      threadId: id,
+      threadRef: `ext_${id}`,
+    });
+  });
+
+  it("resolves on id to the channel externalId", async () => {
+    const { runtime, adapters } = makeRuntime();
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+
+    await notifyVia(runtime, { message: "context", on: id });
+
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "context",
+      threadId: id,
+      threadRef: `ext_${id}`,
+    });
+  });
 });

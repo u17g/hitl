@@ -15,7 +15,7 @@ export { createInbox } from "./inbox";
 export type { BatchDecision, HitlInbox } from "./inbox";
 
 export { createHitlClient, DEFAULT_BASE_PATH } from "./client";
-export type { CreateHitlClientOptions, HitlClient } from "./client";
+export type { CreateHitlClientOptions, HitlClient, NotifyOptions } from "./client";
 
 export type { ActionStyle, HumanActionDef, HumanActionOpts, HumanActions } from "./human-actions";
 export {
@@ -46,6 +46,7 @@ export {
   createBatchRequest,
   NotFoundError,
   notifyVia,
+  resolveNotifyThread,
   remindHumanRequest,
   remindBatch,
   resolveHumanRequest,
@@ -53,7 +54,7 @@ export {
   timeoutHumanRequest,
   timeoutBatch,
 } from "./core";
-export type { HitlRuntime } from "./core";
+export type { HitlRuntime, NotifyThreadContext } from "./core";
 
 export type {
   BatchTimeoutResponse,

@@ -3,6 +3,7 @@ import type { CreateBatchBody } from "./api-types";
 import type { HitlResolver } from "./binding";
 import {
   createBatchRequest,
+  notifyVia,
   remindBatch,
   resolveHumanRequest,
   resolveBatchHumanRequest,
@@ -461,5 +462,20 @@ describe("remindBatch", () => {
   it("throws on an unknown batch id", async () => {
     const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(remindBatch(runtime, "missing", { kind: "remind" })).rejects.toThrow(/missing/);
+  });
+});
+
+describe("notifyVia batch threading", () => {
+  it("resolves item id via after to the batch message thread", async () => {
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
+    const { batchId, ids } = await createBatchRequest(runtime, emailBatch());
+
+    await notifyVia(runtime, { message: "Follow up", after: { id: ids[0]! } });
+
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "Follow up",
+      threadId: batchId,
+      threadRef: `bext_${batchId}`,
+    });
   });
 });

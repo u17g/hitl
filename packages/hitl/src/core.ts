@@ -293,9 +293,8 @@ export async function remindHumanRequest(
   }
 
   await sendReminderNotification(runtime, body, {
-    threadId: id,
+    on: id,
     primaryChannel: record.channel,
-    threadRef: record.externalId,
   });
   return { pending: true };
 }
@@ -316,9 +315,8 @@ export async function remindBatch(
   }
 
   await sendReminderNotification(runtime, body, {
-    threadId: batchId,
+    on: batchId,
     primaryChannel: batch.channel,
-    threadRef: batch.externalId ?? items[0]?.externalId,
   });
   return { pending: true };
 }
@@ -326,17 +324,15 @@ export async function remindBatch(
 async function sendReminderNotification(
   runtime: HitlRuntime,
   body: RemindBody,
-  ctx: { threadId: string; primaryChannel: string; threadRef: string | undefined },
+  ctx: { on: string; primaryChannel: string },
 ): Promise<void> {
   const escalate = body.kind === "escalate";
   const adapter = pickAdapter(runtime.adapters, escalate ? body.channel : ctx.primaryChannel);
-  const notification: Notification = {
+  await notifyVia(runtime, {
     message: body.message ?? (escalate ? DEFAULT_ESCALATE_MESSAGE : DEFAULT_REMIND_MESSAGE),
     channel: adapter.id,
-    threadId: ctx.threadId,
-  };
-  if (ctx.threadRef) notification.threadRef = ctx.threadRef;
-  await notifyVia(runtime, notification);
+    on: ctx.on,
+  });
 }
 
 async function redeliverBatch(
@@ -514,14 +510,56 @@ function equalsDefaults(
   return Object.entries(fields).every(([key, field]) => values[key] === field.default);
 }
 
+export interface NotifyThreadContext {
+  threadId: string;
+  threadRef: string | undefined;
+}
+
+export async function resolveNotifyThread(
+  state: State,
+  id: string,
+): Promise<NotifyThreadContext> {
+  const record = await state.get(id);
+  if (record?.batchId) {
+    const batch = await state.getBatch(record.batchId);
+    const items = batch ? await state.listByBatch(record.batchId) : [];
+    return {
+      threadId: record.batchId,
+      threadRef: batch?.externalId ?? record.externalId ?? items[0]?.externalId,
+    };
+  }
+  if (record) {
+    return { threadId: id, threadRef: record.externalId };
+  }
+  const batch = await state.getBatch(id);
+  if (batch) {
+    const items = await state.listByBatch(id);
+    return {
+      threadId: id,
+      threadRef: batch.externalId ?? items[0]?.externalId,
+    };
+  }
+  return { threadId: id, threadRef: undefined };
+}
+
 export async function notifyVia(
   runtime: HitlRuntime,
   notification: Notification,
 ): Promise<void> {
-  if (notification.threadId) {
+  const anchorId = notification.after?.id ?? notification.on ?? notification.threadId;
+  let threadId = notification.threadId;
+  let threadRef = notification.threadRef;
+
+  if (anchorId) {
+    const ctx = await resolveNotifyThread(runtime.state, anchorId);
+    threadId = ctx.threadId;
+    if (!threadRef && ctx.threadRef) threadRef = ctx.threadRef;
+  }
+
+  if (threadId) {
     const entry: TimelineEntry = {
       id: crypto.randomUUID(),
-      threadId: notification.threadId,
+      threadId,
       message: notification.message,
       detail: notification.detail,
       createdAt: new Date().toISOString(),
@@ -530,19 +568,11 @@ export async function notifyVia(
   }
 
   const adapter = pickAdapter(runtime.adapters, notification.channel);
-  const enriched: Notification = { ...notification, channel: adapter.id };
-  if (notification.threadId && !notification.threadRef) {
-    const externalId = await threadExternalRef(runtime.state, notification.threadId);
-    if (externalId) enriched.threadRef = externalId;
-  }
-  await adapter.notify(enriched);
-}
-
-async function threadExternalRef(state: State, threadId: string): Promise<string | undefined> {
-  const batch = await state.getBatch(threadId);
-  if (batch?.externalId) return batch.externalId;
-  const record = await state.get(threadId);
-  if (record?.externalId) return record.externalId;
-  const items = await state.listByBatch(threadId);
-  return items[0]?.externalId;
+  await adapter.notify({
+    message: notification.message,
+    channel: adapter.id,
+    threadId,
+    threadRef,
+    detail: notification.detail,
+  });
 }

@@ -41,7 +41,7 @@ describe("public API", () => {
       }
     })();
 
-    await client.notify({ threadId: requestId, message: "Original message: hello" });
+    await client.notify({ on: requestId, message: "Original message: hello" });
 
     await hitl.inbox.resolve(requestId, {
       actionId: "approve",

@@ -17,6 +17,18 @@ import type { Notification } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
 
+type NotifyBase = {
+  message: string;
+  channel?: string;
+  detail?: Record<string, unknown>;
+};
+
+/** Workflow-side notify options. Prefer `after` once a human step has resolved. */
+export type NotifyOptions =
+  | (NotifyBase & { after: HumanResult })
+  | (NotifyBase & { on: string })
+  | (NotifyBase & { threadId?: string; threadRef?: string });
+
 export interface CreateHitlClientOptions extends WorkflowPrimitives {
   /** Base URL of the app hosting the hitl server, e.g. `https://my-app.vercel.app`. Lazy so engines can resolve it at run time. */
   url: string | (() => string);
@@ -40,7 +52,7 @@ export interface HitlClient {
     opts: WaitForHumanOptions<Actions> & { items: ReadonlyArray<HumanItem<Actions>> },
   ): Promise<HumanResult<Actions>[]>;
 
-  notify(notification: Notification): Promise<void>;
+  notify(notification: NotifyOptions): Promise<void>;
 }
 
 export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
@@ -188,8 +200,17 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
 
   return {
     waitForHuman: waitForHuman as HitlClient["waitForHuman"],
-    notify: (notification) => callApi("/notifications", notification).then(() => undefined),
+    notify: (notification) =>
+      callApi("/notifications", toNotifyBody(notification)).then(() => undefined),
   };
+}
+
+function toNotifyBody(notification: NotifyOptions): Notification {
+  if ("after" in notification && notification.after) {
+    const { after, ...rest } = notification;
+    return { ...rest, after: { id: after.id } };
+  }
+  return notification;
 }
 
 function toRemindBody(entry: ReminderEntry): RemindBody {

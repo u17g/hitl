@@ -39,7 +39,14 @@ export interface BatchHumanRequest {
 
 export interface Notification {
   message: string;
-  /** Human step or batch id — timeline entries and notify group under this. */
+  /** Reply under this human step. Prefer over `on` / `threadId`. */
+  after?: { id: string };
+  /** HITL request or batch id when `after` is unavailable (e.g. while pending). */
+  on?: string;
+  /**
+   * @deprecated Prefer `after` or `on`. HITL request/batch id — not a chat-platform thread id.
+   * Timeline entries and notify group under this. Chat thread = adapter `externalId`.
+   */
   threadId?: string;
   /** Chat SDK thread ref; skip resolution when already known. */
   threadRef?: string;
