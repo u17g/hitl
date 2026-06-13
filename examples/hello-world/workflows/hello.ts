@@ -1,5 +1,5 @@
 import { field, actions, isResolved, remind } from "hitl";
-import { waitForHuman, requestHuman, notify } from "@/lib/hitl-workflow";
+import { waitForHuman, requestHuman, notify } from "@/lib/hitl-client";
 
 export async function helloWorkflow(name: string) {
   "use workflow";
