@@ -105,6 +105,19 @@ beforeEach(() => {
   setJwksForTests(new Map([["test-kid", publicKey]]));
 });
 
+describe("teamsHitl provider", () => {
+  it("declares the teams callback-path segment", () => {
+    const plugin = teamsHitl({
+      id: "lead-approvals",
+      target: { type: "channel", teamId: "team-1", channelId: "chan-1" },
+      appId: APP_ID,
+      appPassword: APP_PASSWORD,
+      tenantId: "tenant-1",
+    });
+    expect(plugin.provider).toBe("teams");
+  });
+});
+
 describe("teamsHitl send", () => {
   it("creates a channel conversation and posts an Adaptive Card", async () => {
     const { calls, fetchImpl } = fakeTeams();

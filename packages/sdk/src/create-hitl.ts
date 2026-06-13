@@ -94,7 +94,7 @@ export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string 
       if (write) {
         return handleInboxWrite(inbox, req, write);
       }
-      return handleCallback(runtime, req);
+      return handleCallback(runtime, req, segments);
     }
     return json({ error: "Method not allowed" }, 405);
   };
@@ -287,8 +287,19 @@ async function handleInboxWrite(
   }
 }
 
-async function handleCallback(runtime: HitlRuntime, req: Request): Promise<Response> {
-  for (const plugin of runtime.plugins) {
+async function handleCallback(
+  runtime: HitlRuntime,
+  req: Request,
+  segments: string[],
+): Promise<Response> {
+  // A trailing segment matching a registered plugin's `provider` scopes
+  // dispatch to that channel type — its callbacks never reach other plugins.
+  // No match (legacy shared endpoint) falls back to trying every plugin.
+  const last = segments.at(-1);
+  const scoped = runtime.plugins.filter((p) => p.provider !== undefined && p.provider === last);
+  const candidates = scoped.length > 0 ? scoped : runtime.plugins;
+
+  for (const plugin of candidates) {
     if (!plugin.handleCallback) continue;
 
     const callback = await plugin.handleCallback(req.clone());

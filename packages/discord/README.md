@@ -56,7 +56,7 @@ const approval = await waitForApproval({
 2. Under **Bot**, enable **Send Messages**. Enable **Message Content Intent** only if your app needs to read message content.
 3. Copy the bot token to `DISCORD_BOT_TOKEN`.
 4. Under **General Information**, copy the application **Public Key** (hex) to `DISCORD_PUBLIC_KEY`.
-5. Under **General Information**, set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/.well-known/hitldev/v1`). Discord sends a PING on save; this plugin responds automatically.
+5. Under **General Information**, set **Interactions Endpoint URL** to your mounted hitl handler with the `discord` callback segment (e.g. `https://your-app.example/.well-known/hitldev/v1/discord`). Discord sends a PING on save; this plugin responds automatically.
 6. Invite the bot to your server with permissions to send messages in the target channel.
 7. Pass the channel id (Developer Mode → right-click channel → Copy Channel ID) as `channelId`.
 

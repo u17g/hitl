@@ -85,6 +85,16 @@ export interface HitlBatchCallback {
 export interface HitlPlugin {
   /** Routing key used by `waitForApproval({ channel })` / `notify({ channel })`. */
   id: string;
+  /**
+   * Stable callback-path segment for this channel type (e.g. `"slack"`,
+   * `"discord"`). When set, the channel's interactivity URL is `<base>/<provider>`
+   * and inbound callbacks POSTed there dispatch straight to this plugin — no
+   * content-sniffing across other channels. Multiple instances of the same
+   * channel type share one provider segment; the core still disambiguates
+   * instances by callback content. Plugins without a `provider` fall back to the
+   * shared `<base>` endpoint, where every plugin's `handleCallback` is tried.
+   */
+  provider?: string;
   /** Render and deliver an approval request. */
   send(request: ApprovalRequest): Promise<{ externalId: string }>;
   /** Reflect resolution back into the channel (e.g. replace buttons with "Approved by @ryosuke"). */

@@ -24,6 +24,8 @@ import type {
 // - POST {base}/notifications routes a notify
 // - malformed JSON on an internal route -> 400
 // - POST dispatches to the first plugin whose handleCallback returns non-null
+// - POST {base}/{provider} dispatches straight to that provider's plugin
+// - a provider-scoped POST does not fall through to other plugins on reject
 // - POST with no matching plugin -> 404; invalid feedbacks -> 400
 // - GET /approvals (+ ?status=), GET /approvals/:id, GET /batches/:id
 // - app.inbox reads/writes match the HTTP inbox; POST /approvals/:id and /batches/:id resolve
@@ -368,6 +370,73 @@ describe("callback dispatch", () => {
     expect(body.ok).toBe(true);
     expect(body.results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
     expect(resolver.resolved.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
+  });
+
+  it("routes POST {base}/{provider} straight to that provider's plugin", async () => {
+    const resolver = new FakeResolver();
+    const consulted: string[] = [];
+    const plugin = (id: string, provider: string): HitlPlugin => ({
+      id,
+      provider,
+      async send(request) {
+        return { externalId: `ext_${request.id}` };
+      },
+      async notify() {},
+      async handleCallback(req): Promise<HitlCallback | null> {
+        consulted.push(id);
+        const body = (await req.clone().json()) as { requestId: string };
+        return { requestId: body.requestId, decision: "approve" };
+      },
+    });
+    // `a` comes first and would accept any callback by content; the path scopes
+    // dispatch to `b` regardless, and `a` is never consulted.
+    const app = createHitl({
+      plugins: [plugin("a", "slack"), plugin("b", "teams")],
+      resolver,
+      store: new InMemoryStore(),
+    });
+    const id = await createRequest(app);
+
+    const res = await post(app, "/teams", { requestId: id });
+
+    expect(res.status).toBe(200);
+    expect(consulted).toEqual(["b"]);
+    expect(resolver.resolved).toEqual([{ token: "tok_1", payload: { type: "APPROVED", id } }]);
+  });
+
+  it("does not fall through to other plugins when the scoped provider rejects", async () => {
+    const resolver = new FakeResolver();
+    const consulted: string[] = [];
+    const rejecting: HitlPlugin = {
+      id: "slack",
+      provider: "slack",
+      async send(request) {
+        return { externalId: `ext_${request.id}` };
+      },
+      async notify() {},
+      async handleCallback() {
+        consulted.push("slack");
+        return null;
+      },
+    };
+    const greedy: HitlPlugin = {
+      id: "teams",
+      provider: "teams",
+      async send(request) {
+        return { externalId: `ext_${request.id}` };
+      },
+      async notify() {},
+      async handleCallback() {
+        consulted.push("teams");
+        return { requestId: "x", decision: "approve" };
+      },
+    };
+    const app = createHitl({ plugins: [rejecting, greedy], resolver, store: new InMemoryStore() });
+
+    const res = await post(app, "/slack", { requestId: "x" });
+
+    expect(res.status).toBe(404);
+    expect(consulted).toEqual(["slack"]);
   });
 });
 

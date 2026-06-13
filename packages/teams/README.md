@@ -64,7 +64,7 @@ const approval = await waitForApproval({
 
 1. Register an app in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) (or reuse an existing bot registration).
 2. Copy the **Microsoft App ID** and create a **Client secret** under **Certificates & secrets** → `MICROSOFT_APP_PASSWORD`.
-3. Under **Configuration**, set the **Messaging endpoint** to your mounted hitl handler URL, e.g. `https://your-app.example/.well-known/hitldev/v1`.
+3. Under **Configuration**, set the **Messaging endpoint** to your mounted hitl handler URL with the `teams` callback segment, e.g. `https://your-app.example/.well-known/hitldev/v1/teams`.
 4. Enable the **Microsoft Teams** channel for the bot.
 5. Create or update a Teams app package using [manifest.json](./manifest.json):
    - Replace placeholder `id` / `botId` with your App ID.

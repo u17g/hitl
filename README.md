@@ -120,7 +120,9 @@ export const hitl = createHitl({
 });
 
 // Mount it under /.well-known/hitldev/v1 — serves channel callbacks (Slack interactivity,
-// Teams Bot Framework, Discord interactions), the internal workflow API, and the web inbox:
+// Teams Bot Framework, Discord interactions), the internal workflow API, and the web inbox.
+// Each channel POSTs to its own segment under the base — /.well-known/hitldev/v1/slack,
+// /discord, /teams — so configure that URL in the provider's app settings:
 // Next.js:  export const { GET, POST } = hitl.routeHandlers   // app/.well-known/hitldev/v1/[[...path]]/route.ts
 // Express:  app.use("/.well-known/hitldev/v1", hitl.handler)
 ```
@@ -422,7 +424,7 @@ DATABASE_URL=postgres://... npx hitldev setup
 1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications) and add a bot.
 2. Enable **Send Messages** and **Message Content Intent** (if reading message content).
 3. Copy the bot token to `DISCORD_BOT_TOKEN` and the application **Public Key** to `DISCORD_PUBLIC_KEY`.
-4. Set **Interactions Endpoint URL** to your mounted hitl handler (e.g. `https://your-app.example/.well-known/hitldev/v1`). Discord sends a PING on save; `@hitldev/discord` responds automatically.
+4. Set **Interactions Endpoint URL** to your mounted hitl handler with the `discord` callback segment (e.g. `https://your-app.example/.well-known/hitldev/v1/discord`). Discord sends a PING on save; `@hitldev/discord` responds automatically.
 5. Invite the bot to your server and pass the target channel id as `channelId`.
 
 When a reviewer clicks **Approve** and the request has feedback fields, Discord opens a Modal to collect edits before resolving the approval.
@@ -433,7 +435,7 @@ Batches (`waitForBatchApprovals`) render as a multi-select (every item preselect
 
 1. Register a bot in [Azure Bot Service](https://portal.azure.com/#create/Microsoft.AzureBot) and enable the **Microsoft Teams** channel.
 2. Copy the **Microsoft App ID** and a client secret to `MICROSOFT_APP_ID` / `MICROSOFT_APP_PASSWORD`.
-3. Set the **Messaging endpoint** to your mounted hitl handler (e.g. `https://your-app.example/.well-known/hitldev/v1`).
+3. Set the **Messaging endpoint** to your mounted hitl handler with the `teams` callback segment (e.g. `https://your-app.example/.well-known/hitldev/v1/teams`).
 4. Package and install the Teams app (see [packages/teams/manifest.json](packages/teams/manifest.json)) in the target team and/or for individual reviewers.
 5. Pass `teamId` + `channelId` for channel approvals, or a reviewer's Azure AD object id for 1:1 DM approvals.
 

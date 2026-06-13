@@ -52,6 +52,12 @@ function makePlugin(fetchImpl: typeof fetch) {
   });
 }
 
+describe("slackHitl provider", () => {
+  it("declares the slack callback-path segment", () => {
+    expect(makePlugin(fetch).provider).toBe("slack");
+  });
+});
+
 describe("slackHitl send", () => {
   it("posts the approval message and returns channel:ts as externalId", async () => {
     const { calls, fetchImpl } = fakeSlack();

@@ -139,6 +139,7 @@ export function teamsHitl(options: TeamsHitlOptions): HitlPlugin {
 
   return {
     id: options.id,
+    provider: "teams",
 
     async send(request: ApprovalRequest): Promise<{ externalId: string }> {
       const conversationId = await ensureConversation();
