@@ -24,10 +24,8 @@
     "chat": "^4.30.0"
   },
   "devDependencies": {
-    "ai": "^6.0.182",
     "chat": "^4.30.0",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4",
-    "zod": "^4.0.0"
+    "vitest": "^3.2.4"
   }
 }
