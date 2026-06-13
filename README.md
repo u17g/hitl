@@ -68,7 +68,7 @@ See [`examples/hello-world`](examples/hello-world) for a full walkthrough — se
 
 Actions with `fields` open a modal on Slack and other Chat SDK platforms. The card button uses `label`; the modal title and submit button default to the same `label` (override with `submitLabel` / `closeLabel`).
 
-Persistence backends: [`@hitl/state-pg`](packages/state-pg/README.md) (Postgres) and [`@hitl/state-sqlite`](packages/state-sqlite/README.md) (SQLite).
+Persistence backends: [`@hitl/state-pg`](packages/state-pg/README.md) (Postgres), [`@hitl/state-sqlite`](packages/state-sqlite/README.md) (SQLite), and [`@hitl/state-ioredis`](packages/state-ioredis/README.md) (Redis).
 
 ## Channels
 

@@ -77,9 +77,9 @@ export const hitl = new Hitl({
   routeHandlers: `import { hitl } from "@/lib/hitl";
 
 export const { POST } = hitl.routeHandlers;`,
-  workflowClient: `import { workflowHitl } from "@hitl/resolver-workflow-sdk";
+  workflowClient: `import { createWorkflowSdkHitlClient } from "@hitl/resolver-workflow-sdk";
 
-export const { waitForHuman } = workflowHitl({
+export const { waitForHuman } = createWorkflowSdkHitlClient({
   request: async (url, init) => {
     "use step";
     return fetch(url, init);

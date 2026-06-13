@@ -105,7 +105,7 @@
       "title": "Workflow DevKit",
       "intro": "Workflow DevKit runs workflows in a separate sandbox from your app server. The workflow client carries no state backend — it suspends and POSTs to the server over a durable step.",
       "clientTitle": "Workflow client",
-      "clientDesc": "workflowHitl wraps suspend, sleep, and request primitives. Define waitForHuman in your app and call it from use workflow functions.",
+      "clientDesc": "createWorkflowSdkHitlClient wraps suspend, sleep, and request primitives. Define waitForHuman in your app and call it from use workflow functions.",
       "serverTitle": "Server setup",
       "serverDesc": "new Hitl({ state, resolver: workflowResolver() }) owns persistence and channel delivery. Export hitl.routeHandlers for the internal API.",
       "flowTitle": "Approval flow",

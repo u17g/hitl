@@ -28,10 +28,10 @@ The workflow and the server are separate processes (Workflow DevKit runs workflo
 | Piece | What it is | API entry |
 |---|---|---|
 | Server (`Hitl`) | The `.well-known/hitl/v1` internal API: request creation, timeout/remind. Owns the state backend and adapters; inbox via `hitl.inbox` | `hitl` |
-| Workflow client (`createHitlClient` / `workflowHitl`) | `requestHuman` / `waitForHuman` / `notify` — create a pending request, optionally notify while pending, then wait for resolution. `waitForHuman({ … })` is sugar for the one-shot case. Reminders support relative delays (`after`), wall-clock times (`at`, `tomorrowAt`), and repeating schedules (`dailyAt`, `weekdaysAt`, `every`) via the `remind` / `escalate` builders | `hitl/client` + `@hitl/resolver-workflow-sdk` |
+| Workflow client (`createHitlClient` / `createWorkflowSdkHitlClient`) | `requestHuman` / `waitForHuman` / `notify` — create a pending request, optionally notify while pending, then wait for resolution. `waitForHuman({ … })` is sugar for the one-shot case. Reminders support relative delays (`after`), wall-clock times (`at`, `tomorrowAt`), and repeating schedules (`dailyAt`, `weekdaysAt`, `every`) via the `remind` / `escalate` builders | `hitl/client` + `@hitl/resolver-workflow-sdk` |
 | Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, …) implementing `WorkflowPrimitives` + `HitlResolver` | `hitl/core` |
 | Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed adapter that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) | `hitl/adapter` |
-| Approval state | The `State` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitl/state-pg` and `@hitl/state-sqlite` for persistence | `hitl/state` |
+| Approval state | The `State` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitl/state-pg`, `@hitl/state-sqlite`, and `@hitl/state-ioredis` for persistence | `hitl/state` |
 | Workflow DSL | `field`, `actions`, `isResolved`, `remind` / `escalate` — typed human steps inside durable workflows | `hitl` |
 
 ## Public API
@@ -88,7 +88,7 @@ All state and adapter IO lives on the server, so the workflow side never runs ar
 The architecture is split along that contract:
 
 - **Core (engine-agnostic):** approval state, field builders, `HumanResult` typing and validation, the adapter interface, server services and HTTP layer (`Hitl`), and the workflow-side client (`createHitlClient`). Knows nothing about engines.
-- **Binding (per engine, thin):** `WorkflowPrimitives` (`suspend` / `sleep` / `request`) on the workflow side; `HitlResolver` (`resolve`) on the server side. `@hitl/resolver-workflow-sdk` packages this as `workflowHitl()` + `workflowResolver()`.
+- **Binding (per engine, thin):** `WorkflowPrimitives` (`suspend` / `sleep` / `request`) on the workflow side; `HitlResolver` (`resolve`) on the server side. `@hitl/resolver-workflow-sdk` packages this as `createWorkflowSdkHitlClient()` + `workflowResolver()`.
 
 The resume token is opaque to the core — for Temporal it might encode `{ workflowId, signalId }`, for Inngest a correlation key. The core stores it and hands it back.
 

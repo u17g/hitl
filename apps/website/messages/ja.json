@@ -105,7 +105,7 @@
       "title": "Workflow DevKit",
       "intro": "Workflow DevKit はアプリサーバーとは別サンドボックスでワークフローを実行します。ワークフロークライアントはステートを持たず、耐久ステップ経由でサーバーに POST します。",
       "clientTitle": "ワークフロークライアント",
-      "clientDesc": "workflowHitl がサスペンド・スリープ・リクエストのプリミティブをラップ。アプリで waitForHuman を定義し、use workflow 関数から呼び出します。",
+      "clientDesc": "createWorkflowSdkHitlClient がサスペンド・スリープ・リクエストのプリミティブをラップ。アプリで waitForHuman を定義し、use workflow 関数から呼び出します。",
       "serverTitle": "サーバーセットアップ",
       "serverDesc": "new Hitl({ state, resolver: workflowResolver() }) が永続化とチャネル配信を担当。内部 API 用に hitl.routeHandlers をエクスポート。",
       "flowTitle": "承認フロー",
