@@ -189,7 +189,7 @@ async function handleInternalApi(
           return json({ error: error instanceof Error ? error.message : "Invalid actions" }, 400);
         }
         const result = await createBatchRequest(runtime, {
-          title: create.title,
+          message: create.message,
           channel: create.channel,
           actions: create.actions,
           context: create.context,

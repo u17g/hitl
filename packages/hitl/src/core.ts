@@ -142,14 +142,14 @@ function resolvedDefaults(actions: HumanActions): Record<string, unknown> {
 }
 
 function toBatchRequest(
-  batch: { id: string; channel: string; title?: string; context?: Record<string, unknown> },
+  batch: { id: string; channel: string; message?: string; context?: Record<string, unknown> },
   actions: HumanActions,
   items: ReadonlyArray<{ id: string; message: string; actions: HumanActions }>,
 ): BatchHumanRequest {
   return {
     batchId: batch.id,
     channel: batch.channel,
-    title: batch.title,
+    message: batch.message,
     actions,
     context: batch.context,
     items: items.map((item) => ({
@@ -194,7 +194,7 @@ export async function createBatchRequest(
   await runtime.state.createBatch({
     id: batchId,
     channel: adapter.id,
-    title: body.title,
+    message: body.message,
     actions: body.actions,
     context: body.context,
   });
@@ -212,7 +212,7 @@ export async function createBatchRequest(
   }
 
   const request = toBatchRequest(
-    { id: batchId, channel: adapter.id, title: body.title, context: body.context },
+    { id: batchId, channel: adapter.id, message: body.message, context: body.context },
     body.actions,
     items,
   );
@@ -348,7 +348,7 @@ async function redeliverBatch(
   const escalateAdapter = pickAdapter(runtime.adapters, channel);
   const actions = batch.actions ?? items[0]?.actions ?? [{ id: "submit" }];
   const request = toBatchRequest(
-    { id: batch.id, channel, title: batch.title, context: batch.context },
+    { id: batch.id, channel, message: batch.message, context: batch.context },
     actions,
     items.map((item) => ({ id: item.id, message: item.message, actions: item.actions })),
   );

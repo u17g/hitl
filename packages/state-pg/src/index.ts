@@ -48,7 +48,7 @@ interface HumanRequestRow {
 interface BatchRow {
   id: string;
   channel: string;
-  title: string | null;
+  message: string | null;
   actions: HumanActions | null;
   context: Record<string, unknown> | null;
   external_id: string | null;
@@ -169,12 +169,12 @@ export class PostgresState implements State {
 
   async createBatch(record: NewBatchRecord): Promise<void> {
     await this.pool.query(
-      `INSERT INTO ${this.table.batchesSql} (id, channel, title, actions, context, created_at)
+      `INSERT INTO ${this.table.batchesSql} (id, channel, message, actions, context, created_at)
        VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)`,
       [
         record.id,
         record.channel,
-        record.title ?? null,
+        record.message ?? null,
         record.actions === undefined ? null : JSON.stringify(record.actions),
         record.context === undefined ? null : JSON.stringify(record.context),
         new Date().toISOString(),
@@ -264,7 +264,7 @@ function batchRowToRecord(row: BatchRow): BatchRecord {
   return {
     id: row.id,
     channel: row.channel,
-    title: row.title ?? undefined,
+    message: row.message ?? undefined,
     actions: row.actions ? normalizeActions(row.actions) : undefined,
     context: row.context ?? undefined,
     externalId: row.external_id ?? undefined,

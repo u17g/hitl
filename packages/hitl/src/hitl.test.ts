@@ -108,7 +108,7 @@ async function createRequest(hitl: Hitl, token = "tok_1") {
 
 async function createBatch(hitl: Hitl) {
   const res = await post(hitl, "/batches", {
-    title: "Outbound emails",
+    message: "Outbound emails",
     actions,
     items: [
       { token: "tok_0", message: "Email A" },
@@ -325,7 +325,7 @@ describe("inbox facade", () => {
     const { batchId } = await createBatch(hitl);
 
     const result = await hitl.inbox.getBatch(batchId);
-    expect(result?.batch).toMatchObject({ id: batchId, title: "Outbound emails" });
+    expect(result?.batch).toMatchObject({ id: batchId, message: "Outbound emails" });
     expect(result?.items.map((i) => i.id)).toEqual([`${batchId}:0`, `${batchId}:1`]);
     expect(await hitl.inbox.getBatch("nope")).toBeNull();
   });

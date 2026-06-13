@@ -20,7 +20,7 @@ export interface NewHumanRequestRecord {
 export interface NewBatchRecord {
   id: string;
   channel: string;
-  title?: string;
+  message?: string;
   actions?: HumanActions;
   context?: Record<string, unknown>;
 }

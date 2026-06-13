@@ -40,7 +40,7 @@ export function describeStateContract(
     return {
       id,
       channel: "lead-approvals",
-      title: "Outbound emails",
+      message: "Outbound emails",
     };
   }
 
@@ -205,7 +205,7 @@ export function describeStateContract(
       expect(batch).toMatchObject({
         id: "b1",
         channel: "lead-approvals",
-        title: "Outbound emails",
+        message: "Outbound emails",
       });
       expect(batch?.createdAt).toBeTruthy();
     });

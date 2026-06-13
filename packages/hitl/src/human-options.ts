@@ -16,7 +16,6 @@ export interface HumanItem<Actions extends readonly HumanActionDef[]> {
 
 export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]> {
   message?: string;
-  title?: string;
   actions: Actions;
   items?: ReadonlyArray<HumanItem<Actions>>;
   /** Batch defaults target when no submit action exists. */

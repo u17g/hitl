@@ -49,7 +49,7 @@ interface HumanRequestRow {
 interface BatchRow {
   id: string;
   channel: string;
-  title: string | null;
+  message: string | null;
   actions: string | null;
   context: string | null;
   external_id: string | null;
@@ -172,13 +172,13 @@ export class SqliteState implements State {
   async createBatch(record: NewBatchRecord): Promise<void> {
     this.db
       .prepare(
-        `INSERT INTO ${this.table.batchesSql} (id, channel, title, actions, context, created_at)
+        `INSERT INTO ${this.table.batchesSql} (id, channel, message, actions, context, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .run(
         record.id,
         record.channel,
-        record.title ?? null,
+        record.message ?? null,
         record.actions === undefined ? null : JSON.stringify(record.actions),
         record.context === undefined ? null : JSON.stringify(record.context),
         new Date().toISOString(),
@@ -281,7 +281,7 @@ function batchRowToRecord(row: BatchRow): BatchRecord {
   return {
     id: row.id,
     channel: row.channel,
-    title: row.title ?? undefined,
+    message: row.message ?? undefined,
     actions: row.actions === null ? undefined : normalizeActions(JSON.parse(row.actions)),
     context: row.context === null ? undefined : JSON.parse(row.context),
     externalId: row.external_id ?? undefined,

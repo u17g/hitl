@@ -30,7 +30,7 @@ export interface CreateBatchItemBody {
 }
 
 export interface CreateBatchBody {
-  title?: string;
+  message?: string;
   /** Adapter id; defaults to the first configured adapter. */
   channel?: string;
   actions: HumanActions;

@@ -102,7 +102,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     const suspensions = opts.items.map(() => suspend<HumanResult<Actions>>());
 
     const { batchId } = await callApi<CreateBatchResponse>("/batches", {
-      title: opts.title,
+      message: opts.message,
       channel: opts.channel,
       actions: opts.actions,
       context: opts.context,

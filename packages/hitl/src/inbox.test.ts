@@ -80,7 +80,7 @@ async function seedApproval(runtime: HitlRuntime, token = "tok_1") {
 
 async function seedBatch(runtime: HitlRuntime) {
   return createBatchRequest(runtime, {
-    title: "Outbound emails",
+    message: "Outbound emails",
     actions,
     items: [
       { token: "tok_0", message: "Email A" },
@@ -112,7 +112,7 @@ describe("HitlInbox read", () => {
     const { batchId } = await seedBatch(runtime);
 
     const result = await inbox.getBatch(batchId);
-    expect(result?.batch).toMatchObject({ id: batchId, title: "Outbound emails" });
+    expect(result?.batch).toMatchObject({ id: batchId, message: "Outbound emails" });
     expect(result?.items.map((i) => i.id)).toEqual([`${batchId}:0`, `${batchId}:1`]);
     expect(await inbox.getBatch("missing")).toBeNull();
   });

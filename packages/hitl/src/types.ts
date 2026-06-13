@@ -30,7 +30,7 @@ export interface HumanRequest {
 export interface BatchHumanRequest {
   batchId: string;
   channel: string;
-  title?: string;
+  message?: string;
   actions: HumanActions;
   /** Input order. `defaults` are submit field defaults overridden per item. */
   items: Array<{ id: string; message: string; defaults: Record<string, unknown> }>;

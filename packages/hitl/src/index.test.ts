@@ -68,7 +68,7 @@ describe("public API", () => {
     });
 
     const pending = client.waitForHuman({
-      title: "Outbound emails",
+      message: "Outbound emails",
       actions: batchActions,
       items: [
         { message: "Email to ACME", defaults: { subject: "Hello ACME" } },

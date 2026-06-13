@@ -108,7 +108,7 @@ const submitOnly = humanActions().submit({}).build();
 /** Two items; the first overrides the shared `subject` default. */
 function emailBatch(): CreateBatchBody {
   return {
-    title: "Outbound emails",
+    message: "Outbound emails",
     actions,
     items: [
       {
@@ -133,7 +133,7 @@ describe("createBatchRequest", () => {
     expect(adapters[0]!.sentBatches[0]).toMatchObject({
       batchId,
       channel: "a",
-      title: "Outbound emails",
+      message: "Outbound emails",
       actions,
       items: [
         {

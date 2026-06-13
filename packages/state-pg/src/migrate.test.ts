@@ -20,6 +20,7 @@ describe("postgres migrations", () => {
       "004_human_actions",
       "005_actions_array",
       "006_rename_human_requests",
+      "007_rename_batch_title_to_message",
     ]);
   });
 
@@ -45,6 +46,7 @@ describe("postgres migrations", () => {
       "004_human_actions",
       "005_actions_array",
       "006_rename_human_requests",
+      "007_rename_batch_title_to_message",
     ]);
   });
 
@@ -64,6 +66,6 @@ describe("postgres migrations", () => {
 
     // batch columns and the batches table now exist
     await pool.query("SELECT batch_id, batch_index FROM hitl.human_requests LIMIT 0");
-    await pool.query("SELECT id, channel, title FROM hitl.human_requests_batches LIMIT 0");
+    await pool.query("SELECT id, channel, message FROM hitl.human_requests_batches LIMIT 0");
   });
 });

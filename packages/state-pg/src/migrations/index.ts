@@ -4,6 +4,7 @@ import { migration003Batches } from "./003-batches.js";
 import { migration004HumanActions } from "./004-human-actions.js";
 import { migration005ActionsArray } from "./005-actions-array.js";
 import { migration006RenameHumanRequests } from "./006-rename-human-requests.js";
+import { migration007RenameBatchTitleToMessage } from "./007-rename-batch-title-to-message.js";
 import type { Migration } from "./types.js";
 
 /** Ordered, append-only migrations. Add new files and entries here. */
@@ -14,6 +15,7 @@ export const MIGRATIONS: readonly Migration[] = [
   migration004HumanActions,
   migration005ActionsArray,
   migration006RenameHumanRequests,
+  migration007RenameBatchTitleToMessage,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
