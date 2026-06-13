@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Hitl SDK — 耐久ワークフロー向け Human-in-the-loop",
-    "description": "耐久ワークフローに人間の承認を組み込む TypeScript SDK。1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で承認されたら再開します。"
+    "title": "Hitl SDK — AI エージェントと耐久ワークフロー向け Human-in-the-loop",
+    "description": "AI エージェントと耐久ワークフローに人間の承認を組み込む統一 TypeScript SDK。1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で承認されたら再開します。"
   },
   "nav": {
     "docs": "ドキュメント",
@@ -11,10 +11,9 @@
   "hero": {
     "badge": "Human-in-the-loop",
     "title": "あらゆるワークフローを人間対応に",
-    "subtitle": "エージェントや自動化に型付きレビューステップを挿入 — 1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で人間が承認したら再開します。",
+    "subtitle": "AI エージェントと耐久ワークフロー向けの統一 HITL レイヤー — 1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で人間が承認したら再開します。",
     "ctaDocs": "はじめる",
-    "ctaGithub": "GitHub を見る",
-    "notFramework": "エージェントフレームワークではありません — AI SDK や Workflow DevKit をそのまま使えます。Hitl SDK が担当するのは「人間の部分」だけです。"
+    "ctaGithub": "GitHub を見る"
   },
   "compare": {
     "title": "信頼性をコードで",
@@ -66,14 +65,14 @@
     "example": "hello-world を実行"
   },
   "footer": {
-    "tagline": "耐久ワークフロー向け Human-in-the-loop。",
+    "tagline": "AI エージェントと耐久ワークフロー向け Human-in-the-loop。",
     "license": "MIT License"
   },
   "docs": {
     "title": "ドキュメント",
     "gettingStarted": {
       "title": "はじめに",
-      "intro": "Hitl SDK は耐久ワークフローに人間の承認を組み込む TypeScript ライブラリです。エージェントフレームワークではありません — AI SDK や Workflow DevKit をそのまま使ってください。",
+      "intro": "Hitl SDK は、AI エージェントと耐久ワークフローに人間の承認を組み込む統一 TypeScript ライブラリです。",
       "prereqTitle": "前提条件",
       "prereq1": "Node.js 22.13.0+（node:sqlite による SQLite ステート用）",
       "prereq2": "pnpm（モノレポルートから）",

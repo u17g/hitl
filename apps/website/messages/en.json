@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Hitl SDK — Human-in-the-loop for durable workflows",
-    "description": "A unified TypeScript SDK for human-in-the-loop approval in durable workflows. One await, suspend for hours or days, resume when a human approves."
+    "title": "Hitl SDK — Human-in-the-loop for AI agents and durable workflows",
+    "description": "A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable workflows. One await, suspend for hours or days, resume when a human approves."
   },
   "nav": {
     "docs": "Docs",
@@ -11,10 +11,9 @@
   "hero": {
     "badge": "Human-in-the-loop",
     "title": "Make any workflow human-aware",
-    "subtitle": "Insert typed review steps into agents and automations — one await, suspend for hours or days, resume when a human approves in Slack, Teams, Discord, or a web inbox.",
+    "subtitle": "A unified human-in-the-loop layer for AI agents and durable workflows — one await, suspend for hours or days, resume when a human approves in Slack, Teams, Discord, or a web inbox.",
     "ctaDocs": "Get started",
-    "ctaGithub": "View on GitHub",
-    "notFramework": "Not an agent framework — bring your own AI SDK or Workflow DevKit. Hitl SDK does one thing: the human part."
+    "ctaGithub": "View on GitHub"
   },
   "compare": {
     "title": "Reliability-as-code",
@@ -66,14 +65,14 @@
     "example": "Run hello-world"
   },
   "footer": {
-    "tagline": "Human-in-the-loop for durable workflows.",
+    "tagline": "Human-in-the-loop for AI agents and durable workflows.",
     "license": "MIT License"
   },
   "docs": {
     "title": "Documentation",
     "gettingStarted": {
       "title": "Getting Started",
-      "intro": "Hitl SDK is a TypeScript library for human-in-the-loop approval in durable workflows. It is not an agent framework — bring your own AI SDK or Workflow DevKit.",
+      "intro": "Hitl SDK is a unified TypeScript library for human-in-the-loop approval in AI agents and durable workflows.",
       "prereqTitle": "Prerequisites",
       "prereq1": "Node.js 22.13.0+ (for SQLite state via node:sqlite)",
       "prereq2": "pnpm (from the monorepo root)",

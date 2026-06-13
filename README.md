@@ -3,9 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/hitl)](https://www.npmjs.com/package/hitl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A unified TypeScript SDK for human-in-the-loop approval in durable workflows. Insert typed review steps into agents and automations — one `await`, suspend for hours or days, resume when a human approves in Slack, Teams, Discord, or a web inbox.
-
-Not an agent framework — bring your own [AI SDK](https://ai-sdk.dev) or [Workflow DevKit](https://workflow-sdk.dev) workflow. Hitl SDK does one thing: the human part.
+A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable workflows. One `await` — suspend for hours or days, resume when a human approves in Slack, Teams, Discord, or a web inbox.
 
 ## Installation
 

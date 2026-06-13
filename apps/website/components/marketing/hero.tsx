@@ -41,7 +41,6 @@ export async function Hero() {
               </a>
             </Button>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">{t("notFramework")}</p>
         </div>
         <div className="mx-auto mt-16 max-w-2xl">
           <CodeBlock code={snippets.install} filename="terminal" />
