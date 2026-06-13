@@ -18,7 +18,7 @@ export interface ChatHitlOptions {
   /** Chat SDK channel ref to post approvals into, e.g. "slack:C123". */
   channel: string;
   /**
-   * The hitldev inbox, resolved lazily. `new Hitl()` needs the adapters before
+   * The hitl inbox, resolved lazily. `new Hitl()` needs the adapters before
    * the inbox exists, so pass `() => hitl.inbox`; the handlers call it per event.
    */
   inbox: () => HitlInbox;

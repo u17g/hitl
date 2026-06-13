@@ -1,7 +1,7 @@
 {
   "name": "@hitl/adapter-chat-sdk",
   "version": "0.0.0",
-  "description": "Chat SDK channel plugin for hitldev: deliver approvals to Slack, Teams, Discord and more from one adapter.",
+  "description": "Chat SDK channel plugin for hitl: deliver approvals to Slack, Teams, Discord and more from one adapter.",
   "license": "MIT",
   "type": "module",
   "exports": {

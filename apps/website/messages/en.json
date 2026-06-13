@@ -54,7 +54,7 @@
   },
   "architecture": {
     "title": "How it works",
-    "subtitle": "The workflow and the server are separate processes. The .well-known/hitldev/v1 API is the only thing between them.",
+    "subtitle": "The workflow and the server are separate processes. The .well-known/hitl/v1 API is the only thing between them.",
     "point1": "Workflow suspends on a durable hook and POSTs a request via a memoized step.",
     "point2": "Server records the request and delivers to your channel adapter.",
     "point3": "Reviewer approves — server resolves the hook and the workflow resumes."

@@ -39,7 +39,7 @@ export interface HitlOptions {
 }
 
 export interface HitlInstance {
-  /** Fetch-style handler at the core of every adapter. Mount under `/.well-known/hitldev/v1` (or any base path). */
+  /** Fetch-style handler at the core of every adapter. Mount under `/.well-known/hitl/v1` (or any base path). */
   fetch(req: Request): Promise<Response>;
   /** Node/Express-style handler. */
   handler(req: IncomingMessage, res: ServerResponse): Promise<void>;

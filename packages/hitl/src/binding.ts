@@ -1,5 +1,5 @@
 /**
- * The contract hitldev asks of a durable execution engine, split by side:
+ * The contract hitl asks of a durable execution engine, split by side:
  *
  * - Workflow side (`WorkflowPrimitives`): suspend with a token, a durable
  *   timer, and a durable fetch. Injected into `createHitlClient` by an engine
@@ -15,7 +15,7 @@ export interface HitlSuspension<T> {
   promise: Promise<T>;
 }
 
-/** A request to the hitldev server. Plain, serializable data — easy to send from a durable step. */
+/** A request to the hitl server. Plain, serializable data — easy to send from a durable step. */
 export interface HitlRequest {
   url: string;
   method: string;
@@ -47,7 +47,7 @@ export interface WorkflowPrimitives {
   /** Durable timer used to implement `timeout` and `reminder`. */
   sleep(ms: number): Promise<void>;
   /**
-   * Call the hitldev server. Engines implement this as a durable step (e.g. a
+   * Call the hitl server. Engines implement this as a durable step (e.g. a
    * Workflow DevKit `"use step"` function wrapping `fetch`) so the response is
    * memoized across replays.
    */

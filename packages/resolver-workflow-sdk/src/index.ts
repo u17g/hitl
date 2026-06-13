@@ -10,7 +10,7 @@ export { workflowResolver } from "./resolver";
 
 export interface WorkflowHitlOptions {
   /**
-   * A `"use step"` function that performs the HTTP request to the hitldev
+   * A `"use step"` function that performs the HTTP request to the hitl
    * server. Define it in your app (not a dependency) so the Workflow DevKit
    * compiler picks up the directive — typically:
    *
@@ -25,14 +25,14 @@ export interface WorkflowHitlOptions {
   request: HitlRequestFn;
   /** Base URL of the app hosting the server. Defaults to `HITL_URL`, then the deployment's own URL. */
   url?: string;
-  /** Where the server is mounted. Defaults to `/.well-known/hitldev/v1`. */
+  /** Where the server is mounted. Defaults to `/.well-known/hitl/v1`. */
   basePath?: string;
   /** Bearer secret of the internal API. Defaults to `HITL_SECRET`. */
   secret?: string;
 }
 
 /**
- * The workflow-side hitldev client on Workflow DevKit primitives: suspension
+ * The workflow-side hitl client on Workflow DevKit primitives: suspension
  * is a WDK hook (event-sourced, survives restarts and deploys) and the timer
  * is WDK `sleep`. The HTTP call is your `"use step"` `request` function, so
  * there is no special bundling — ordinary step rules apply.

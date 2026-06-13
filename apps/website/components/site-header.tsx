@@ -23,7 +23,7 @@ export async function SiteHeader() {
               {t("docs")}
             </Link>
             <a
-              href="https://github.com/hitldev/hitldev"
+              href="https://github.com/u17g/hitl"
               target="_blank"
               rel="noopener noreferrer"
               className="transition-colors hover:text-foreground"
@@ -53,7 +53,7 @@ export async function SiteHeader() {
           </Button>
           <Button variant="ghost" size="icon" asChild>
             <a
-              href="https://github.com/hitldev/hitldev"
+              href="https://github.com/u17g/hitl"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub"

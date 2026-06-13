@@ -61,7 +61,7 @@ describe("workflowHitl", () => {
     void hitl.waitForHuman({ message: "Approve?", actions: humanActions().submit().build() });
     await vi.waitFor(() => expect(calls).toHaveLength(1));
 
-    expect(calls[0]!.url).toBe("https://my-app.vercel.app/.well-known/hitldev/v1/requests");
+    expect(calls[0]!.url).toBe("https://my-app.vercel.app/.well-known/hitl/v1/requests");
     expect(calls[0]!.headers.authorization).toBe("Bearer s3cret");
     expect(JSON.parse(calls[0]!.body)).toMatchObject({ token: "hook_1", message: "Approve?" });
   });
@@ -74,7 +74,7 @@ describe("workflowHitl", () => {
       actions: humanActions().submit().build(),
     });
     await vi.waitFor(() => expect(a.calls).toHaveLength(1));
-    expect(a.calls[0]!.url).toBe("http://localhost:3000/.well-known/hitldev/v1/requests");
+    expect(a.calls[0]!.url).toBe("http://localhost:3000/.well-known/hitl/v1/requests");
 
     const b = fakeRequest([{ id: "a1" }]);
     void workflowHitl({ request: b.request, url: "https://override.example" }).waitForHuman({
@@ -82,7 +82,7 @@ describe("workflowHitl", () => {
       actions: humanActions().submit().build(),
     });
     await vi.waitFor(() => expect(b.calls).toHaveLength(1));
-    expect(b.calls[0]!.url).toBe("https://override.example/.well-known/hitldev/v1/requests");
+    expect(b.calls[0]!.url).toBe("https://override.example/.well-known/hitl/v1/requests");
   });
 
   it("times out via WDK sleep and the /timeout endpoint", async () => {
@@ -101,7 +101,7 @@ describe("workflowHitl", () => {
     expect(sleepMock).toHaveBeenCalledWith("3600000ms");
     expect(result).toEqual({ type: "TIMED_OUT", id: "a1" });
     expect(calls[1]!.url).toBe(
-      "https://my-app.vercel.app/.well-known/hitldev/v1/requests/a1/timeout",
+      "https://my-app.vercel.app/.well-known/hitl/v1/requests/a1/timeout",
     );
   });
 });

@@ -26,7 +26,7 @@ export function parseActionModalCallback(callbackId: string): string | undefined
 }
 
 /** Button actionId for a batch submit; the batchId rides in the button value. */
-export const ACTION_BATCH_SUBMIT = "hitldev_batch_submit";
+export const ACTION_BATCH_SUBMIT = "hitl_batch_submit";
 
 /** RadioSelect option values for a confirm field. */
 export const CONFIRM_YES = "yes";

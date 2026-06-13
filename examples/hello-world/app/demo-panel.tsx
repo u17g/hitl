@@ -327,7 +327,7 @@ export function DemoPanel() {
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <h1 style={styles.title}>hitldev hello-world</h1>
+        <h1 style={styles.title}>hitl hello-world</h1>
         <p style={styles.lead}>
           Start the workflow, then submit or deny the pending request. Deny opens a reason field;
           timeline entries appear when notify is used.

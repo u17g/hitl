@@ -13,7 +13,7 @@ export type { HumanResult };
 /**
  * What an adapter receives to render and deliver a human step.
  * Not to be confused with `HitlRequest` in `binding.ts`, which is the durable
- * step HTTP envelope (`url`, `method`, `body`) sent to the hitldev server.
+ * step HTTP envelope (`url`, `method`, `body`) sent to the hitl server.
  */
 export interface HumanRequest {
   id: string;

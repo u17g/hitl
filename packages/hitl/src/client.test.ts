@@ -153,7 +153,7 @@ describe("waitForHuman", () => {
     const pending = client.waitForHuman({ message: "Approve?", actions });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
-    expect(requestCalls[0]!.url).toBe("http://hitl.test/.well-known/hitldev/v1/requests");
+    expect(requestCalls[0]!.url).toBe("http://hitl.test/.well-known/hitl/v1/requests");
     const sentBody = JSON.parse(requestCalls[0]!.body) as { token: string };
     expect(sentBody.token).toBe("tok_1");
 

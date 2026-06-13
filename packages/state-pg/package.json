@@ -1,7 +1,7 @@
 {
   "name": "@hitl/state-pg",
   "version": "0.0.0",
-  "description": "Postgres store for hitldev. Bring your own pg-compatible pool.",
+  "description": "Postgres store for hitl. Bring your own pg-compatible pool.",
   "license": "MIT",
   "type": "module",
   "bin": {

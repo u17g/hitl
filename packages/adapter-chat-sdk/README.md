@@ -1,6 +1,6 @@
 # @hitl/adapter-chat-sdk
 
-A hitldev channel adapter backed by the [Vercel Chat SDK](https://chat-sdk.dev). One adapter delivers approvals to Slack, Teams, Discord, and every other Chat SDK platform — the SDK owns webhook verification, payload parsing, and native card rendering (Block Kit, Adaptive Cards, embeds + modal).
+A hitl channel adapter backed by the [Vercel Chat SDK](https://chat-sdk.dev). One adapter delivers approvals to Slack, Teams, Discord, and every other Chat SDK platform — the SDK owns webhook verification, payload parsing, and native card rendering (Block Kit, Adaptive Cards, embeds + modal).
 
 ## Install
 
@@ -26,7 +26,7 @@ const bot = new Chat({
 
 export const hitl = new Hitl({
   resolver: workflowResolver(),
-  adapters: [ // hitldev channel adapters
+  adapters: [ // hitl channel adapters
     // `inbox` is lazy: `new Hitl()` needs the adapters before hitl.inbox exists.
     chatHitl({ id: "approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
   ],

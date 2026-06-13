@@ -26,7 +26,7 @@ import type {
 // - hitl.inbox reads/writes resolve approvals and resume the engine
 // - routeHandlers.POST and the Node handler delegate to the same fetch logic
 
-const BASE = "http://x/.well-known/hitldev/v1";
+const BASE = "http://x/.well-known/hitl/v1";
 
 class FakeResolver implements HitlResolver {
   readonly resolved: Array<{ token: string; payload: unknown }> = [];
@@ -426,7 +426,7 @@ describe("adapters", () => {
       })(),
       {
         method: "POST",
-        url: "/.well-known/hitldev/v1/requests",
+        url: "/.well-known/hitl/v1/requests",
         headers: { host: "x", "content-type": "application/json" },
       },
     );

@@ -2,7 +2,7 @@ import type { HumanActions } from "./human-actions";
 import type { HumanResult, Notification } from "./types";
 
 /**
- * Wire types of the internal `.well-known/hitldev/v1` API: the workflow-side
+ * Wire types of the internal `.well-known/hitl/v1` API: the workflow-side
  * client POSTs these bodies; the server handles them with the core services.
  * Resume tokens travel in the body, never in the URL.
  */

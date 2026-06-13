@@ -31,7 +31,7 @@ export default async function WorkflowDevkitPage({
         <CodeBlock code={snippets.serverSetup} filename="lib/hitl.ts" />
         <CodeBlock
           code={snippets.routeHandlers}
-          filename="app/.well-known/hitldev/v1/[[...path]]/route.ts"
+          filename="app/.well-known/hitl/v1/[[...path]]/route.ts"
         />
       </section>
 

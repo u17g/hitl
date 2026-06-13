@@ -74,7 +74,7 @@ import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { SqliteState } from "@hitl/state-sqlite";
 
 export const hitl = new Hitl({
-  state: new SqliteState({ path: ".hitldev/human_requests.db" }),
+  state: new SqliteState({ path: ".hitl/human_requests.db" }),
   resolver: workflowResolver(),
 });`,
   routeHandlers: `import { hitl } from "@/lib/hitl";
@@ -107,5 +107,5 @@ await hitl.inbox.resolve(id, {
   feedbacks: { subject: "Updated subject" },
 });`,
   helloWorldRun: `pnpm install
-pnpm --filter @hitldev/example-hello-world dev`,
+pnpm --filter @hitl/example-hello-world dev`,
 } as const;

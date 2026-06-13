@@ -15,7 +15,7 @@ export function timingSafeEqualString(a: string, b: string): boolean {
 let warnedMissingSecret = false;
 
 /**
- * Bearer auth for the internal `.well-known/hitldev/v1` API (workflow → server).
+ * Bearer auth for the internal `.well-known/hitl/v1` API (workflow → server).
  * With no secret configured the check is skipped — local development — and a
  * warning is logged once per process.
  */
@@ -24,7 +24,7 @@ export function authorizeInternalApi(req: Request, secret: string | undefined): 
     if (!warnedMissingSecret) {
       warnedMissingSecret = true;
       console.warn(
-        "hitldev: HITL_SECRET is not set; the internal API accepts unauthenticated requests. " +
+        "hitl: HITL_SECRET is not set; the internal API accepts unauthenticated requests. " +
           "Set HITL_SECRET (same value for server and workflows) before deploying.",
       );
     }

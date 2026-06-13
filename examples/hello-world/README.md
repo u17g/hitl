@@ -11,7 +11,7 @@ From the repository root:
 
 ```bash
 pnpm install
-pnpm --filter @hitldev/example-hello-world dev
+pnpm --filter @hitl/example-hello-world dev
 ```
 
 ## Smoke test (recommended)
@@ -19,7 +19,7 @@ pnpm --filter @hitldev/example-hello-world dev
 The approve/resume loop is verified without Next.js or Workflow DevKit:
 
 ```bash
-pnpm --filter @hitldev/example-hello-world test
+pnpm --filter @hitl/example-hello-world test
 ```
 
 ## Try the UI
@@ -66,7 +66,7 @@ You should see `Hello, world!` printed when the workflow resumes after approval.
 
 > **Note:** If you previously used `.hitl/approvals.db`, delete or rename that file — the example now uses `.hitl/human_requests.db`. Existing data in the legacy default table is migrated automatically when you open the DB with the new package version.
 
-> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitl/human_requests.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you submit. See [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md) for setup details.
+> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitl/v1` API over a `"use step"` `fetch`. The server persists to `.hitl/human_requests.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you submit. See [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md) for setup details.
 
 ## What this shows
 
@@ -75,5 +75,5 @@ You should see `Hello, world!` printed when the workflow resumes after approval.
 - [`lib/hitl-state.ts`](lib/hitl-state.ts) — shared `SqliteState` backed by `.hitl/human_requests.db`
 - [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForHuman`
 - [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForHuman` from the workflow client
-- [`app/.well-known/hitldev/v1/[[...path]]/route.ts`](app/.well-known/hitldev/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`
+- [`app/.well-known/hitl/v1/[[...path]]/route.ts`](app/.well-known/hitl/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`
 - [`app/api/run/route.ts`](app/api/run/route.ts) — trigger the workflow with `start()` from Workflow DevKit

@@ -31,7 +31,7 @@ import { validateFeedbacks } from "./validate";
 /**
  * Everything the server-side services need: persistence, channel adapters, and
  * the engine resolver. Workflows never see this — they talk to these services
- * through the `.well-known/hitldev/v1` HTTP API.
+ * through the `.well-known/hitl/v1` HTTP API.
  */
 export interface HitlRuntime {
   state: State;
@@ -46,7 +46,7 @@ export class NotFoundError extends Error {
 
 export function pickAdapter(adapters: HitlAdapter[], channel?: string): HitlAdapter {
   if (adapters.length === 0) {
-    throw new Error("No hitldev adapters configured. Pass at least one to new Hitl().");
+    throw new Error("No hitl adapters configured. Pass at least one to new Hitl().");
   }
   if (channel === undefined) return adapters[0]!;
   const adapter = adapters.find((p) => p.id === channel);

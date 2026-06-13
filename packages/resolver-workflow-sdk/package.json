@@ -1,7 +1,7 @@
 {
   "name": "@hitl/resolver-workflow-sdk",
   "version": "0.0.0",
-  "description": "Workflow DevKit (Vercel) engine binding for hitldev.",
+  "description": "Workflow DevKit (Vercel) engine binding for hitl.",
   "license": "MIT",
   "type": "module",
   "exports": {

@@ -32,7 +32,7 @@ export async function Hero() {
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a
-                href="https://github.com/hitldev/hitldev"
+                href="https://github.com/u17g/hitl"
                 target="_blank"
                 rel="noopener noreferrer"
               >

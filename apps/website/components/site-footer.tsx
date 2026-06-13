@@ -19,7 +19,7 @@ export async function SiteFooter() {
               {nav("docs")}
             </Link>
             <a
-              href="https://github.com/hitldev/hitldev"
+              href="https://github.com/u17g/hitl"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground"

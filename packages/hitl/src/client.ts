@@ -14,12 +14,12 @@ import type { HumanResult } from "./human-result";
 import { isEscalate, type ReminderEntry } from "./reminder";
 import type { Notification } from "./types";
 
-export const DEFAULT_BASE_PATH = "/.well-known/hitldev/v1";
+export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
 
 export interface CreateHitlClientOptions extends WorkflowPrimitives {
-  /** Base URL of the app hosting the hitldev server, e.g. `https://my-app.vercel.app`. Lazy so engines can resolve it at run time. */
+  /** Base URL of the app hosting the hitl server, e.g. `https://my-app.vercel.app`. Lazy so engines can resolve it at run time. */
   url: string | (() => string);
-  /** Where the server is mounted. Defaults to `/.well-known/hitldev/v1`. */
+  /** Where the server is mounted. Defaults to `/.well-known/hitl/v1`. */
   basePath?: string;
   /** Bearer secret of the internal API. Defaults to `process.env.HITL_SECRET`, read lazily. */
   secret?: string | (() => string | undefined);
@@ -59,7 +59,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     const url = `${base.replace(/\/$/, "")}${basePath}${path}`;
     const res = await request({ url, method: "POST", headers, body: JSON.stringify(body) });
     if (!res.ok) {
-      throw new Error(`hitldev: POST ${path} failed with ${res.status}: ${res.body}`);
+      throw new Error(`hitl: POST ${path} failed with ${res.status}: ${res.body}`);
     }
     return JSON.parse(res.body) as T;
   }

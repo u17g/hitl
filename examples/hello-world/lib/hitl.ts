@@ -13,7 +13,7 @@ function createHitl(): Hitl {
 
 // Server half only: state + the WDK resolver. The web inbox channel is built in,
 // so no `adapters` are needed — add Slack/Teams/Discord here to deliver elsewhere.
-// Workflows talk to this server through the .well-known/hitldev/v1 API and import
+// Workflows talk to this server through the .well-known/hitl/v1 API and import
 // nothing from this file; the UI drives approvals through `hitl.inbox`.
 export const hitl = globalForHitl.__hitl ?? createHitl();
 globalForHitl.__hitl = hitl;

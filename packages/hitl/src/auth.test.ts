@@ -25,7 +25,7 @@ describe("authorizeInternalApi", () => {
   });
 
   function request(headers?: Record<string, string>): Request {
-    return new Request("http://hitl.test/.well-known/hitldev/v1/requests", {
+    return new Request("http://hitl.test/.well-known/hitl/v1/requests", {
       method: "POST",
       headers,
     });

@@ -24,7 +24,7 @@ export async function CtaSection() {
           </Button>
           <Button size="lg" variant="outline" asChild>
             <a
-              href="https://github.com/hitldev/hitldev/tree/main/examples/hello-world"
+              href="https://github.com/u17g/hitl/tree/main/examples/hello-world"
               target="_blank"
               rel="noopener noreferrer"
             >

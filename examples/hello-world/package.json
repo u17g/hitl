@@ -1,5 +1,5 @@
 {
-  "name": "@hitldev/example-hello-world",
+  "name": "@hitl/example-hello-world",
   "private": true,
   "type": "module",
   "scripts": {

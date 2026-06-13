@@ -21,13 +21,13 @@ sequenceDiagram
   H->>S: adapter.update — "Approved by @ryosuke"
 ```
 
-The workflow and the server are separate processes (Workflow DevKit runs workflows in their own sandbox). The `.well-known/hitldev/v1` API is the only thing between them. The workflow client carries no state backend and no adapters.
+The workflow and the server are separate processes (Workflow DevKit runs workflows in their own sandbox). The `.well-known/hitl/v1` API is the only thing between them. The workflow client carries no state backend and no adapters.
 
 ## What Hitl SDK owns
 
 | Piece | What it is |
 |---|---|
-| Server (`Hitl`) | The `.well-known/hitldev/v1` internal API: request creation, timeout/remind. Owns the state backend and adapters; inbox via `hitl.inbox` |
+| Server (`Hitl`) | The `.well-known/hitl/v1` internal API: request creation, timeout/remind. Owns the state backend and adapters; inbox via `hitl.inbox` |
 | Workflow client (`createHitlClient` / `workflowHitl`) | `waitForHuman` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
 | Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, …) implementing `WorkflowPrimitives` + `HitlResolver` |
 | Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed adapter that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
