@@ -92,5 +92,28 @@ export type {
   WorkflowPrimitives,
 } from "./binding";
 export type { Duration } from "./duration";
-export type { ReminderEntry, RemindEntry, EscalateEntry } from "./reminder";
+export type {
+  ClockTime,
+  EscalateEntry,
+  LegacyEscalateEntry,
+  LegacyRemindEntry,
+  RemindEntry,
+  ReminderCommonOpts,
+  ReminderEntry,
+  ReminderTiming,
+  Weekday,
+} from "./reminder";
+export {
+  DEFAULT_ESCALATE_MESSAGE,
+  DEFAULT_REMIND_MESSAGE,
+  WEEKEND_DAYS,
+  escalate,
+  escalateMessage,
+  isEscalate,
+  normalizeReminderEntry,
+  remind,
+  remindMessage,
+} from "./reminder";
+export { expandReminderSchedule, resolveTimezone } from "./schedule";
+export type { FireEvent } from "./schedule";
 export { FeedbackValidationError, validateFeedbacks } from "./validate";

@@ -1,4 +1,4 @@
-import { field, humanActions, isResolved } from "hitl";
+import { field, humanActions, isResolved, remind } from "hitl";
 import { waitForHuman } from "@/lib/hitl-workflow";
 
 
@@ -14,6 +14,7 @@ export async function helloWorkflow(name: string) {
         fields: { reason: field.textArea({ label: "Reason" }) },
       })
       .build(),
+    reminder: [remind.after("1h", { message: "Still waiting for approval" })],
   });
 
   if (!isResolved(approval, "submit")) {

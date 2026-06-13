@@ -9,6 +9,14 @@ import { parseDuration } from "./duration";
 // - invalid strings throw
 
 describe("parseDuration", () => {
+  it("parses weeks", () => {
+    expect(parseDuration("2w")).toBe(2 * 7 * 86_400_000);
+  });
+
+  it("parses days", () => {
+    expect(parseDuration("7d")).toBe(7 * 86_400_000);
+  });
+
   it("parses hours", () => {
     expect(parseDuration("72h")).toBe(72 * 60 * 60 * 1000);
   });

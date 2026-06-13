@@ -6,6 +6,7 @@ import { Hitl, type HitlInstance } from "./hitl";
 import { field } from "./fields";
 import { humanActions } from "./human-actions-builder";
 import { submitAction, type HumanActions } from "./human-actions";
+import { remind } from "./reminder";
 import { InMemoryState } from "./state";
 import type {
   HumanRequest,
@@ -24,6 +25,7 @@ import type {
 // - reminder is a no-op (server-side) after the approval is resolved
 // - reminders scheduled after the timeout are skipped client-side
 // - same-time reminders fire in array order; escalate notify/redeliver pass through
+// - wall-clock reminders sleep until the scheduled time, then POST /remind
 // - waitForHuman batch: one suspension per item, one POST /batches, results in item order
 // - batch timeout keeps resolved items and times out pending ones
 // - notify POSTs /notifications
@@ -325,6 +327,39 @@ describe("waitForHuman", () => {
       actionId: "submit",
     });
     await pending;
+  });
+
+  it("fires wall-clock reminders through the remind endpoint", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-13T10:00:00.000Z"));
+    process.env.TZ = "UTC";
+
+    const { engine, adapters, hitl, client } = makeHarness();
+    const pending = client.waitForHuman({
+      message: "Approve?",
+      actions: submitOnly,
+      reminder: [remind.tomorrowAt("07:00", { tz: "UTC", message: "Morning ping" })],
+    });
+    await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
+    const requestId = adapters[0]!.sent[0]!.id;
+
+    const expectedMs =
+      new Date("2026-06-14T07:00:00.000Z").getTime() - new Date("2026-06-13T10:00:00.000Z").getTime();
+    expect(engine.sleepCalls[0]).toBeGreaterThanOrEqual(expectedMs - 1_000);
+    expect(engine.sleepCalls[0]).toBeLessThanOrEqual(expectedMs);
+    engine.flushSleep();
+
+    await vi.waitFor(() => expect(adapters[0]!.notifications).toHaveLength(1));
+    expect(adapters[0]!.notifications[0]).toEqual({
+      threadId: requestId,
+      message: "Morning ping",
+      channel: "a",
+      threadRef: `ext_${requestId}`,
+    });
+
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "submit" });
+    await pending;
+    vi.useRealTimers();
   });
 
   it("escalates with redeliver on the fallback channel", async () => {

@@ -12,6 +12,7 @@ import { validateWaitForHumanOptions } from "./human-options";
 import type { HumanActionDef } from "./human-actions";
 import type { HumanResult } from "./human-result";
 import { isEscalate, type ReminderEntry } from "./reminder";
+import { expandReminderSchedule } from "./schedule";
 import type { Notification } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
@@ -132,9 +133,8 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     },
   ): Promise<T> {
     const timeoutMs = opts.timeout === undefined ? undefined : parseDuration(opts.timeout);
-    const schedule = (opts.reminder ?? [])
-      .map((entry) => ({ entry, ms: parseDuration(entry.after) }))
-      .sort((a, b) => a.ms - b.ms || 0);
+    const anchor = new Date();
+    const schedule = expandReminderSchedule(opts.reminder ?? [], anchor, timeoutMs);
 
     if (timeoutMs === undefined && schedule.length === 0) {
       return subject.promise;
@@ -152,15 +152,8 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
         wakeKind = "timeout";
       }
 
-      while (
-        reminderIndex < schedule.length &&
-        timeoutMs !== undefined &&
-        schedule[reminderIndex]!.ms >= timeoutMs
-      ) {
-        reminderIndex++;
-      }
       if (reminderIndex < schedule.length) {
-        const nextReminderMs = schedule[reminderIndex]!.ms - elapsedMs;
+        const nextReminderMs = schedule[reminderIndex]!.atMs - elapsedMs;
         if (nextReminderMs >= 0 && nextReminderMs < nextWakeMs) {
           nextWakeMs = nextReminderMs;
           wakeKind = "reminder";
@@ -186,7 +179,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
         return subject.timeout();
       }
 
-      while (reminderIndex < schedule.length && schedule[reminderIndex]!.ms <= elapsedMs) {
+      while (reminderIndex < schedule.length && schedule[reminderIndex]!.atMs <= elapsedMs) {
         await subject.remind(schedule[reminderIndex]!.entry);
         reminderIndex++;
       }

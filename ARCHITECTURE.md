@@ -28,7 +28,7 @@ The workflow and the server are separate processes (Workflow DevKit runs workflo
 | Piece | What it is |
 |---|---|
 | Server (`Hitl`) | The `.well-known/hitl/v1` internal API: request creation, timeout/remind. Owns the state backend and adapters; inbox via `hitl.inbox` |
-| Workflow client (`createHitlClient` / `workflowHitl`) | `waitForHuman` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
+| Workflow client (`createHitlClient` / `workflowHitl`) | `waitForHuman` / `notify` — suspends, calls the server, drives the timeout/reminder loop. Reminders support relative delays (`after`), wall-clock times (`at`, `tomorrowAt`), and repeating schedules (`dailyAt`, `weekdaysAt`, `every`) via the `remind` / `escalate` builders |
 | Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, …) implementing `WorkflowPrimitives` + `HitlResolver` |
 | Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed adapter that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
 | Approval state | The `State` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitl/state-pg` and `@hitl/state-sqlite` for persistence |
@@ -44,7 +44,7 @@ The workflow and the server are separate processes (Workflow DevKit runs workflo
 Hitl SDK asks four things of the execution engine, split across the two sides:
 
 1. **Suspend with a token** (workflow side): create a durable wait and obtain an opaque resume token
-2. **A durable timer** (workflow side, for `timeout` and `reminder`)
+2. **A durable timer** (workflow side, for `timeout` and `reminder`). The client expands reminder rules into a sorted fire schedule at wait start, then sleeps until each fire or timeout. Wall-clock rules resolve against `process.env.TZ`, the host timezone, or an explicit `tz` option.
 3. **A durable request** (workflow side): an HTTP call to the server, memoized across replays
 4. **Resolve by token** (server side): resume the wait with a payload when a callback arrives
 
