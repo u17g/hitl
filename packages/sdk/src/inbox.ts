@@ -12,10 +12,8 @@ export interface BatchDecision {
 
 /**
  * Programmatic inbox API: read approval state and resolve approvals from your
- * own server code. `createHitl(...)` exposes one as `hitl.inbox`, so an HTTP
- * handler can `await hitl.inbox.approve(id, { by })` directly — no need to go
- * through the `.well-known` HTTP routes. The built-in GET inbox and POST write
- * routes are thin shells over these same methods.
+ * own server code. `createHitl(...)` exposes one as `hitl.inbox` — build your
+ * own HTTP handlers (or wire the Chat SDK bot) on top of these methods.
  */
 export interface HitlInbox {
   /** Pending and resolved approvals, newest-first; filter by status. */

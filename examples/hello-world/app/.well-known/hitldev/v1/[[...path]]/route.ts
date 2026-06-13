@@ -1,3 +1,3 @@
 import { hitl } from "@/lib/hitl";
 
-export const { GET, POST } = hitl.routeHandlers;
+export const { POST } = hitl.routeHandlers;

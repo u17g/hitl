@@ -19,14 +19,7 @@ describe("hello-world smoke", () => {
     })();
     expect(record.message).toBe("Say hello to world?");
 
-    const res = await app.fetch(
-      new Request(`http://x/.well-known/hitldev/v1/approvals/${record.id}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision: "approve", by: { name: "you" } }),
-      }),
-    );
-    expect(res.status).toBe(200);
+    await app.inbox.approve(record.id, { by: { name: "you" } });
 
     await expect(pending).resolves.toMatchObject({ type: "APPROVED" });
   });

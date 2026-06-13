@@ -3,13 +3,13 @@ import { field, InMemoryStore, type ApprovalResult } from "./index";
 import { createTestHitl } from "./testing";
 
 // Test list:
-// - the client's waitForApproval resolves through the built-in inbox write route
+// - the client's waitForApproval resolves through hitl.inbox
 // - the result's feedbacks are typed from the field definitions
 // - notify threads through the always-on web inbox channel
-// - the batch loop resolves through the built-in batch submit route with typed results
+// - the batch loop resolves through hitl.inbox.submitBatch with typed results
 
 describe("public API", () => {
-  it("runs the full approve-with-edits loop through the inbox write route", async () => {
+  it("runs the full approve-with-edits loop through hitl.inbox", async () => {
     const { app, client } = createTestHitl({
       store: new InMemoryStore(),
     });
@@ -33,18 +33,10 @@ describe("public API", () => {
 
     await client.notify({ parent: requestId, message: "Original message: hello" });
 
-    const res = await app.fetch(
-      new Request(`http://x/.well-known/hitldev/v1/approvals/${requestId}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          decision: "approve",
-          feedbacks: { subject: "Edited subject", body: "Hello" },
-          by: { name: "ryosuke" },
-        }),
-      }),
-    );
-    expect(res.status).toBe(200);
+    await app.inbox.approve(requestId, {
+      feedbacks: { subject: "Edited subject", body: "Hello" },
+      by: { name: "ryosuke" },
+    });
 
     const approval = await pending;
     expect(approval).toMatchObject({
@@ -57,7 +49,7 @@ describe("public API", () => {
     }
   });
 
-  it("runs the batch loop through the inbox submit route with typed results", async () => {
+  it("runs the batch loop through hitl.inbox.submitBatch with typed results", async () => {
     const { app, client } = createTestHitl({
       store: new InMemoryStore(),
     });
@@ -80,20 +72,14 @@ describe("public API", () => {
       }
     })();
 
-    const res = await app.fetch(
-      new Request(`http://x/.well-known/hitldev/v1/batches/${batchId}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          decisions: [
-            { requestId: `${batchId}:0`, decision: "approve" },
-            { requestId: `${batchId}:1`, decision: "approve", feedbacks: { subject: "Edited" } },
-          ],
-          by: { name: "ryosuke" },
-        }),
-      }),
+    await app.inbox.submitBatch(
+      batchId,
+      [
+        { requestId: `${batchId}:0`, decision: "approve" },
+        { requestId: `${batchId}:1`, decision: "approve", feedbacks: { subject: "Edited" } },
+      ],
+      { by: { name: "ryosuke" } },
     );
-    expect(res.status).toBe(200);
 
     const results = await pending;
     expect(results).toHaveLength(2);
