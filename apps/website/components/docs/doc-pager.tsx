@@ -1,19 +1,14 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
 import { Link } from "@/i18n/navigation";
-import { type Locale } from "@/i18n/routing";
+import { useInlineTranslation, useLocale } from "@/i18n/use-inline-translation";
 import { getAdjacentDocs, type DocSlug } from "@/lib/docs";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
-export async function DocPager({
-  locale,
-  slug,
-}: {
-  locale: string;
-  slug: DocSlug;
-}) {
-  const t = await getTranslations("docs");
+export function DocPager({ slug }: { slug: DocSlug }) {
+  const t = useInlineTranslation();
+  const locale = useLocale();
   const { prev, next } = getAdjacentDocs(slug);
-  const loc = locale as Locale;
 
   if (!prev && !next) return null;
 
@@ -22,12 +17,12 @@ export async function DocPager({
       {prev ? (
         <Link
           href={`/docs/${prev.slug}`}
-          locale={loc}
+          locale={locale}
           className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>
-            {t("prev")}: {t(prev.titleKey)}
+            {t({ en: "Previous", ja: "前へ" })}: {t(prev.title)}
           </span>
         </Link>
       ) : (
@@ -36,11 +31,11 @@ export async function DocPager({
       {next ? (
         <Link
           href={`/docs/${next.slug}`}
-          locale={loc}
+          locale={locale}
           className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <span>
-            {t("next")}: {t(next.titleKey)}
+            {t({ en: "Next", ja: "次へ" })}: {t(next.title)}
           </span>
           <ArrowRight className="h-4 w-4" />
         </Link>

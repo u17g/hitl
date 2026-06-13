@@ -1,8 +1,9 @@
 "use client";
 
 import { Languages } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { type Locale, routing } from "@/i18n/routing";
+import { useLocale } from "@/i18n/use-inline-translation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,11 +11,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { type Locale, routing } from "@/i18n/routing";
+
+const localeLabels: Record<Locale, string> = {
+  en: "English",
+  ja: "日本語",
+};
 
 export function LocaleSwitcher() {
-  const locale = useLocale() as Locale;
-  const t = useTranslations("locale");
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -32,7 +36,7 @@ export function LocaleSwitcher() {
             onClick={() => router.replace(pathname, { locale: loc })}
             className={locale === loc ? "bg-accent" : undefined}
           >
-            {t(loc)}
+            {localeLabels[loc]}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

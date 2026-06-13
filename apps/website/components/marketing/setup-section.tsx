@@ -1,4 +1,6 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { CodeBlock } from "@/components/docs/code-block";
 import {
   Card,
@@ -9,25 +11,34 @@ import {
 } from "@/components/ui/card";
 import { snippets } from "@/lib/snippets";
 
-export async function SetupSection() {
-  const t = await getTranslations("setup");
+export function SetupSection() {
+  const t = useInlineTranslation();
 
   const steps = [
     {
-      title: t("step1Title"),
-      desc: t("step1Desc"),
+      title: t({ en: "Install", ja: "インストール" }),
+      desc: t({
+        en: "Add the core SDK and the Workflow DevKit binding.",
+        ja: "コア SDK と Workflow DevKit バインディングを追加します。",
+      }),
       code: snippets.install,
       filename: "terminal",
     },
     {
-      title: t("step2Title"),
-      desc: t("step2Desc"),
+      title: t({ en: "Define a workflow", ja: "ワークフローを定義" }),
+      desc: t({
+        en: "Use waitForHuman with typed actions inside a durable workflow.",
+        ja: "耐久ワークフロー内で waitForHuman と型付き actions を使います。",
+      }),
       code: snippets.workflowUsage,
       filename: "workflows/inbound-lead.ts",
     },
     {
-      title: t("step3Title"),
-      desc: t("step3Desc"),
+      title: t({ en: "Mount the server", ja: "サーバーをマウント" }),
+      desc: t({
+        en: "Expose the internal API and wire up your state backend.",
+        ja: "内部 API を公開し、ステートバックエンドを接続します。",
+      }),
       code: snippets.serverSetup,
       filename: "lib/hitl.ts",
     },
@@ -38,9 +49,14 @@ export async function SetupSection() {
       <div className="mx-auto max-w-6xl px-4">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-            {t("title")}
+            {t({ en: "Effortless setup", ja: "かんたんセットアップ" })}
           </h2>
-          <p className="mt-4 text-muted-foreground">{t("subtitle")}</p>
+          <p className="mt-4 text-muted-foreground">
+            {t({
+              en: "A simple declarative API to define and use human approval in your workflows.",
+              ja: "シンプルな宣言的 API で、ワークフローに人間承認を組み込めます。",
+            })}
+          </p>
         </div>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {steps.map((step, i) => (

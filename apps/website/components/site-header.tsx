@@ -1,12 +1,14 @@
+"use client";
+
 import { Github, Package } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
-export async function SiteHeader() {
-  const t = await getTranslations("nav");
+export function SiteHeader() {
+  const t = useInlineTranslation();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
@@ -20,7 +22,7 @@ export async function SiteHeader() {
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
             <Link href="/docs/getting-started" className="transition-colors hover:text-foreground">
-              {t("docs")}
+              {t({ en: "Docs", ja: "ドキュメント" })}
             </Link>
             <a
               href="https://github.com/u17g/hitl"
@@ -28,7 +30,7 @@ export async function SiteHeader() {
               rel="noopener noreferrer"
               className="transition-colors hover:text-foreground"
             >
-              {t("github")}
+              {t({ en: "GitHub", ja: "GitHub" })}
             </a>
             <a
               href="https://www.npmjs.com/package/hitl"
@@ -36,7 +38,7 @@ export async function SiteHeader() {
               rel="noopener noreferrer"
               className="transition-colors hover:text-foreground"
             >
-              {t("npm")}
+              {t({ en: "npm", ja: "npm" })}
             </a>
           </nav>
         </div>

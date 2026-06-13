@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
-import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { routing } from "@/i18n/routing";
+import { setRequestLocale } from "next-intl/server";
+import { createInlineTranslator } from "@/i18n/inline-translation";
+import { type Locale, routing } from "@/i18n/routing";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -18,11 +19,17 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "meta" });
+  const t = createInlineTranslator(locale as Locale);
 
   return {
-    title: t("title"),
-    description: t("description"),
+    title: t({
+      en: "Hitl SDK — Human-in-the-loop for AI agents and durable workflows",
+      ja: "Hitl SDK — AI エージェントと耐久ワークフロー向け Human-in-the-loop",
+    }),
+    description: t({
+      en: "A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable workflows. One await, suspend for hours or days, resume when a human approves.",
+      ja: "AI エージェントと耐久ワークフローに人間の承認を組み込む統一 TypeScript SDK。1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で承認されたら再開します。",
+    }),
   };
 }
 
@@ -40,12 +47,11 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
-  const messages = await getMessages();
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body>
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"

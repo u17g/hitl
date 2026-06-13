@@ -1,10 +1,11 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
 import { Separator } from "@/components/ui/separator";
 
-export async function SiteFooter() {
-  const t = await getTranslations("footer");
-  const nav = await getTranslations("nav");
+export function SiteFooter() {
+  const t = useInlineTranslation();
 
   return (
     <footer className="border-t">
@@ -12,11 +13,16 @@ export async function SiteFooter() {
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-semibold">Hitl SDK</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("tagline")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t({
+                en: "Human-in-the-loop for AI agents and durable workflows.",
+                ja: "AI エージェントと耐久ワークフロー向け Human-in-the-loop。",
+              })}
+            </p>
           </div>
           <nav className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <Link href="/docs/getting-started" className="hover:text-foreground">
-              {nav("docs")}
+              {t({ en: "Docs", ja: "ドキュメント" })}
             </Link>
             <a
               href="https://github.com/u17g/hitl"
@@ -24,7 +30,7 @@ export async function SiteFooter() {
               rel="noopener noreferrer"
               className="hover:text-foreground"
             >
-              {nav("github")}
+              {t({ en: "GitHub", ja: "GitHub" })}
             </a>
             <a
               href="https://www.npmjs.com/package/hitl"
@@ -32,12 +38,14 @@ export async function SiteFooter() {
               rel="noopener noreferrer"
               className="hover:text-foreground"
             >
-              {nav("npm")}
+              {t({ en: "npm", ja: "npm" })}
             </a>
           </nav>
         </div>
         <Separator className="my-6" />
-        <p className="text-sm text-muted-foreground">{t("license")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t({ en: "MIT License", ja: "MIT License" })}
+        </p>
       </div>
     </footer>
   );
