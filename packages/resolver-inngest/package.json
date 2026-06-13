@@ -1,0 +1,30 @@
+{
+  "name": "@hitl/resolver-inngest",
+  "version": "0.0.0",
+  "description": "Inngest binding for hitl.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "hitl": "workspace:*",
+    "inngest": ">=3.0.0"
+  },
+  "devDependencies": {
+    "hitl": "workspace:*",
+    "inngest": "^3.35.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

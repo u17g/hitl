@@ -4,7 +4,7 @@ import { createHook, getWorkflowMetadata, sleep } from "workflow";
 
 export { workflowResolver } from "./resolver";
 
-export interface WorkflowHitlOptions {
+export interface CreateWorkflowSdkHitlClientOptions {
   /**
    * A `"use step"` function that performs the HTTP request to the hitl
    * server. Define it in your app (not a dependency) so the Workflow DevKit
@@ -33,7 +33,9 @@ export interface WorkflowHitlOptions {
  * is WDK `sleep`. The HTTP call is your `"use step"` `request` function, so
  * there is no special bundling — ordinary step rules apply.
  */
-export function workflowHitl(options: WorkflowHitlOptions): HitlClient {
+export function createWorkflowSdkHitlClient(
+  options: CreateWorkflowSdkHitlClientOptions,
+): HitlClient {
   return createHitlClient({
     suspend<T>() {
       const hook = createHook<T>();

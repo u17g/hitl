@@ -1,7 +1,7 @@
 import { actions } from "hitl";
 import type { HitlRequest } from "hitl/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { workflowHitl } from "./index";
+import { createWorkflowSdkHitlClient } from "./index";
 
 // Test list:
 // - suspend() is a WDK hook: the hook token goes to POST /requests in the body
@@ -54,10 +54,10 @@ beforeEach(() => {
   delete process.env.HITL_SECRET;
 });
 
-describe("workflowHitl", () => {
+describe("createWorkflowSdkHitlClient", () => {
   it("POSTs the hook token to /requests at the deployment url with the bearer", async () => {
     const { request, calls } = fakeRequest([{ id: "a1" }]);
-    const hitl = workflowHitl({ request, secret: "s3cret" });
+    const hitl = createWorkflowSdkHitlClient({ request, secret: "s3cret" });
 
     void hitl.waitForHuman({ message: "Approve?", actions: actions().approve().build() });
     await vi.waitFor(() => expect(calls).toHaveLength(1));
@@ -70,7 +70,7 @@ describe("workflowHitl", () => {
   it("prefers HITL_URL, then an explicit url option", async () => {
     process.env.HITL_URL = "http://localhost:3000";
     const a = fakeRequest([{ id: "a1" }]);
-    void workflowHitl({ request: a.request }).waitForHuman({
+    void createWorkflowSdkHitlClient({ request: a.request }).waitForHuman({
       message: "m",
       actions: actions().approve().build(),
     });
@@ -78,7 +78,7 @@ describe("workflowHitl", () => {
     expect(a.calls[0]!.url).toBe("http://localhost:3000/.well-known/hitl/v1/requests");
 
     const b = fakeRequest([{ id: "a1" }]);
-    void workflowHitl({ request: b.request, url: "https://override.example" }).waitForHuman({
+    void createWorkflowSdkHitlClient({ request: b.request, url: "https://override.example" }).waitForHuman({
       message: "m",
       actions: actions().approve().build(),
     });
@@ -91,7 +91,7 @@ describe("workflowHitl", () => {
       { id: "a1" },
       { result: { type: "TIMED_OUT", id: "a1" } },
     ]);
-    const hitl = workflowHitl({ request });
+    const hitl = createWorkflowSdkHitlClient({ request });
 
     const result = await hitl.waitForHuman({
       message: "m",

@@ -26,7 +26,7 @@ export interface HitlOptions {
    * works with no adapters configured. The first entry is the default channel.
    */
   adapters?: HitlAdapter[];
-  /** Defaults to one in-memory state per process. Pass `@hitl/state-pg` or `@hitl/state-sqlite` for persistence. */
+  /** Defaults to one in-memory state per process. Pass `@hitl/state-pg`, `@hitl/state-sqlite`, or `@hitl/state-ioredis` for persistence. */
   state?: State;
   /** Engine resolver from an engine package, e.g. `workflowResolver()` from `@hitl/resolver-workflow-sdk`. */
   resolver: HitlResolver;
