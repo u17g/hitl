@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { newDb } from "pg-mem";
-import { PostgresState, type PgQueryable } from "@hitl/state-pg";
-import { ensureHitldevSchema } from "./setup";
+import { PostgresState, type PgQueryable } from "./index.js";
+import { ensureHitlSchema } from "./setup.js";
 
 function newPool(): PgQueryable {
   const { Pool } = newDb().adapters.createPg();
@@ -11,7 +11,7 @@ function newPool(): PgQueryable {
 describe("setup command", () => {
   it("creates the default approvals table", async () => {
     const pool = newPool();
-    await ensureHitldevSchema(pool);
+    await ensureHitlSchema(pool);
 
     const state = new PostgresState(pool);
     await state.create({
@@ -26,7 +26,7 @@ describe("setup command", () => {
 
   it("supports a custom table name", async () => {
     const pool = newPool();
-    await ensureHitldevSchema(pool, "custom_approvals");
+    await ensureHitlSchema(pool, "custom_approvals");
 
     const state = new PostgresState(pool, { tableName: "custom_approvals" });
     await state.create({

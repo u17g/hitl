@@ -7,6 +7,13 @@
   "engines": {
     "node": ">=22.13.0"
   },
+  "bin": {
+    "state-sqlite": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -14,6 +21,7 @@
     }
   },
   "scripts": {
+    "build": "node ./scripts/build.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -23,6 +31,7 @@
   "devDependencies": {
     "hitl": "workspace:*",
     "@types/node": "^25.9.3",
+    "esbuild": "^0.25.5",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }

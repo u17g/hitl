@@ -1,15 +1,16 @@
-import { runSchema } from "./schema.js";
+import { runSchema } from "./schema-cli.js";
 import { runSetup } from "./setup.js";
 
 function printHelp(): void {
-  process.stdout.write(`hitldev — database setup and schema export
+  process.stdout.write(`@hitl/state-pg — database setup and schema export
 
 Usage:
-  hitldev setup [--table hitl.approvals] [--skip-workflow]
-  hitldev schema [--table hitl.approvals] [--dialect postgres|sqlite]
+  state-pg setup [--table hitl.approvals]
+  state-pg schema [--table hitl.approvals]
 
 Environment:
-  DATABASE_URL or WORKFLOW_POSTGRES_URL   Postgres connection string (setup)
+  HITL_POSTGRES_URL                       Postgres connection string (setup, preferred)
+  DATABASE_URL or WORKFLOW_POSTGRES_URL   Fallback connection strings
 `);
 }
 

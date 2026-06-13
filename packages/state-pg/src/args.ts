@@ -3,7 +3,3 @@ export function parseFlagValue(args: string[], flag: string): string | undefined
   if (index === -1) return undefined;
   return args[index + 1];
 }
-
-export function hasFlag(args: string[], flag: string): boolean {
-  return args.includes(flag);
-}
