@@ -1,5 +1,5 @@
 import type { HitlRequest } from "hitl/core";
-import { workflowHitl } from "@hitl/resolver-workflow-sdk";
+import { createWorkflowSdkHitlClient } from "@hitl/resolver-workflow-sdk";
 
 async function hitlRequest(req: HitlRequest) {
   "use step";
@@ -11,4 +11,6 @@ async function hitlRequest(req: HitlRequest) {
   return { status: res.status, ok: res.ok, body: await res.text() };
 }
 
-export const { waitForHuman, requestHuman, notify } = workflowHitl({ request: hitlRequest });
+export const { waitForHuman, requestHuman, notify } = createWorkflowSdkHitlClient({
+  request: hitlRequest,
+});

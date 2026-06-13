@@ -70,7 +70,7 @@ You should see `Hello, world!` printed when the workflow resumes after approval.
 
 - [`lib/hitl.ts`](lib/hitl.ts) — the server: `new Hitl({ state: new InMemoryState(), resolver: workflowResolver() })` — the web inbox is built in, no adapters needed
 - [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/resolve` (what the UI calls)
-- [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForHuman`
+- [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `createWorkflowSdkHitlClient({ request })`, exposing `waitForHuman`
 - [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForHuman` from the workflow client
 - [`app/.well-known/hitl/v1/[[...path]]/route.ts`](app/.well-known/hitl/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`
 - [`app/api/run/route.ts`](app/api/run/route.ts) — trigger the workflow with `start()` from Workflow DevKit
