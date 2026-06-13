@@ -14,19 +14,16 @@ import type {
 // - POST {base}/requests creates an approval (201 { id }) and delivers it
 // - the internal API is idempotent on the resume token
 // - with a secret configured: missing/wrong bearer -> 401, correct bearer -> 201
-// - plugin callbacks and the GET inbox are NOT behind the internal-API bearer
 // - POST {base}/requests/:id/timeout -> 200 { result }; unknown id -> 404
 // - POST {base}/requests/:id/remind -> 200 { pending }
 // - POST {base}/batches creates a batch (201 { batchId, ids })
 // - POST {base}/batches/:id/timeout and /remind work like the approval ones
 // - POST {base}/notifications routes a notify
 // - malformed JSON on an internal route -> 400
-// - POST with no matching internal/inbox route -> 404 (the core no longer
-//   dispatches channel callbacks; existing libraries receive and resolve via inbox)
-// - GET /approvals (+ ?status=), GET /approvals/:id, GET /batches/:id
-// - app.inbox reads/writes match the HTTP inbox; POST /approvals/:id and /batches/:id resolve
-// - the inbox write routes map unknown id -> 404, invalid feedbacks -> 400
-// - routeHandlers.GET/POST and the Node handler delegate to the same fetch logic
+// - POST with no matching internal route -> 404 (channel callbacks and inbox
+//   paths are not served; resolve via hitl.inbox from your own handlers)
+// - hitl.inbox reads/writes resolve approvals and resume the engine
+// - routeHandlers.POST and the Node handler delegate to the same fetch logic
 
 const BASE = "http://x/.well-known/hitldev/v1";
 
@@ -248,85 +245,36 @@ describe("internal API auth", () => {
     const res = await post(app, "/requests", { token: "t", message: "m", fields: {} }, auth);
     expect(res.status).toBe(201);
   });
-
-  it("does not gate the inbox write routes or reads behind the bearer", async () => {
-    const { app, resolver } = setup({ secret: "s3cret" });
-    const id = (
-      (await (
-        await post(app, "/requests", { token: "tok_1", message: "m", fields }, auth)
-      ).json()) as { id: string }
-    ).id;
-
-    // The inbox UI authenticates its own users; no internal-API bearer here.
-    const resolve = await post(app, `/approvals/${id}`, { decision: "approve" });
-    expect(resolve.status).toBe(200);
-    expect(resolver.resolved).toHaveLength(1);
-
-    const inbox = await app.fetch(new Request(`${BASE}/approvals`));
-    expect(inbox.status).toBe(200);
-  });
 });
 
-describe("callbacks are no longer dispatched by the core", () => {
-  it("returns 404 for a POST that matches no internal or inbox route", async () => {
+describe("non-internal routes are not served", () => {
+  it("returns 404 for a POST that matches no internal route", async () => {
     const { app, resolver } = setup();
     await createRequest(app);
 
-    // What used to be a channel callback endpoint: the core no longer parses or
-    // dispatches it. Existing libraries receive interactivity and resolve via inbox.
     const res = await post(app, "/callback", { requestId: "x", decision: "approve" });
 
     expect(res.status).toBe(404);
     expect(resolver.resolved).toHaveLength(0);
   });
 
-  it("returns 404 for a provider-style path too", async () => {
-    const { app } = setup();
-    const res = await post(app, "/slack", { requestId: "x" });
-    expect(res.status).toBe(404);
-  });
-});
-
-describe("inbox API", () => {
-  it("returns a batch with its items", async () => {
-    const { app } = setup();
-    const { batchId } = await createBatch(app);
-
-    const res = await app.fetch(new Request(`${BASE}/batches/${batchId}`));
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { batch: { id: string }; items: { id: string }[] };
-    expect(body.batch).toMatchObject({ id: batchId, title: "Outbound emails" });
-    expect(body.items.map((i) => i.id)).toEqual([`${batchId}:0`, `${batchId}:1`]);
-
-    const missing = await app.fetch(new Request(`${BASE}/batches/nope`));
-    expect(missing.status).toBe(404);
-  });
-
-  it("lists approvals, filterable by status", async () => {
-    const { app } = setup();
+  it("returns 404 for inbox-style resolve paths — use hitl.inbox instead", async () => {
+    const { app, resolver } = setup();
     const id = await createRequest(app);
 
-    const pendingRes = await app.fetch(new Request(`${BASE}/approvals?status=pending`));
-    expect(pendingRes.status).toBe(200);
-    const pendingBody = (await pendingRes.json()) as { approvals: { id: string }[] };
-    expect(pendingBody.approvals.map((a) => a.id)).toEqual([id]);
-
-    await post(app, `/approvals/${id}`, { decision: "approve" });
-
-    const stillPending = await app.fetch(new Request(`${BASE}/approvals?status=pending`));
-    expect(((await stillPending.json()) as { approvals: unknown[] }).approvals).toEqual([]);
+    const resolve = await post(app, `/approvals/${id}`, { decision: "approve" });
+    expect(resolve.status).toBe(404);
+    expect(resolver.resolved).toHaveLength(0);
   });
 
-  it("returns a single approval for audit lookups", async () => {
+  it("returns 405 for inbox-style read paths", async () => {
     const { app } = setup();
-    const id = await createRequest(app);
 
-    const res = await app.fetch(new Request(`${BASE}/approvals/${id}`));
-    expect(res.status).toBe(200);
-    expect((await res.json()) as { id: string }).toMatchObject({ id });
+    const list = await app.fetch(new Request(`${BASE}/approvals`));
+    expect(list.status).toBe(405);
 
-    const missing = await app.fetch(new Request(`${BASE}/approvals/nope`));
-    expect(missing.status).toBe(404);
+    const one = await app.fetch(new Request(`${BASE}/approvals/some-id`));
+    expect(one.status).toBe(405);
   });
 });
 
@@ -345,23 +293,38 @@ describe("inbox facade", () => {
 
   it("always includes the web inbox channel alongside configured plugins", () => {
     const { app } = setup({ pluginIds: ["lead-approvals"] });
-    // The configured channel stays first (the default); the inbox is appended.
     expect(app.plugins.map((p) => p.id)).toEqual(["lead-approvals", "inbox"]);
   });
 
-  it("app.inbox.list matches the HTTP inbox", async () => {
+  it("lists approvals, filterable by status", async () => {
     const { app } = setup();
     const id = await createRequest(app);
 
-    const viaHttp = (
-      (await (await app.fetch(new Request(`${BASE}/approvals?status=pending`))).json()) as {
-        approvals: { id: string }[];
-      }
-    ).approvals.map((a) => a.id);
-    const viaInbox = (await app.inbox.list({ status: "pending" })).map((a) => a.id);
+    const pending = (await app.inbox.list({ status: "pending" })).map((a) => a.id);
+    expect(pending).toEqual([id]);
 
-    expect(viaInbox).toEqual(viaHttp);
-    expect(viaInbox).toEqual([id]);
+    await app.inbox.approve(id);
+
+    const stillPending = await app.inbox.list({ status: "pending" });
+    expect(stillPending).toEqual([]);
+  });
+
+  it("returns a batch with its items", async () => {
+    const { app } = setup();
+    const { batchId } = await createBatch(app);
+
+    const result = await app.inbox.getBatch(batchId);
+    expect(result?.batch).toMatchObject({ id: batchId, title: "Outbound emails" });
+    expect(result?.items.map((i) => i.id)).toEqual([`${batchId}:0`, `${batchId}:1`]);
+    expect(await app.inbox.getBatch("nope")).toBeNull();
+  });
+
+  it("returns a single approval for lookups", async () => {
+    const { app } = setup();
+    const id = await createRequest(app);
+
+    expect((await app.inbox.get(id))?.id).toBe(id);
+    expect(await app.inbox.get("nope")).toBeNull();
   });
 
   it("app.inbox.approve resolves the approval and resumes the engine", async () => {
@@ -374,69 +337,54 @@ describe("inbox facade", () => {
     expect(resolver.resolved).toEqual([{ token: "tok_1", payload: result }]);
     expect((await app.inbox.get(id))?.status).toBe("resolved");
   });
-});
 
-describe("inbox write routes", () => {
-  it("POST /approvals/:id approves and resumes the engine", async () => {
-    const { app, resolver } = setup();
-    const id = await createRequest(app);
-
-    const res = await post(app, `/approvals/${id}`, { decision: "approve", by: { name: "u" } });
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, result: { type: "APPROVED", id, by: { name: "u" } } });
-    expect(resolver.resolved).toHaveLength(1);
-  });
-
-  it("POST /approvals/:id denies with a reason", async () => {
+  it("app.inbox.deny resolves with a reason", async () => {
     const { app } = setup();
     const id = await createRequest(app);
 
-    const res = await post(app, `/approvals/${id}`, { decision: "deny", reason: "spam" });
+    const result = await app.inbox.deny(id, { reason: "spam" });
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { result: { type: string; reason?: string } };
-    expect(body.result).toMatchObject({ type: "DENIED", reason: "spam" });
+    expect(result).toMatchObject({ type: "DENIED", reason: "spam" });
   });
 
-  it("POST /batches/:batchId submits every item", async () => {
+  it("app.inbox.submitBatch resolves every item", async () => {
     const { app, resolver } = setup();
     const { batchId } = await createBatch(app);
 
-    const res = await post(app, `/batches/${batchId}`, {
-      decisions: [
+    const results = await app.inbox.submitBatch(
+      batchId,
+      [
         { requestId: `${batchId}:0`, decision: "approve" },
         { requestId: `${batchId}:1`, decision: "deny", reason: "no" },
       ],
-      by: { name: "u" },
-    });
+      { by: { name: "u" } },
+    );
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok: boolean; results: { type: string }[] };
-    expect(body.results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
+    expect(results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
     expect(resolver.resolved.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
   });
 
-  it("maps an unknown id to 404 and invalid feedbacks to 400", async () => {
+  it("rejects invalid feedbacks", async () => {
     const { app } = setup();
-
-    const notFound = await post(app, "/approvals/missing", { decision: "approve" });
-    expect(notFound.status).toBe(404);
-
     const id = await createRequest(app);
-    const bad = await post(app, `/approvals/${id}`, {
-      decision: "approve",
-      feedbacks: { bogus: "x" },
-    });
-    expect(bad.status).toBe(400);
+
+    await expect(
+      app.inbox.approve(id, { feedbacks: { bogus: "x" } }),
+    ).rejects.toThrow();
   });
 });
 
 describe("adapters", () => {
   it("routeHandlers delegate to fetch", async () => {
     const { app } = setup();
-    const res = await app.routeHandlers.GET(new Request(`${BASE}/approvals`));
-    expect(res.status).toBe(200);
+    const res = await app.routeHandlers.POST(
+      new Request(`${BASE}/requests`, {
+        method: "POST",
+        body: JSON.stringify({ token: "t", message: "m", fields }),
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    expect(res.status).toBe(201);
   });
 
   it("the Node handler bridges req/res", async () => {
@@ -446,8 +394,16 @@ describe("adapters", () => {
     let statusCode = 0;
     let ended = false;
     const req = Object.assign(
-      (async function* () {})(), // empty body
-      { method: "GET", url: "/.well-known/hitldev/v1/approvals", headers: { host: "x" } },
+      (async function* () {
+        yield Buffer.from(
+          JSON.stringify({ token: "t", message: "m", fields }),
+        );
+      })(),
+      {
+        method: "POST",
+        url: "/.well-known/hitldev/v1/requests",
+        headers: { host: "x", "content-type": "application/json" },
+      },
     );
     const res = {
       writeHead(status: number) {
@@ -461,8 +417,8 @@ describe("adapters", () => {
     };
 
     await app.handler(req as never, res as never);
-    expect(statusCode).toBe(200);
+    expect(statusCode).toBe(201);
     expect(ended).toBe(true);
-    expect(JSON.parse(Buffer.concat(chunks).toString())).toHaveProperty("approvals");
+    expect(JSON.parse(Buffer.concat(chunks).toString())).toHaveProperty("id");
   });
 });

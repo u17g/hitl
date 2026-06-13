@@ -114,10 +114,10 @@ export const hitl = createHitl({
 });
 
 // Mount hitldev under /.well-known/hitldev/v1 — it serves the internal
-// workflow→server API and the web inbox. Channel interactivity is owned by the
-// Chat SDK bot, not hitldev:
+// workflow→server API. Channel interactivity and inbox UI are your own
+// handlers on top of hitl.inbox, not hitldev HTTP routes:
 //   export const POST = bot.webhooks.slack    // app/api/webhooks/slack/route.ts
-// Next.js:  export const { GET, POST } = hitl.routeHandlers   // app/.well-known/hitldev/v1/[[...path]]/route.ts
+// Next.js:  export const { POST } = hitl.routeHandlers   // app/.well-known/hitldev/v1/[[...path]]/route.ts
 // Express:  app.use("/.well-known/hitldev/v1", hitl.handler)
 ```
 
@@ -265,7 +265,7 @@ Official plugin:
 `@hitldev/chat-sdk` wraps the Vercel Chat SDK, so one plugin covers every platform its adapters support — you enable platforms by registering their adapters on the `Chat` instance, not by installing more hitldev packages. The web inbox is always present. Writing your own plugin is implementing the interface above.
 
 <a id="receiving-interactivity-existing-bots"></a>
-**Receiving interactivity (the Chat SDK bot).** Each platform exposes a single interactivity endpoint; the Chat SDK `bot` owns it through `bot.webhooks.<adapter>`, handling signature verification (Slack HMAC, Teams JWT, Discord Ed25519) and payload parsing for every platform. `chatHitl` registers approve/deny and modal handlers on that bot which resolve through the framework-agnostic `hitl.inbox` (`approve` / `deny` / `submitBatch`). hitldev's own handler is just a fetch handler for the internal API + inbox, so it co-hosts inside your existing server alongside the webhook route — one process, one port.
+**Receiving interactivity (the Chat SDK bot).** Each platform exposes a single interactivity endpoint; the Chat SDK `bot` owns it through `bot.webhooks.<adapter>`, handling signature verification (Slack HMAC, Teams JWT, Discord Ed25519) and payload parsing for every platform. `chatHitl` registers approve/deny and modal handlers on that bot which resolve through the framework-agnostic `hitl.inbox` (`approve` / `deny` / `submitBatch`). hitldev's own handler is just the internal workflow API, so it co-hosts inside your existing server alongside your inbox and webhook routes — one process, one port.
 
 ### `createHitl` (server side)
 
@@ -283,12 +283,11 @@ hitl.runtime / hitl.store / hitl.plugins   // explicit access (advanced)
 
 `plugins` is optional — the web inbox channel is always included, so it adds Slack/Teams/Discord on top (the first entry is the default delivery channel). `store` defaults to one in-memory store per process; `secret` defaults to `process.env.HITLDEV_SECRET`. Lower-level building blocks: `createHitlRuntime` and `createHitlApp`.
 
-`hitl.inbox` is the programmatic way to drive an approval UI from your own handlers — `await hitl.inbox.list({ status: "pending" })`, `await hitl.inbox.approve(id, { by })`, `.deny(id, { reason })`, `.submitBatch(batchId, decisions)` — without going through the HTTP routes. The built-in inbox routes below are thin shells over it.
+`hitl.inbox` is how you drive an approval UI from your own handlers — `await hitl.inbox.list({ status: "pending" })`, `await hitl.inbox.approve(id, { by })`, `.deny(id, { reason })`, `.submitBatch(batchId, decisions)`. Build your own HTTP routes (see the hello-world example's `/api/inbox`) or wire the Chat SDK bot; hitldev does not expose inbox read/write over `.well-known`.
 
-The handler serves two things under its mount path (channel interactivity is **not** one of them — the Chat SDK bot receives that and calls `hitl.inbox`):
+The handler serves one thing under its mount path (channel interactivity is **not** one of them — the Chat SDK bot receives that and calls `hitl.inbox`):
 
 - **The internal workflow API** (`POST /requests`, `/batches`, `/requests/:id/timeout`, `/requests/:id/remind`, `/notifications`, …) — what the workflow client calls. Authenticated with the bearer `secret`; when no secret is set it is open and logs a warning (local dev only).
-- **The inbox API** — reads (`GET /approvals`, `GET /approvals/:id`, `GET /batches/:id`) and web-inbox writes (`POST /approvals/:id`, `POST /batches/:batchId`). Thin shells over `hitl.inbox`; available for your own integrations and audit lookups. Not behind the bearer.
 
 ### `workflowHitl` (workflow side)
 
@@ -334,7 +333,7 @@ What hitldev **owns** (all thin, bounded pieces):
 
 | Piece | What it is |
 |---|---|
-| Server (`createHitl`) | The `.well-known/hitldev/v1` API: request creation, timeout/remind, inbox. Owns the store and plugins |
+| Server (`createHitl`) | The `.well-known/hitldev/v1` internal API: request creation, timeout/remind. Owns the store and plugins; inbox via `hitl.inbox` |
 | Workflow client (`createHitlClient` / `workflowHitl`) | `waitForApproval` / `waitForBatchApprovals` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
 | Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
 | Channels | `@hitldev/chat-sdk` — one Chat SDK-backed plugin that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |

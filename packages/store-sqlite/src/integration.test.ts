@@ -32,24 +32,12 @@ describe("createHitl with SqliteStore", () => {
       return record!.id;
     });
 
-    const inbox = await app.fetch(new Request("http://x/hitl/approvals?status=pending"));
-    expect(inbox.status).toBe(200);
-    const body = (await inbox.json()) as { approvals: { id: string }[] };
-    expect(body.approvals.map((a) => a.id)).toEqual([requestId]);
+    const pending = await app.inbox.list({ status: "pending" });
+    expect(pending.map((a) => a.id)).toEqual([requestId]);
 
-    // Resolve through the inbox write route — what an existing library calls
-    // after it receives and parses the channel interactivity itself.
-    const resolve = await app.fetch(
-      new Request(`http://x/hitl/approvals/${requestId}`, {
-        method: "POST",
-        body: JSON.stringify({ decision: "approve" }),
-      }),
-    );
-    expect(resolve.status).toBe(200);
+    await app.inbox.approve(requestId);
     expect(await promise).toMatchObject({ type: "APPROVED", id: requestId });
 
-    // The outcome survives outside the app: a fresh store over the same
-    // database sees the resolved record.
     const fresh = new SqliteStore(db);
     expect(await fresh.get(requestId)).toMatchObject({
       status: "resolved",

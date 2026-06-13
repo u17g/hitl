@@ -14,10 +14,9 @@ import {
   type HitlRuntime,
 } from "./core";
 import { INBOX_CHANNEL_ID, inboxChannel } from "./inbox-channel";
-import { createInbox, type BatchDecision, type HitlInbox } from "./inbox";
+import { createInbox, type HitlInbox } from "./inbox";
 import { defaultInMemoryStore, type Store } from "./store";
-import type { HitlPlugin, Reviewer } from "./types";
-import { FeedbackValidationError } from "./validate";
+import type { HitlPlugin } from "./types";
 
 export interface CreateHitlOptions {
   /**
@@ -43,9 +42,8 @@ export interface HitlApp {
   fetch(req: Request): Promise<Response>;
   /** Node/Express-style handler. */
   handler(req: IncomingMessage, res: ServerResponse): Promise<void>;
-  /** Next.js route handlers: `export const { GET, POST } = hitl.routeHandlers`. */
+  /** Next.js route handlers: `export const { POST } = hitl.routeHandlers`. */
   routeHandlers: {
-    GET(req: Request): Promise<Response>;
     POST(req: Request): Promise<Response>;
   };
   runtime: HitlRuntime;
@@ -75,34 +73,23 @@ export function createHitlApp(runtime: HitlRuntime, options?: { secret?: string 
   const secret = options?.secret ?? process.env.HITLDEV_SECRET;
 
   const fetchHandler = async (req: Request): Promise<Response> => {
-    const segments = new URL(req.url).pathname.split("/").filter(Boolean);
-
-    if (req.method === "GET") {
-      return handleInboxApi(inbox, req, segments);
+    if (req.method !== "POST") {
+      return json({ error: "Method not allowed" }, 405);
     }
-    if (req.method === "POST") {
-      const route = matchInternalRoute(segments);
-      if (route) {
-        if (!authorizeInternalApi(req, secret)) {
-          return json({ error: "Unauthorized" }, 401);
-        }
-        return handleInternalApi(runtime, req, route);
-      }
-      const write = matchInboxWriteRoute(segments);
-      if (write) {
-        return handleInboxWrite(inbox, req, write);
-      }
-      // The core no longer receives channel callbacks. Existing libraries
-      // (slack-bolt, discord.js, Bot Framework) verify and parse interactivity
-      // themselves, then resolve via `hitl.inbox`.
+    const segments = new URL(req.url).pathname.split("/").filter(Boolean);
+    const route = matchInternalRoute(segments);
+    if (!route) {
       return json({ error: "Not found" }, 404);
     }
-    return json({ error: "Method not allowed" }, 405);
+    if (!authorizeInternalApi(req, secret)) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    return handleInternalApi(runtime, req, route);
   };
 
   return {
     fetch: fetchHandler,
-    routeHandlers: { GET: fetchHandler, POST: fetchHandler },
+    routeHandlers: { POST: fetchHandler },
     handler: (req, res) => nodeHandler(fetchHandler, req, res),
     runtime,
     store,
@@ -200,90 +187,6 @@ async function handleInternalApi(
     if (error instanceof NotFoundError) {
       return json({ error: error.message }, 404);
     }
-    throw error;
-  }
-}
-
-async function handleInboxApi(
-  inbox: HitlInbox,
-  req: Request,
-  segments: string[],
-): Promise<Response> {
-  const batchesIndex = segments.lastIndexOf("batches");
-  if (batchesIndex !== -1) {
-    const id = segments[batchesIndex + 1];
-    if (id === undefined) return json({ error: "Not found" }, 404);
-    const result = await inbox.getBatch(id);
-    return result ? json(result) : json({ error: `Unknown batch "${id}"` }, 404);
-  }
-
-  const approvalsIndex = segments.lastIndexOf("approvals");
-  if (approvalsIndex === -1) return json({ error: "Not found" }, 404);
-
-  const id = segments[approvalsIndex + 1];
-  if (id !== undefined) {
-    const record = await inbox.get(id);
-    return record ? json(record) : json({ error: `Unknown approval "${id}"` }, 404);
-  }
-
-  const statusParam = new URL(req.url).searchParams.get("status");
-  const status = statusParam === "pending" || statusParam === "resolved" ? statusParam : undefined;
-  const approvals = await inbox.list(status ? { status } : undefined);
-  return json({ approvals });
-}
-
-type InboxWriteRoute =
-  | { kind: "resolve"; id: string }
-  | { kind: "submit-batch"; batchId: string };
-
-/**
- * UI-facing write routes (no bearer): resolve one approval or submit a whole
- * batch. Distinguished from the internal create routes (`POST .../approvals`
- * never exists; `POST .../batches` with no id is create-batch) by the trailing
- * id segment.
- */
-function matchInboxWriteRoute(segments: string[]): InboxWriteRoute | null {
-  const id = segments.at(-1);
-  const collection = segments.at(-2);
-  if (id === undefined) return null;
-  if (collection === "approvals") return { kind: "resolve", id };
-  if (collection === "batches") return { kind: "submit-batch", batchId: id };
-  return null;
-}
-
-interface InboxWriteBody {
-  decision?: "approve" | "deny";
-  feedbacks?: Record<string, unknown>;
-  reason?: string;
-  by?: Reviewer;
-  decisions?: BatchDecision[];
-}
-
-async function handleInboxWrite(
-  inbox: HitlInbox,
-  req: Request,
-  route: InboxWriteRoute,
-): Promise<Response> {
-  let body: InboxWriteBody;
-  try {
-    body = (await req.json()) as InboxWriteBody;
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-
-  try {
-    if (route.kind === "submit-batch") {
-      const results = await inbox.submitBatch(route.batchId, body.decisions ?? [], { by: body.by });
-      return json({ ok: true, results });
-    }
-    const result =
-      body.decision === "deny"
-        ? await inbox.deny(route.id, { reason: body.reason, by: body.by })
-        : await inbox.approve(route.id, { feedbacks: body.feedbacks, by: body.by });
-    return json({ ok: true, result });
-  } catch (error) {
-    if (error instanceof NotFoundError) return json({ error: error.message }, 404);
-    if (error instanceof FeedbackValidationError) return json({ error: error.message }, 400);
     throw error;
   }
 }

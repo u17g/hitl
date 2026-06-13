@@ -77,5 +77,5 @@ You should see `Hello, world!` printed when the workflow resumes after approval.
 - [`lib/hitl-store.ts`](lib/hitl-store.ts) — shared `SqliteStore` backed by `.hitldev/approvals.db`
 - [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForApproval`
 - [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForApproval` from the workflow client
-- [`app/.well-known/hitldev/v1/[[...path]]/route.ts`](app/.well-known/hitldev/v1/%5B%5B...path%5D%5D/route.ts) — `export const { GET, POST } = hitl.routeHandlers`
+- [`app/.well-known/hitldev/v1/[[...path]]/route.ts`](app/.well-known/hitldev/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`
 - [`app/api/run/route.ts`](app/api/run/route.ts) — trigger the workflow with `start()` from Workflow DevKit
