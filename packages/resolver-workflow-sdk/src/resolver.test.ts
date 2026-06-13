@@ -9,8 +9,14 @@ describe("workflowResolver", () => {
   it("delegates resolve to WDK resumeHook", async () => {
     const resolver = workflowResolver();
 
-    await resolver.resolve("hook_token", { type: "APPROVED", id: "a1" });
+    const payload = {
+      type: "RESOLVED" as const,
+      actionId: "submit" as const,
+      id: "a1",
+      feedbacks: {},
+    };
+    await resolver.resolve("hook_token", payload);
 
-    expect(resumeHookMock).toHaveBeenCalledWith("hook_token", { type: "APPROVED", id: "a1" });
+    expect(resumeHookMock).toHaveBeenCalledWith("hook_token", payload);
   });
 });

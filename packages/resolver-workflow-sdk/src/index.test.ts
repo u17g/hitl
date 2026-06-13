@@ -1,4 +1,4 @@
-import type { HitlRequest } from "hitl";
+import { humanActions, type HitlRequest } from "hitl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { workflowHitl } from "./index";
 
@@ -58,7 +58,7 @@ describe("workflowHitl", () => {
     const { request, calls } = fakeRequest([{ id: "a1" }]);
     const hitl = workflowHitl({ request, secret: "s3cret" });
 
-    void hitl.waitForApproval({ message: "Approve?" });
+    void hitl.waitForHuman({ message: "Approve?", actions: humanActions().submit().build() });
     await vi.waitFor(() => expect(calls).toHaveLength(1));
 
     expect(calls[0]!.url).toBe("https://my-app.vercel.app/.well-known/hitldev/v1/requests");
@@ -69,13 +69,17 @@ describe("workflowHitl", () => {
   it("prefers HITL_URL, then an explicit url option", async () => {
     process.env.HITL_URL = "http://localhost:3000";
     const a = fakeRequest([{ id: "a1" }]);
-    void workflowHitl({ request: a.request }).waitForApproval({ message: "m" });
+    void workflowHitl({ request: a.request }).waitForHuman({
+      message: "m",
+      actions: humanActions().submit().build(),
+    });
     await vi.waitFor(() => expect(a.calls).toHaveLength(1));
     expect(a.calls[0]!.url).toBe("http://localhost:3000/.well-known/hitldev/v1/requests");
 
     const b = fakeRequest([{ id: "a1" }]);
-    void workflowHitl({ request: b.request, url: "https://override.example" }).waitForApproval({
+    void workflowHitl({ request: b.request, url: "https://override.example" }).waitForHuman({
       message: "m",
+      actions: humanActions().submit().build(),
     });
     await vi.waitFor(() => expect(b.calls).toHaveLength(1));
     expect(b.calls[0]!.url).toBe("https://override.example/.well-known/hitldev/v1/requests");
@@ -88,7 +92,11 @@ describe("workflowHitl", () => {
     ]);
     const hitl = workflowHitl({ request });
 
-    const result = await hitl.waitForApproval({ message: "m", timeout: "1h" });
+    const result = await hitl.waitForHuman({
+      message: "m",
+      actions: humanActions().submit().build(),
+      timeout: "1h",
+    });
 
     expect(sleepMock).toHaveBeenCalledWith("3600000ms");
     expect(result).toEqual({ type: "TIMED_OUT", id: "a1" });
