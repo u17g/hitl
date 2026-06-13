@@ -16,8 +16,20 @@ export function docHref(locale: Locale, slug: DocSlug) {
 export const snippets = {
   install: `npm install hitl @hitl/resolver-workflow-sdk`,
   installAdapters: `npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams`,
-  workflowUsage: `import { field } from "hitl";
-import { waitForApproval } from "../lib/hitl-workflow";
+  workflowUsage: `import { field, humanActions, isResolved } from "hitl";
+import { waitForHuman } from "../lib/hitl-workflow";
+
+const actions = humanActions()
+  .action("submit", {
+    fields: {
+      subject: field.textField({ label: "Subject" }),
+      body: field.textArea({ label: "Body" }),
+    },
+  })
+  .action("deny", {
+    fields: { reason: field.textArea({ label: "Reason" }) },
+  })
+  .build();
 
 export async function inboundLead(input: {
   email: string;
@@ -25,19 +37,17 @@ export async function inboundLead(input: {
 }) {
   "use workflow";
 
-  const approval = await waitForApproval({
+  const approval = await waitForHuman({
     message: \`Inbound lead: \${input.email}\`,
-    fields: {
-      subject: field.textField({ label: "Subject", default: input.draft.subject }),
-      body: field.textArea({ label: "Body", default: input.draft.body }),
-    },
+    actions,
     timeout: "72h",
   });
 
-  if (approval.type === "DENIED" || approval.type === "TIMED_OUT") return;
+  if (!isResolved(approval, "submit")) return;
 
-  const { subject, body } =
-    approval.type === "REVIEWED" ? approval.feedbacks : input.draft;
+  const { subject, body } = approval.edited
+    ? approval.feedbacks
+    : input.draft;
 
   await sendEmail({ to: input.email, subject, body });
 }`,
@@ -46,13 +56,17 @@ const job = await queue.enqueue("wait-approval", { leadId });
 await pollUntilApproved(job.id); // cron + DB + retries
 const edits = await db.getEdits(job.id);
 await sendEmail({ ...edits });`,
-  withHitl: `const approval = await waitForApproval({
+  withHitl: `const actions = humanActions()
+  .action("submit", { fields: { subject, body } })
+  .build();
+
+const approval = await waitForHuman({
   message: \`Inbound lead: \${input.email}\`,
-  fields: { subject, body },
+  actions,
   timeout: "72h",
 });
 
-if (approval.type === "REVIEWED") {
+if (isResolved(approval, "submit") && approval.edited) {
   await sendEmail({ ...approval.feedbacks });
 }`,
   serverSetup: `import { Hitl } from "hitl";
@@ -60,7 +74,7 @@ import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { SqliteState } from "@hitl/state-sqlite";
 
 export const hitl = new Hitl({
-  state: new SqliteState({ path: ".hitldev/approvals.db" }),
+  state: new SqliteState({ path: ".hitldev/human_requests.db" }),
   resolver: workflowResolver(),
 });`,
   routeHandlers: `import { hitl } from "@/lib/hitl";
@@ -68,7 +82,7 @@ export const hitl = new Hitl({
 export const { POST } = hitl.routeHandlers;`,
   workflowClient: `import { workflowHitl } from "@hitl/resolver-workflow-sdk";
 
-export const { waitForApproval } = workflowHitl({
+export const { waitForHuman } = workflowHitl({
   request: async (url, init) => {
     "use step";
     return fetch(url, init);
@@ -83,11 +97,12 @@ const chat = new Chat({
 });
 
 chat.register(slack({ ... }));`,
-  inboxApi: `// List pending approvals
+  inboxApi: `// List pending human requests
 const pending = await hitl.inbox.list({ status: "pending" });
 
-// Approve with optional field edits
-await hitl.inbox.approve(id, {
+// Resolve with optional field edits
+await hitl.inbox.resolve(id, {
+  actionId: "submit",
   by: { name: "you" },
   feedbacks: { subject: "Updated subject" },
 });`,

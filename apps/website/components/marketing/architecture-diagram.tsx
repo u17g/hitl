@@ -33,7 +33,7 @@ export function ArchitectureDiagram() {
           <span className="rounded bg-blue-500/10 px-2 py-0.5 text-blue-600 dark:text-blue-400">
             Workflow
           </span>
-          <span>→ resumes with ApprovalResult</span>
+          <span>→ resumes with HumanResult</span>
         </div>
       </div>
     </div>
