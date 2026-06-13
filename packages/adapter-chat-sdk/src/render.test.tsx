@@ -1,4 +1,4 @@
-import { field, actions, type HumanRequest, type HumanResult } from "hitl";
+import { field, actions, type HumanRequest, type HumanResult } from "hitl/adapter";
 import { toCardElement, toModalElement } from "chat";
 import { describe, expect, it } from "vitest";
 import { actionButtonId, actionModalCallback } from "./constants";

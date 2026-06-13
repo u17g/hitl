@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { field, actions, InMemoryState, type HumanResult } from "./index";
+import { field, actions, type HumanResult } from "./index";
+import { InMemoryState } from "./state";
 import { createTestHitl } from "./testing";
 
 // Test list:

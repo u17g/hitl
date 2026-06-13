@@ -1,6 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { field, actions, approveFields, type NewHumanRequestRecord } from "hitl";
+import { field, actions } from "hitl";
+import { approveFields } from "hitl/adapter";
+import type { NewHumanRequestRecord } from "hitl/state";
 import { describeStateContract } from "hitl/state-contract";
 import { SqliteState, schemaSql } from "./index";
 

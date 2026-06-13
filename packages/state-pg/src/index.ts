@@ -1,16 +1,16 @@
+import type { HumanResult } from "hitl";
 import type {
-  HumanRequestRecord,
-  HumanResult,
   BatchRecord,
-  NewHumanRequestRecord,
+  HumanRequestRecord,
   NewBatchRecord,
+  NewHumanRequestRecord,
   NewNotifyDeliveryRecord,
   NotifyDeliveryRecord,
   State,
   TimelineEntry,
-} from "hitl";
-import type { HumanActions } from "hitl";
-import { normalizeActions } from "hitl";
+} from "hitl/state";
+import type { HumanActions } from "hitl/state";
+import { normalizeActions } from "hitl/state";
 import { applyMigrations, type PgQueryable } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";

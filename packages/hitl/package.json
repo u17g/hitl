@@ -9,6 +9,22 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    },
+    "./adapter": {
+      "types": "./src/adapter/index.ts",
+      "default": "./src/adapter/index.ts"
+    },
+    "./state": {
+      "types": "./src/state/index.ts",
+      "default": "./src/state/index.ts"
+    },
+    "./core": {
+      "types": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    },
     "./state-contract": {
       "types": "./src/state-contract.ts",
       "default": "./src/state-contract.ts"

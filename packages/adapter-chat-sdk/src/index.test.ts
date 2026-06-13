@@ -1,4 +1,5 @@
-import { field, actions, type HumanRequest, type HitlInbox } from "hitl";
+import { field, actions, type HumanRequest } from "hitl/adapter";
+import type { HitlInbox } from "hitl/state";
 import { toCardElement } from "chat";
 import { describe, expect, it, vi } from "vitest";
 import { chatHitl } from "./index";

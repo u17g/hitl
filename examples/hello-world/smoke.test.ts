@@ -1,4 +1,5 @@
-import { field, actions, InMemoryState } from "hitl";
+import { field, actions } from "hitl";
+import { InMemoryState } from "hitl/state";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it } from "vitest";
 

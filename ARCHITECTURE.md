@@ -25,13 +25,41 @@ The workflow and the server are separate processes (Workflow DevKit runs workflo
 
 ## What Hitl SDK owns
 
-| Piece | What it is |
+| Piece | What it is | API entry |
+|---|---|---|
+| Server (`Hitl`) | The `.well-known/hitl/v1` internal API: request creation, timeout/remind. Owns the state backend and adapters; inbox via `hitl.inbox` | `hitl` |
+| Workflow client (`createHitlClient` / `workflowHitl`) | `requestHuman` / `waitForHuman` / `notify` — create a pending request, optionally notify while pending, then wait for resolution. `waitForHuman({ … })` is sugar for the one-shot case. Reminders support relative delays (`after`), wall-clock times (`at`, `tomorrowAt`), and repeating schedules (`dailyAt`, `weekdaysAt`, `every`) via the `remind` / `escalate` builders | `hitl/client` + `@hitl/resolver-workflow-sdk` |
+| Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, …) implementing `WorkflowPrimitives` + `HitlResolver` | `hitl/core` |
+| Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed adapter that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) | `hitl/adapter` |
+| Approval state | The `State` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitl/state-pg` and `@hitl/state-sqlite` for persistence | `hitl/state` |
+| Workflow DSL | `field`, `actions`, `isResolved`, `remind` / `escalate` — typed human steps inside durable workflows | `hitl` |
+
+## Public API
+
+The main `hitl` entry is for workflow authoring and server setup. Everything else lives on subpaths so extension authors import only what they need.
+
+### `hitl` — workflow authors and app operators
+
+| Symbol | Purpose |
 |---|---|
-| Server (`Hitl`) | The `.well-known/hitl/v1` internal API: request creation, timeout/remind. Owns the state backend and adapters; inbox via `hitl.inbox` |
-| Workflow client (`createHitlClient` / `workflowHitl`) | `requestHuman` / `waitForHuman` / `notify` — create a pending request, optionally notify while pending, then wait for resolution. `waitForHuman({ … })` is sugar for the one-shot case. Reminders support relative delays (`after`), wall-clock times (`at`, `tomorrowAt`), and repeating schedules (`dailyAt`, `weekdaysAt`, `every`) via the `remind` / `escalate` builders |
-| Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, …) implementing `WorkflowPrimitives` + `HitlResolver` |
-| Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed adapter that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
-| Approval state | The `State` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitl/state-pg` and `@hitl/state-sqlite` for persistence |
+| `field`, `actions` | Typed approval fields and action definitions |
+| `isResolved`, `HumanResult` | Narrowing resolved outcomes |
+| `remind`, `escalate` | Reminder and escalation schedules for `waitForHuman` |
+| `Hitl` | Server (`/.well-known/hitl/v1`) with inbox and adapters |
+| `ThreadAnchor` | Chain `notify` / `waitForHuman` across thread placement |
+
+Use `@hitl/resolver-workflow-sdk` for `waitForHuman`, `requestHuman`, and `notify` — not `hitl` directly.
+
+### Subpaths — extension and advanced use
+
+| Subpath | Audience |
+|---|---|
+| `hitl/client` | Engine binding authors (`createHitlClient`, `HitlClient`, …) |
+| `hitl/adapter` | Channel adapter authors (`HitlAdapter`, `HumanRequest`, action render helpers, …) |
+| `hitl/state` | Persistence backends and custom inbox UI (`State`, records, `HitlInbox`, …) |
+| `hitl/core` | Binding implementation and low-level server services |
+| `hitl/testing` | In-process test harness (`createTestHitl`) |
+| `hitl/state-contract` | Contract tests for custom `State` implementations |
 
 ## What Hitl SDK does not own
 

@@ -1,4 +1,5 @@
-import { actions, type HitlRequest } from "hitl";
+import { actions } from "hitl";
+import type { HitlRequest } from "hitl/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { workflowHitl } from "./index";
 

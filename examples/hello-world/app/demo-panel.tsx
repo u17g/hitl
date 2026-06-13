@@ -4,9 +4,10 @@ import {
   effectiveActionLabel,
   effectiveCloseLabel,
   effectiveSubmitLabel,
-  normalizeActions,
-} from "hitl";
-import type { HumanRequestRecord, HitlField, TimelineEntry } from "hitl";
+} from "hitl/adapter";
+import { normalizeActions } from "hitl/state";
+import type { HitlField } from "hitl";
+import type { HumanRequestRecord, TimelineEntry } from "hitl/state";
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
 interface RunResponse {
