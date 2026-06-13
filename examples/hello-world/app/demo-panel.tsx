@@ -4,9 +4,6 @@ import { normalizeActions } from "hitl";
 import type { HumanRequestRecord, HitlField, TimelineEntry } from "hitl";
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
-/** GET /api/inbox attaches timeline entries per human request. */
-type InboxHumanRequest = HumanRequestRecord & { timeline?: TimelineEntry[] };
-
 interface RunResponse {
   runId: string;
   name: string;
@@ -189,8 +186,8 @@ const ghostBtnStyle: CSSProperties = {
 
 export function DemoPanel() {
   const [name, setName] = useState("world");
-  const [pending, setPending] = useState<InboxHumanRequest[]>([]);
-  const [resolved, setResolved] = useState<InboxHumanRequest[]>([]);
+  const [pending, setPending] = useState<HumanRequestRecord[]>([]);
+  const [resolved, setResolved] = useState<HumanRequestRecord[]>([]);
   const [lastRun, setLastRun] = useState<RunResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -201,6 +198,8 @@ export function DemoPanel() {
     title: string;
   } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEntry[] | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   const pushLog = useCallback((text: string, tone?: LogEntry["tone"]) => {
     setLogs((prev) => [
@@ -209,13 +208,30 @@ export function DemoPanel() {
     ]);
   }, []);
 
+  const fetchTimeline = useCallback(
+    async (id: string) => {
+      setTimelineLoading(true);
+      try {
+        const res = await fetch(`/api/inbox/${encodeURIComponent(id)}/timeline`);
+        const body = await readJson<{ timeline: TimelineEntry[] }>(res);
+        setTimeline(body.timeline);
+      } catch (err) {
+        setTimeline([]);
+        pushLog(err instanceof Error ? err.message : "Failed to load timeline", "err");
+      } finally {
+        setTimelineLoading(false);
+      }
+    },
+    [pushLog],
+  );
+
   const refresh = useCallback(async () => {
     const [pendingRes, resolvedRes] = await Promise.all([
       fetch("/api/inbox?status=pending"),
       fetch("/api/inbox?status=resolved"),
     ]);
-    const pendingBody = await readJson<{ requests: InboxHumanRequest[] }>(pendingRes);
-    const resolvedBody = await readJson<{ requests: InboxHumanRequest[] }>(resolvedRes);
+    const pendingBody = await readJson<{ requests: HumanRequestRecord[] }>(pendingRes);
+    const resolvedBody = await readJson<{ requests: HumanRequestRecord[] }>(resolvedRes);
     setPending(
       pendingBody.requests.map((item) => ({
         ...item,
@@ -228,7 +244,10 @@ export function DemoPanel() {
         actions: normalizeActions(item.actions),
       })),
     );
-  }, []);
+    if (selectedId) {
+      await fetchTimeline(selectedId);
+    }
+  }, [selectedId, fetchTimeline]);
 
   useEffect(() => {
     void refresh().catch((err: unknown) => {
@@ -280,7 +299,7 @@ export function DemoPanel() {
     }
   }
 
-  function beginAction(item: InboxHumanRequest, actionId: string) {
+  function beginAction(item: HumanRequestRecord, actionId: string) {
     const def = item.actions.find((a) => a.id === actionId);
     const fields = def?.fields ?? {};
     if (Object.keys(fields).length === 0) {
@@ -295,8 +314,15 @@ export function DemoPanel() {
     });
   }
 
-  const selected =
-    [...pending, ...resolved].find((item) => item.id === selectedId) ?? pending[0] ?? null;
+  async function openDetails(id: string) {
+    setSelectedId(id);
+    setTimeline(null);
+    await fetchTimeline(id);
+  }
+
+  const selected = selectedId
+    ? ([...pending, ...resolved].find((item) => item.id === selectedId) ?? null)
+    : null;
 
   return (
     <div style={styles.page}>
@@ -366,7 +392,7 @@ export function DemoPanel() {
                   <button
                     style={ghostBtnStyle}
                     disabled={busy}
-                    onClick={() => setSelectedId(item.id)}
+                    onClick={() => void openDetails(item.id)}
                   >
                     Details
                   </button>
@@ -398,11 +424,13 @@ export function DemoPanel() {
           {selected.context && Object.keys(selected.context).length > 0 && (
             <pre style={styles.pre}>{JSON.stringify(selected.context, null, 2)}</pre>
           )}
-          {(selected.timeline ?? []).length === 0 ? (
+          {timelineLoading ? (
+            <p style={styles.empty}>Loading timeline…</p>
+          ) : (timeline ?? []).length === 0 ? (
             <p style={styles.empty}>No timeline entries yet.</p>
           ) : (
             <ul style={styles.list}>
-              {(selected.timeline ?? []).map((entry) => (
+              {(timeline ?? []).map((entry) => (
                 <li key={entry.id} style={styles.resolved}>
                   <span style={styles.badge}>FYI</span>
                   <div>

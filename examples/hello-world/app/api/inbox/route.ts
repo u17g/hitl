@@ -6,14 +6,7 @@ export async function GET(req: Request) {
     status === "pending" || status === "resolved" ? { status } : undefined,
   );
 
-  const enriched = await Promise.all(
-    requests.map(async (request) => ({
-      ...request,
-      timeline: await hitl.state.listTimeline(request.id),
-    })),
-  );
-
-  return Response.json({ requests: enriched });
+  return Response.json({ requests });
 }
 
 export async function POST(req: Request) {

@@ -1,20 +1,19 @@
 import { field, humanActions, isResolved } from "hitl";
 import { waitForHuman } from "@/lib/hitl-workflow";
 
-const actions = humanActions()
-  .action("submit", { label: "Approve" })
-  .action("deny", {
-    label: "Deny",
-    fields: { reason: field.textArea({ label: "Reason" }) },
-  })
-  .build();
 
 export async function helloWorkflow(name: string) {
   "use workflow";
 
   const approval = await waitForHuman({
     message: `Say hello to ${name}?`,
-    actions,
+    actions: humanActions()
+      .action("submit", { label: "Approve" })
+      .action("deny", {
+        label: "Deny",
+        fields: { reason: field.textArea({ label: "Reason" }) },
+      })
+      .build(),
   });
 
   if (!isResolved(approval, "submit")) {
