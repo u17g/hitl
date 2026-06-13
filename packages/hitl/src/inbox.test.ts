@@ -4,14 +4,14 @@ import { createApprovalRequest, createBatchRequest, type HitlRuntime } from "./c
 import { field } from "./fields";
 import { createInbox } from "./inbox";
 import { InMemoryState } from "./state";
-import type { ApprovalRequest, HitlPlugin, Notification } from "./types";
+import type { ApprovalRequest, HitlAdapter, Notification } from "./types";
 import { FeedbackValidationError } from "./validate";
 
 // Test list:
 // - list() / list({ status }) forward to the state
 // - get(id) forwards; unknown id -> null
 // - getBatch(batchId) returns { batch, items } in item order; unknown -> null
-// - approve(id) -> APPROVED, resolver resumed with the stored token, plugin.update called
+// - approve(id) -> APPROVED, resolver resumed with the stored token, adapter.update called
 // - approve(id, { feedbacks }) with edits -> REVIEWED; feedbacks equal to defaults -> APPROVED
 // - deny(id, { reason }) -> DENIED
 // - approve on an unknown id throws NotFoundError (not swallowed)
@@ -26,7 +26,7 @@ class FakeResolver implements HitlResolver {
   }
 }
 
-function fakePlugin(id: string): HitlPlugin & {
+function fakeAdapter(id: string): HitlAdapter & {
   sent: ApprovalRequest[];
   updates: unknown[][];
   notifications: Notification[];
@@ -58,9 +58,9 @@ function fakePlugin(id: string): HitlPlugin & {
 function makeRuntime() {
   const resolver = new FakeResolver();
   const state = new InMemoryState();
-  const plugin = fakePlugin("inbox");
-  const runtime: HitlRuntime = { resolver, state, plugins: [plugin] };
-  return { resolver, state, plugin, runtime, inbox: createInbox(runtime) };
+  const adapter = fakeAdapter("inbox");
+  const runtime: HitlRuntime = { resolver, state, adapters: [adapter] };
+  return { resolver, state, adapter, runtime, inbox: createInbox(runtime) };
 }
 
 const fields = {
@@ -115,14 +115,14 @@ describe("HitlInbox read", () => {
 
 describe("HitlInbox write", () => {
   it("approves: APPROVED, resumes the engine, reflects to the channel", async () => {
-    const { runtime, inbox, resolver, plugin } = makeRuntime();
+    const { runtime, inbox, resolver, adapter } = makeRuntime();
     const id = await seedApproval(runtime);
 
     const result = await inbox.approve(id, { by: { name: "ryosuke" } });
 
     expect(result).toMatchObject({ type: "APPROVED", id, by: { name: "ryosuke" } });
     expect(resolver.resolved).toEqual([{ token: "tok_1", payload: result }]);
-    expect(plugin.updates).toHaveLength(1);
+    expect(adapter.updates).toHaveLength(1);
     expect((await inbox.get(id))?.status).toBe("resolved");
   });
 

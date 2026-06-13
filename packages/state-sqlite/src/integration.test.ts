@@ -1,10 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
-import { field, type HitlPlugin } from "hitl";
+import { field, type HitlAdapter } from "hitl";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it, vi } from "vitest";
 import { SqliteState } from "./index";
 
-function jsonPlugin(id: string): HitlPlugin {
+function jsonAdapter(id: string): HitlAdapter {
   return {
     id,
     async send(request) {
@@ -19,7 +19,7 @@ describe("Hitl with SqliteState", () => {
     const db = new DatabaseSync(":memory:");
     const { hitl, client } = createTestHitl({
       state: new SqliteState(db),
-      plugins: [jsonPlugin("a")],
+      adapters: [jsonAdapter("a")],
     });
 
     const promise = client.waitForApproval({

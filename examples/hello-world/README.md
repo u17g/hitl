@@ -72,7 +72,7 @@ You should see `Hello, world!` printed when the workflow resumes after approval.
 
 ## What this shows
 
-- [`lib/hitl.ts`](lib/hitl.ts) — the server: `new Hitl({ state, resolver: workflowResolver() })` — the web inbox is built in, no plugins needed
+- [`lib/hitl.ts`](lib/hitl.ts) — the server: `new Hitl({ state, resolver: workflowResolver() })` — the web inbox is built in, no adapters needed
 - [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/approve/deny` (what the UI calls)
 - [`lib/hitl-state.ts`](lib/hitl-state.ts) — shared `SqliteState` backed by `.hitldev/approvals.db`
 - [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForApproval`

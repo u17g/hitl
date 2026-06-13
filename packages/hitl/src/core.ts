@@ -15,19 +15,19 @@ import type {
   BatchApprovalRequest,
   HitlBatchCallback,
   HitlCallback,
-  HitlPlugin,
+  HitlAdapter,
   Notification,
 } from "./types";
 import { validateFeedbacks } from "./validate";
 
 /**
- * Everything the server-side services need: persistence, channel plugins, and
+ * Everything the server-side services need: persistence, channel adapters, and
  * the engine resolver. Workflows never see this — they talk to these services
  * through the `.well-known/hitldev/v1` HTTP API.
  */
 export interface HitlRuntime {
   state: State;
-  plugins: HitlPlugin[];
+  adapters: HitlAdapter[];
   resolver: HitlResolver;
 }
 
@@ -36,21 +36,21 @@ export class NotFoundError extends Error {
   override name = "NotFoundError";
 }
 
-export function pickPlugin(plugins: HitlPlugin[], channel?: string): HitlPlugin {
-  if (plugins.length === 0) {
-    throw new Error("No hitldev plugins configured. Pass at least one to new Hitl().");
+export function pickAdapter(adapters: HitlAdapter[], channel?: string): HitlAdapter {
+  if (adapters.length === 0) {
+    throw new Error("No hitldev adapters configured. Pass at least one to new Hitl().");
   }
-  if (channel === undefined) return plugins[0]!;
-  const plugin = plugins.find((p) => p.id === channel);
-  if (!plugin) {
-    const known = plugins.map((p) => p.id).join(", ");
-    throw new Error(`Unknown channel "${channel}". Configured plugins: ${known}`);
+  if (channel === undefined) return adapters[0]!;
+  const adapter = adapters.find((p) => p.id === channel);
+  if (!adapter) {
+    const known = adapters.map((p) => p.id).join(", ");
+    throw new Error(`Unknown channel "${channel}". Configured adapters: ${known}`);
   }
-  return plugin;
+  return adapter;
 }
 
 /**
- * `POST /requests`: record the approval and deliver it via the plugin.
+ * `POST /requests`: record the approval and deliver it via the adapter.
  * Idempotent on the resume token — the workflow's durable fetch is
  * at-least-once, and a duplicate must not post a second channel message.
  */
@@ -58,14 +58,14 @@ export async function createApprovalRequest(
   runtime: HitlRuntime,
   body: CreateRequestBody,
 ): Promise<CreateRequestResponse> {
-  const plugin = pickPlugin(runtime.plugins, body.channel);
+  const adapter = pickAdapter(runtime.adapters, body.channel);
 
   const existing = await runtime.state.findByToken(body.token);
   if (existing) {
     // A retry that finds the record without an externalId crashed between
     // create and send on the previous attempt; finish the delivery.
     if (!existing.externalId) {
-      await deliverApproval(runtime, pickPlugin(runtime.plugins, existing.channel), existing);
+      await deliverApproval(runtime, pickAdapter(runtime.adapters, existing.channel), existing);
     }
     return { id: existing.id };
   }
@@ -74,21 +74,21 @@ export async function createApprovalRequest(
   const record = {
     id,
     token: body.token,
-    channel: plugin.id,
+    channel: adapter.id,
     message: body.message,
     fields: body.fields,
   };
   await runtime.state.create(record);
-  await deliverApproval(runtime, plugin, record);
+  await deliverApproval(runtime, adapter, record);
   return { id };
 }
 
 async function deliverApproval(
   runtime: HitlRuntime,
-  plugin: HitlPlugin,
+  adapter: HitlAdapter,
   record: { id: string; channel: string; message: string; fields: Record<string, HitlField> },
 ): Promise<void> {
-  const { externalId } = await plugin.send({
+  const { externalId } = await adapter.send({
     id: record.id,
     channel: record.channel,
     message: record.message,
@@ -123,13 +123,13 @@ function toBatchRequest(
   };
 }
 
-function canDeliverBatch(plugin: HitlPlugin, request: BatchApprovalRequest): boolean {
-  return plugin.sendBatch !== undefined && (plugin.canSendBatch?.(request) ?? true);
+function canDeliverBatch(adapter: HitlAdapter, request: BatchApprovalRequest): boolean {
+  return adapter.sendBatch !== undefined && (adapter.canSendBatch?.(request) ?? true);
 }
 
 /**
  * `POST /batches`: record the batch and deliver it — one message via
- * `sendBatch` when the plugin supports it, otherwise one `send` per item.
+ * `sendBatch` when the adapter supports it, otherwise one `send` per item.
  * Idempotent on the first item's resume token.
  */
 export async function createBatchRequest(
@@ -139,7 +139,7 @@ export async function createBatchRequest(
   if (body.items.length === 0) {
     throw new Error("waitForBatchApprovals needs at least one item.");
   }
-  const plugin = pickPlugin(runtime.plugins, body.channel);
+  const adapter = pickAdapter(runtime.adapters, body.channel);
 
   const existing = await runtime.state.findByToken(body.items[0]!.token);
   if (existing?.batchId) {
@@ -154,12 +154,12 @@ export async function createBatchRequest(
     fields: item.fields,
   }));
 
-  await runtime.state.createBatch({ id: batchId, channel: plugin.id, title: body.title });
+  await runtime.state.createBatch({ id: batchId, channel: adapter.id, title: body.title });
   for (const [index, item] of items.entries()) {
     await runtime.state.create({
       id: item.id,
       token: body.items[index]!.token,
-      channel: plugin.id,
+      channel: adapter.id,
       message: item.message,
       fields: item.fields,
       batchId,
@@ -167,13 +167,13 @@ export async function createBatchRequest(
     });
   }
 
-  const request = toBatchRequest({ id: batchId, channel: plugin.id, title: body.title }, body.fields, items);
-  if (canDeliverBatch(plugin, request)) {
-    const { externalId } = await plugin.sendBatch!(request);
+  const request = toBatchRequest({ id: batchId, channel: adapter.id, title: body.title }, body.fields, items);
+  if (canDeliverBatch(adapter, request)) {
+    const { externalId } = await adapter.sendBatch!(request);
     await runtime.state.setBatchExternalId(batchId, externalId);
   } else {
     for (const item of items) {
-      await deliverApproval(runtime, plugin, { ...item, channel: plugin.id });
+      await deliverApproval(runtime, adapter, { ...item, channel: adapter.id });
     }
   }
 
@@ -243,8 +243,8 @@ export async function remindApproval(
   if (record.status === "resolved") return { pending: false };
 
   if (body.kind === "escalate" && (body.mode ?? "notify") === "redeliver") {
-    const escalatePlugin = pickPlugin(runtime.plugins, body.channel);
-    const { externalId } = await escalatePlugin.send({
+    const escalateAdapter = pickAdapter(runtime.adapters, body.channel);
+    const { externalId } = await escalateAdapter.send({
       id: record.id,
       channel: body.channel,
       message: record.message,
@@ -293,14 +293,14 @@ async function sendReminderNotification(
   ctx: { parent: string; primaryChannel: string; parentExternalId: string | undefined },
 ): Promise<void> {
   const escalate = body.kind === "escalate";
-  const plugin = pickPlugin(runtime.plugins, escalate ? body.channel : ctx.primaryChannel);
+  const adapter = pickAdapter(runtime.adapters, escalate ? body.channel : ctx.primaryChannel);
   const notification: Notification = {
     message: body.message ?? (escalate ? DEFAULT_ESCALATE_MESSAGE : DEFAULT_REMIND_MESSAGE),
-    channel: plugin.id,
+    channel: adapter.id,
     parent: ctx.parent,
   };
   if (ctx.parentExternalId) notification.parentExternalId = ctx.parentExternalId;
-  await plugin.notify(notification);
+  await adapter.notify(notification);
 }
 
 /** Re-send the batch approval UI on an escalation channel; reconstructed from the stored records. */
@@ -310,20 +310,20 @@ async function redeliverBatch(
   items: ApprovalRecord[],
   channel: string,
 ): Promise<void> {
-  const escalatePlugin = pickPlugin(runtime.plugins, channel);
+  const escalateAdapter = pickAdapter(runtime.adapters, channel);
   // The shared schema is not stored; the first item's merged fields render identically.
   const request = toBatchRequest(
     { id: batch.id, channel, title: batch.title },
     items[0]?.fields ?? {},
     items,
   );
-  if (canDeliverBatch(escalatePlugin, request)) {
-    const { externalId } = await escalatePlugin.sendBatch!(request);
+  if (canDeliverBatch(escalateAdapter, request)) {
+    const { externalId } = await escalateAdapter.sendBatch!(request);
     await runtime.state.setBatchExternalId(batch.id, externalId, channel);
     return;
   }
   for (const item of items) {
-    const { externalId } = await escalatePlugin.send({
+    const { externalId } = await escalateAdapter.send({
       id: item.id,
       channel,
       message: item.message,
@@ -338,21 +338,21 @@ async function updateChannels(
   record: ApprovalRecord,
   result: ApprovalResult,
 ): Promise<void> {
-  const pluginIds = new Set<string>();
-  if (record.externalId) pluginIds.add(record.channel);
+  const adapterIds = new Set<string>();
+  if (record.externalId) adapterIds.add(record.channel);
   if (record.externalIds) {
-    for (const pluginId of Object.keys(record.externalIds)) {
-      pluginIds.add(pluginId);
+    for (const adapterId of Object.keys(record.externalIds)) {
+      adapterIds.add(adapterId);
     }
   }
 
-  for (const pluginId of pluginIds) {
-    const channelPlugin = runtime.plugins.find((p) => p.id === pluginId);
+  for (const adapterId of adapterIds) {
+    const channelAdapter = runtime.adapters.find((p) => p.id === adapterId);
     const externalId =
-      record.externalIds?.[pluginId] ??
-      (pluginId === record.channel ? record.externalId : undefined);
-    if (channelPlugin?.update && externalId) {
-      await channelPlugin.update(externalId, result);
+      record.externalIds?.[adapterId] ??
+      (adapterId === record.channel ? record.externalId : undefined);
+    if (channelAdapter?.update && externalId) {
+      await channelAdapter.update(externalId, result);
     }
   }
 }
@@ -429,18 +429,18 @@ async function updateBatchChannels(
   items: ApprovalRecord[],
   results: ApprovalResult[],
 ): Promise<void> {
-  const pluginIds = new Set<string>();
-  if (batch.externalId) pluginIds.add(batch.channel);
-  for (const pluginId of Object.keys(batch.externalIds ?? {})) {
-    pluginIds.add(pluginId);
+  const adapterIds = new Set<string>();
+  if (batch.externalId) adapterIds.add(batch.channel);
+  for (const adapterId of Object.keys(batch.externalIds ?? {})) {
+    adapterIds.add(adapterId);
   }
-  for (const pluginId of pluginIds) {
-    const plugin = runtime.plugins.find((p) => p.id === pluginId);
+  for (const adapterId of adapterIds) {
+    const adapter = runtime.adapters.find((p) => p.id === adapterId);
     const externalId =
-      batch.externalIds?.[pluginId] ??
-      (pluginId === batch.channel ? batch.externalId : undefined);
-    if (plugin?.updateBatch && externalId) {
-      await plugin.updateBatch(externalId, results);
+      batch.externalIds?.[adapterId] ??
+      (adapterId === batch.channel ? batch.externalId : undefined);
+    if (adapter?.updateBatch && externalId) {
+      await adapter.updateBatch(externalId, results);
     }
   }
 
@@ -483,13 +483,13 @@ export async function notifyVia(
   runtime: HitlRuntime,
   notification: Notification,
 ): Promise<void> {
-  const plugin = pickPlugin(runtime.plugins, notification.channel);
+  const adapter = pickAdapter(runtime.adapters, notification.channel);
   const enriched: Notification = { ...notification };
   if (notification.parent && !notification.parentExternalId) {
     const externalId = await parentExternalId(runtime.state, notification.parent);
     if (externalId) enriched.parentExternalId = externalId;
   }
-  await plugin.notify(enriched);
+  await adapter.notify(enriched);
 }
 
 async function parentExternalId(state: State, parent: string): Promise<string | undefined> {

@@ -16,7 +16,7 @@ export const DEFAULT_BASE_PATH = "/.well-known/hitldev/v1";
 export interface ApprovalOptions<F extends Record<string, HitlField>> {
   message: string;
   fields?: F;
-  /** Plugin id; defaults to the first plugin configured on the server. */
+  /** Adapter id; defaults to the first adapter configured on the server. */
   channel?: string;
   /** e.g. "72h"; resolves as { type: "TIMED_OUT" }. */
   timeout?: Duration;
@@ -36,7 +36,7 @@ export interface BatchApprovalOptions<F extends Record<string, HitlField>> {
   /** Field schema shared by every item. */
   fields?: F;
   items: ReadonlyArray<BatchApprovalItem<F>>;
-  /** Plugin id; defaults to the first plugin configured on the server. */
+  /** Adapter id; defaults to the first adapter configured on the server. */
   channel?: string;
   /** One timeout for the whole batch; pending items resolve as TIMED_OUT. */
   timeout?: Duration;
@@ -56,7 +56,7 @@ export interface CreateHitlClientOptions extends WorkflowPrimitives {
 /**
  * The workflow-side API. A thin HTTP client: `suspend()` for the resume token,
  * one durable fetch to the server, then await the suspension. State and
- * plugins live only on the server.
+ * adapters live only on the server.
  */
 export interface HitlClient {
   waitForApproval<F extends Record<string, HitlField>>(

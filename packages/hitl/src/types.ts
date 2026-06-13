@@ -13,7 +13,7 @@ export type ApprovalResult<F = Record<string, unknown>> =
   | { type: "REVIEWED"; id: string; by?: Reviewer; feedbacks: F }
   | { type: "TIMED_OUT"; id: string };
 
-/** What a plugin receives to render and deliver an approval request. */
+/** What an adapter receives to render and deliver an approval request. */
 export interface ApprovalRequest {
   id: string;
   channel: string;
@@ -22,7 +22,7 @@ export interface ApprovalRequest {
 }
 
 /**
- * What a plugin receives to render and deliver a batch of approvals as a
+ * What an adapter receives to render and deliver a batch of approvals as a
  * single message. The field schema is shared across items; each item carries
  * its resolved initial values.
  */
@@ -83,7 +83,7 @@ export interface HitlBatchCallback {
   ackOnly?: boolean;
 }
 
-export interface HitlPlugin {
+export interface HitlAdapter {
   /** Routing key used by `waitForApproval({ channel })` / `notify({ channel })`. */
   id: string;
   /** Render and deliver an approval request. */

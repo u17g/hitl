@@ -1,5 +1,5 @@
 /**
- * externalId encoding for chat plugins. The hitldev core hands plugins only an
+ * externalId encoding for chat adapters. The hitldev core hands adapters only an
  * opaque externalId string on update/notify, so we pack the Chat SDK channel ref
  * and message id into one value. The channel ref itself contains ":" (e.g.
  * "slack:C123"), so we join with "#", which channel/message ids do not use.

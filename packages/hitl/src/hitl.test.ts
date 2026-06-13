@@ -6,7 +6,7 @@ import { InMemoryState } from "./state";
 import type {
   ApprovalRequest,
   BatchApprovalRequest,
-  HitlPlugin,
+  HitlAdapter,
   Notification,
 } from "./types";
 
@@ -35,14 +35,14 @@ class FakeResolver implements HitlResolver {
   }
 }
 
-interface FakePlugin extends HitlPlugin {
+interface FakeAdapter extends HitlAdapter {
   sent: ApprovalRequest[];
   sentBatches: BatchApprovalRequest[];
   notifications: Notification[];
 }
 
-/** A plugin whose callback parser accepts JSON bodies with a matching pluginId. */
-function jsonPlugin(id: string): FakePlugin {
+/** An adapter whose callback parser accepts JSON bodies with a matching adapter id. */
+function jsonAdapter(id: string): FakeAdapter {
   const sent: ApprovalRequest[] = [];
   const sentBatches: BatchApprovalRequest[] = [];
   const notifications: Notification[] = [];
@@ -65,16 +65,16 @@ function jsonPlugin(id: string): FakePlugin {
   };
 }
 
-function setup(opts?: { secret?: string; pluginIds?: string[] }) {
+function setup(opts?: { secret?: string; adapterIds?: string[] }) {
   const resolver = new FakeResolver();
-  const plugins = (opts?.pluginIds ?? ["a", "b"]).map(jsonPlugin);
+  const adapters = (opts?.adapterIds ?? ["a", "b"]).map(jsonAdapter);
   const hitl = new Hitl({
-    plugins,
+    adapters,
     state: new InMemoryState(),
     resolver,
     secret: opts?.secret,
   });
-  return { resolver, plugins, hitl };
+  return { resolver, adapters, hitl };
 }
 
 function post(
@@ -115,24 +115,24 @@ async function createBatch(hitl: Hitl) {
 
 describe("internal API: requests", () => {
   it("POST /requests creates and delivers an approval", async () => {
-    const { hitl, plugins } = setup();
+    const { hitl, adapters } = setup();
 
     const id = await createRequest(hitl);
 
-    expect(plugins[0]!.sent).toHaveLength(1);
-    expect(plugins[0]!.sent[0]).toMatchObject({ id, message: "Approve?" });
+    expect(adapters[0]!.sent).toHaveLength(1);
+    expect(adapters[0]!.sent[0]).toMatchObject({ id, message: "Approve?" });
     const record = await hitl.state.get(id);
     expect(record).toMatchObject({ token: "tok_1", status: "pending" });
   });
 
   it("is idempotent on the resume token", async () => {
-    const { hitl, plugins } = setup();
+    const { hitl, adapters } = setup();
 
     const first = await createRequest(hitl);
     const second = await createRequest(hitl);
 
     expect(second).toBe(first);
-    expect(plugins[0]!.sent).toHaveLength(1);
+    expect(adapters[0]!.sent).toHaveLength(1);
   });
 
   it("POST /requests/:id/timeout resolves a pending approval", async () => {
@@ -153,7 +153,7 @@ describe("internal API: requests", () => {
   });
 
   it("POST /requests/:id/remind sends a reminder while pending", async () => {
-    const { hitl, plugins } = setup();
+    const { hitl, adapters } = setup();
     const id = await createRequest(hitl);
 
     const res = await post(hitl, `/requests/${id}/remind`, {
@@ -163,7 +163,7 @@ describe("internal API: requests", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ pending: true });
-    expect(plugins[0]!.notifications[0]).toMatchObject({ message: "Still waiting", parent: id });
+    expect(adapters[0]!.notifications[0]).toMatchObject({ message: "Still waiting", parent: id });
   });
 
   it("returns 400 on malformed JSON", async () => {
@@ -175,12 +175,12 @@ describe("internal API: requests", () => {
 
 describe("internal API: batches", () => {
   it("POST /batches creates and delivers a batch", async () => {
-    const { hitl, plugins } = setup();
+    const { hitl, adapters } = setup();
 
     const { batchId, ids } = await createBatch(hitl);
 
     expect(ids).toEqual([`${batchId}:0`, `${batchId}:1`]);
-    expect(plugins[0]!.sentBatches).toHaveLength(1);
+    expect(adapters[0]!.sentBatches).toHaveLength(1);
     expect((await hitl.state.listByBatch(batchId)).map((r) => r.token)).toEqual([
       "tok_0",
       "tok_1",
@@ -199,26 +199,26 @@ describe("internal API: batches", () => {
   });
 
   it("POST /batches/:id/remind reports pending state", async () => {
-    const { hitl, plugins } = setup();
+    const { hitl, adapters } = setup();
     const { batchId } = await createBatch(hitl);
 
     const res = await post(hitl, `/batches/${batchId}/remind`, { kind: "remind" });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ pending: true });
-    expect(plugins[0]!.notifications).toHaveLength(1);
+    expect(adapters[0]!.notifications).toHaveLength(1);
   });
 });
 
 describe("internal API: notifications", () => {
   it("POST /notifications routes a notify", async () => {
-    const { hitl, plugins } = setup();
+    const { hitl, adapters } = setup();
 
     const res = await post(hitl, "/notifications", { message: "progress", channel: "b" });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    expect(plugins[1]!.notifications).toEqual([{ message: "progress", channel: "b" }]);
+    expect(adapters[1]!.notifications).toEqual([{ message: "progress", channel: "b" }]);
   });
 });
 
@@ -279,10 +279,10 @@ describe("non-internal routes are not served", () => {
 });
 
 describe("inbox facade", () => {
-  it("defaults the channel to the built-in web inbox when no plugins are given", async () => {
+  it("defaults the channel to the built-in web inbox when no adapters are given", async () => {
     const resolver = new FakeResolver();
     const hitl = new Hitl({ resolver, state: new InMemoryState() });
-    expect(hitl.plugins.map((p) => p.id)).toEqual(["inbox"]);
+    expect(hitl.adapters.map((p) => p.id)).toEqual(["inbox"]);
 
     const id = await createRequest(hitl);
     const result = await hitl.inbox.approve(id);
@@ -291,9 +291,9 @@ describe("inbox facade", () => {
     expect(resolver.resolved).toHaveLength(1);
   });
 
-  it("always includes the web inbox channel alongside configured plugins", () => {
-    const { hitl } = setup({ pluginIds: ["lead-approvals"] });
-    expect(hitl.plugins.map((p) => p.id)).toEqual(["lead-approvals", "inbox"]);
+  it("always includes the web inbox channel alongside configured adapters", () => {
+    const { hitl } = setup({ adapterIds: ["lead-approvals"] });
+    expect(hitl.adapters.map((p) => p.id)).toEqual(["lead-approvals", "inbox"]);
   });
 
   it("lists approvals, filterable by status", async () => {

@@ -1,6 +1,6 @@
 import type { Migration } from "./types.js";
 
-/** Per-plugin external ids for escalation re-deliveries. */
+/** Per-adapter external ids for escalation re-deliveries. */
 export const migration002ExternalIds: Migration = {
   id: "002_external_ids",
   sql(ctx) {

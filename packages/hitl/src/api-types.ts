@@ -12,7 +12,7 @@ export interface CreateRequestBody {
   token: string;
   message: string;
   fields: Record<string, HitlField>;
-  /** Plugin id; defaults to the first configured plugin. */
+  /** Adapter id; defaults to the first configured adapter. */
   channel?: string;
 }
 
@@ -30,7 +30,7 @@ export interface CreateBatchItemBody {
 
 export interface CreateBatchBody {
   title?: string;
-  /** Plugin id; defaults to the first configured plugin. */
+  /** Adapter id; defaults to the first configured adapter. */
   channel?: string;
   /** Field schema shared by every item; drives the batch UI. */
   fields: Record<string, HitlField>;

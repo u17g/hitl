@@ -56,7 +56,7 @@ export type {
   BatchApprovalRequest,
   HitlBatchCallback,
   HitlCallback,
-  HitlPlugin,
+  HitlAdapter,
   Notification,
   Reviewer,
 } from "./types";

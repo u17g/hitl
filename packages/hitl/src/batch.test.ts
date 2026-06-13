@@ -15,13 +15,13 @@ import type {
   ApprovalRequest,
   ApprovalResult,
   BatchApprovalRequest,
-  HitlPlugin,
+  HitlAdapter,
   Notification,
 } from "./types";
 
 // Test list:
 // - createBatchRequest delivers one message via sendBatch; records batch + item records
-// - falls back to per-item send when the plugin has no sendBatch / canSendBatch is false
+// - falls back to per-item send when the adapter has no sendBatch / canSendBatch is false
 // - throws on empty items
 // - is idempotent on the first item's resume token (at-least-once fetch)
 // - one batch callback resolves every item via the resolver; results in input order
@@ -42,7 +42,7 @@ class FakeResolver implements HitlResolver {
   }
 }
 
-interface FakePlugin extends HitlPlugin {
+interface FakeAdapter extends HitlAdapter {
   sent: ApprovalRequest[];
   sentBatches: BatchApprovalRequest[];
   updates: unknown[][];
@@ -50,13 +50,13 @@ interface FakePlugin extends HitlPlugin {
   notifications: Notification[];
 }
 
-function fakePlugin(id: string, opts?: { batch?: boolean }): FakePlugin {
+function fakeAdapter(id: string, opts?: { batch?: boolean }): FakeAdapter {
   const sent: ApprovalRequest[] = [];
   const sentBatches: BatchApprovalRequest[] = [];
   const updates: unknown[][] = [];
   const batchUpdates: Array<[string, ApprovalResult[]]> = [];
   const notifications: Notification[] = [];
-  const plugin: FakePlugin = {
+  const adapter: FakeAdapter = {
     id,
     sent,
     sentBatches,
@@ -75,22 +75,22 @@ function fakePlugin(id: string, opts?: { batch?: boolean }): FakePlugin {
     },
   };
   if (opts?.batch !== false) {
-    plugin.sendBatch = async (request) => {
+    adapter.sendBatch = async (request) => {
       sentBatches.push(request);
       return { externalId: `bext_${request.batchId}` };
     };
-    plugin.updateBatch = async (externalId, results) => {
+    adapter.updateBatch = async (externalId, results) => {
       batchUpdates.push([externalId, results]);
     };
   }
-  return plugin;
+  return adapter;
 }
 
-function makeRuntime(plugins: FakePlugin[]) {
+function makeRuntime(adapters: FakeAdapter[]) {
   const resolver = new FakeResolver();
   const state = new InMemoryState();
-  const runtime: HitlRuntime = { resolver, state, plugins };
-  return { resolver, state, plugins, runtime };
+  const runtime: HitlRuntime = { resolver, state, adapters };
+  return { resolver, state, adapters, runtime };
 }
 
 const fields = {
@@ -120,14 +120,14 @@ function emailBatch(): CreateBatchBody {
 
 describe("createBatchRequest", () => {
   it("delivers the batch as one message and records batch + items", async () => {
-    const { runtime, state, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state, adapters } = makeRuntime([fakeAdapter("a")]);
 
     const { batchId, ids } = await createBatchRequest(runtime, emailBatch());
 
     expect(ids).toEqual([`${batchId}:0`, `${batchId}:1`]);
-    expect(plugins[0]!.sentBatches).toHaveLength(1);
-    expect(plugins[0]!.sent).toHaveLength(0);
-    expect(plugins[0]!.sentBatches[0]).toMatchObject({
+    expect(adapters[0]!.sentBatches).toHaveLength(1);
+    expect(adapters[0]!.sent).toHaveLength(0);
+    expect(adapters[0]!.sentBatches[0]).toMatchObject({
       batchId,
       channel: "a",
       title: "Outbound emails",
@@ -155,48 +155,48 @@ describe("createBatchRequest", () => {
     expect(items.every((r) => r.status === "pending")).toBe(true);
   });
 
-  it("falls back to per-item send when the plugin has no sendBatch", async () => {
-    const { runtime, state, plugins } = makeRuntime([fakePlugin("a", { batch: false })]);
+  it("falls back to per-item send when the adapter has no sendBatch", async () => {
+    const { runtime, state, adapters } = makeRuntime([fakeAdapter("a", { batch: false })]);
 
     const { batchId, ids } = await createBatchRequest(runtime, emailBatch());
 
-    expect(plugins[0]!.sent.map((r) => r.id)).toEqual(ids);
+    expect(adapters[0]!.sent.map((r) => r.id)).toEqual(ids);
     expect((await state.get(`${batchId}:0`))?.externalId).toBe(`ext_${batchId}:0`);
     expect((await state.getBatch(batchId))?.externalId).toBeUndefined();
   });
 
   it("falls back to per-item send when canSendBatch returns false", async () => {
-    const plugin = fakePlugin("a");
-    plugin.canSendBatch = () => false;
-    const { runtime, plugins } = makeRuntime([plugin]);
+    const adapter = fakeAdapter("a");
+    adapter.canSendBatch = () => false;
+    const { runtime, adapters } = makeRuntime([adapter]);
 
     await createBatchRequest(runtime, emailBatch());
 
-    expect(plugins[0]!.sentBatches).toHaveLength(0);
-    expect(plugins[0]!.sent).toHaveLength(2);
+    expect(adapters[0]!.sentBatches).toHaveLength(0);
+    expect(adapters[0]!.sent).toHaveLength(2);
   });
 
   it("throws on empty items", async () => {
-    const { runtime } = makeRuntime([fakePlugin("a")]);
+    const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(
       createBatchRequest(runtime, { fields: {}, items: [] }),
     ).rejects.toThrow(/at least one item/i);
   });
 
   it("returns the existing batch without re-sending when the first token is known", async () => {
-    const { runtime, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
 
     const first = await createBatchRequest(runtime, emailBatch());
     const second = await createBatchRequest(runtime, emailBatch());
 
     expect(second).toEqual(first);
-    expect(plugins[0]!.sentBatches).toHaveLength(1);
+    expect(adapters[0]!.sentBatches).toHaveLength(1);
   });
 });
 
 describe("resolveBatchApproval", () => {
   it("one submit resolves every item via the resolver; results come back in input order", async () => {
-    const { runtime, resolver, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, resolver, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     const results = await resolveBatchApproval(runtime, {
@@ -216,11 +216,11 @@ describe("resolveBatchApproval", () => {
       { token: "tok_0", payload: results[0] },
       { token: "tok_1", payload: results[1] },
     ]);
-    expect(plugins[0]!.batchUpdates).toEqual([[`bext_${batchId}`, results]]);
+    expect(adapters[0]!.batchUpdates).toEqual([[`bext_${batchId}`, results]]);
   });
 
   it("maps per-item decisions independently", async () => {
-    const { runtime } = makeRuntime([fakePlugin("a")]);
+    const { runtime } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, {
       fields,
       items: [
@@ -253,7 +253,7 @@ describe("resolveBatchApproval", () => {
   });
 
   it("rejects invalid feedbacks and leaves every item pending", async () => {
-    const { runtime, state, resolver } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state, resolver } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await expect(
@@ -272,11 +272,11 @@ describe("resolveBatchApproval", () => {
   });
 
   it("skips already-resolved items on batch submit", async () => {
-    const { runtime, plugins } = makeRuntime([fakePlugin("a", { batch: false })]);
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a", { batch: false })]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await resolveApproval(runtime, { requestId: `${batchId}:0`, decision: "deny", reason: "no" });
-    plugins[0]!.updates.length = 0;
+    adapters[0]!.updates.length = 0;
 
     const results = await resolveBatchApproval(runtime, {
       batchId,
@@ -291,7 +291,7 @@ describe("resolveBatchApproval", () => {
   });
 
   it("throws when a pending item has no decision", async () => {
-    const { runtime, state } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await expect(
@@ -306,14 +306,14 @@ describe("resolveBatchApproval", () => {
   });
 
   it("throws on an unknown batch id", async () => {
-    const { runtime } = makeRuntime([fakePlugin("a")]);
+    const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(
       resolveBatchApproval(runtime, { batchId: "missing", decisions: [] }),
     ).rejects.toThrow(/missing/);
   });
 
   it("uses per-item update on the fallback path", async () => {
-    const { runtime, plugins } = makeRuntime([fakePlugin("a", { batch: false })]);
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a", { batch: false })]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     const results = await resolveBatchApproval(runtime, {
@@ -324,7 +324,7 @@ describe("resolveBatchApproval", () => {
       ],
     });
 
-    expect(plugins[0]!.updates).toEqual([
+    expect(adapters[0]!.updates).toEqual([
       [`ext_${batchId}:0`, results[0]],
       [`ext_${batchId}:1`, results[1]],
     ]);
@@ -333,7 +333,7 @@ describe("resolveBatchApproval", () => {
 
 describe("timeoutBatch", () => {
   it("times out pending items and keeps resolved ones", async () => {
-    const { runtime, state, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, state, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await resolveApproval(runtime, { requestId: `${batchId}:0`, decision: "approve" });
@@ -343,18 +343,18 @@ describe("timeoutBatch", () => {
     expect(results[0]).toMatchObject({ type: "APPROVED", id: `${batchId}:0` });
     expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
     expect((await state.get(`${batchId}:1`))?.status).toBe("resolved");
-    expect(plugins[0]!.batchUpdates.at(-1)).toEqual([`bext_${batchId}`, results]);
+    expect(adapters[0]!.batchUpdates.at(-1)).toEqual([`bext_${batchId}`, results]);
   });
 
   it("throws on an unknown batch id", async () => {
-    const { runtime } = makeRuntime([fakePlugin("a")]);
+    const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(timeoutBatch(runtime, "missing")).rejects.toThrow(/missing/);
   });
 });
 
 describe("remindBatch", () => {
   it("threads a reminder notify under the batch message", async () => {
-    const { runtime, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     const { pending } = await remindBatch(runtime, batchId, {
@@ -363,7 +363,7 @@ describe("remindBatch", () => {
     });
 
     expect(pending).toBe(true);
-    expect(plugins[0]!.notifications).toEqual([
+    expect(adapters[0]!.notifications).toEqual([
       {
         parent: batchId,
         message: "Still waiting",
@@ -374,16 +374,16 @@ describe("remindBatch", () => {
   });
 
   it("threads under the first item's message on the fallback path", async () => {
-    const { runtime, plugins } = makeRuntime([fakePlugin("a", { batch: false })]);
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a", { batch: false })]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await remindBatch(runtime, batchId, { kind: "remind" });
 
-    expect(plugins[0]!.notifications[0]?.parentExternalId).toBe(`ext_${batchId}:0`);
+    expect(adapters[0]!.notifications[0]?.parentExternalId).toBe(`ext_${batchId}:0`);
   });
 
   it("is a no-op once every item is resolved", async () => {
-    const { runtime, plugins } = makeRuntime([fakePlugin("a")]);
+    const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
     await resolveBatchApproval(runtime, {
       batchId,
@@ -396,12 +396,12 @@ describe("remindBatch", () => {
     const { pending } = await remindBatch(runtime, batchId, { kind: "remind" });
 
     expect(pending).toBe(false);
-    expect(plugins[0]!.notifications).toHaveLength(0);
+    expect(adapters[0]!.notifications).toHaveLength(0);
   });
 
   it("escalates with redeliver of the whole batch on the fallback channel", async () => {
-    const primary = fakePlugin("primary");
-    const oncall = fakePlugin("oncall");
+    const primary = fakeAdapter("primary");
+    const oncall = fakeAdapter("oncall");
     const { runtime, state } = makeRuntime([primary, oncall]);
     const { batchId } = await createBatchRequest(runtime, { ...emailBatch(), channel: "primary" });
 
@@ -427,7 +427,7 @@ describe("remindBatch", () => {
   });
 
   it("throws on an unknown batch id", async () => {
-    const { runtime } = makeRuntime([fakePlugin("a")]);
+    const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(remindBatch(runtime, "missing", { kind: "remind" })).rejects.toThrow(/missing/);
   });
 });

@@ -2,11 +2,11 @@ import type { HitlResolver, HitlSuspension } from "./binding";
 import { createHitlClient, type HitlClient } from "./client";
 import { Hitl, type HitlInstance } from "./hitl";
 import type { State } from "./state";
-import type { HitlPlugin } from "./types";
+import type { HitlAdapter } from "./types";
 
 export interface CreateTestHitlOptions {
   /** Extra channels on top of the always-on web inbox. Optional. */
-  plugins?: HitlPlugin[];
+  adapters?: HitlAdapter[];
   state?: State;
   secret?: string;
 }
@@ -43,7 +43,7 @@ export function createTestHitl(options: CreateTestHitlOptions): TestHitl {
   };
 
   const hitl = new Hitl({
-    plugins: options.plugins,
+    adapters: options.adapters,
     state: options.state,
     resolver,
     secret: options.secret,

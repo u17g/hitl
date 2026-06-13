@@ -22,18 +22,18 @@ export interface NewBatchRecord {
 
 /** Groups the items of one `waitForBatchApprovals` call; status derives from its items. */
 export interface BatchRecord extends NewBatchRecord {
-  /** Channel message id of the batch message, set after `plugin.sendBatch`. */
+  /** Channel message id of the batch message, set after `adapter.sendBatch`. */
   externalId?: string;
-  /** Per-plugin delivery ids (e.g. escalation re-deliveries). */
+  /** Per-adapter delivery ids (e.g. escalation re-deliveries). */
   externalIds?: Record<string, string>;
   createdAt: string;
 }
 
 export interface ApprovalRecord extends NewApprovalRecord {
   status: "pending" | "resolved";
-  /** Channel message id (e.g. Slack message ts), set after `plugin.send`. */
+  /** Channel message id (e.g. Slack message ts), set after `adapter.send`. */
   externalId?: string;
-  /** Per-plugin delivery ids (e.g. escalation re-deliveries). */
+  /** Per-adapter delivery ids (e.g. escalation re-deliveries). */
   externalIds?: Record<string, string>;
   result?: ApprovalResult;
   createdAt: string;

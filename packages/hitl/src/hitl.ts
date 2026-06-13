@@ -16,15 +16,15 @@ import {
 import { INBOX_CHANNEL_ID, inboxChannel } from "./inbox-channel";
 import { createInbox, type HitlInbox } from "./inbox";
 import { defaultInMemoryState, type State } from "./state";
-import type { HitlPlugin } from "./types";
+import type { HitlAdapter } from "./types";
 
 export interface HitlOptions {
   /**
-   * Channel plugins (Slack, Teams, …). Optional: the built-in web inbox channel
+   * Channel adapters (Slack, Teams, …). Optional: the built-in web inbox channel
    * is always included, so workflows can deliver to the inbox and `hitl.inbox`
-   * works with no plugins configured. The first entry is the default channel.
+   * works with no adapters configured. The first entry is the default channel.
    */
-  plugins?: HitlPlugin[];
+  adapters?: HitlAdapter[];
   /** Defaults to one in-memory state per process. Pass `@hitl/state-pg` or `@hitl/state-sqlite` for persistence. */
   state?: State;
   /** Engine resolver from an engine package, e.g. `workflowResolver()` from `@hitl/resolver-workflow-sdk`. */
@@ -48,20 +48,20 @@ export interface HitlInstance {
   };
   readonly runtime: HitlRuntime;
   readonly state: State;
-  readonly plugins: HitlPlugin[];
+  readonly adapters: HitlAdapter[];
   /** Programmatic inbox: read state and resolve approvals from your own handlers. */
   readonly inbox: HitlInbox;
 }
 
 function buildRuntime(options: HitlOptions): HitlRuntime {
-  const configured = options.plugins ?? [];
+  const configured = options.adapters ?? [];
   // The web inbox is always available as a channel, unless the app already
   // registered one under its id; configured channels take precedence as default.
-  const plugins = configured.some((p) => p.id === INBOX_CHANNEL_ID)
+  const adapters = configured.some((p) => p.id === INBOX_CHANNEL_ID)
     ? configured
     : [...configured, inboxChannel()];
   return {
-    plugins,
+    adapters,
     state: options.state ?? defaultInMemoryState(),
     resolver: options.resolver,
   };
@@ -87,7 +87,7 @@ function createFetchHandler(runtime: HitlRuntime, secret?: string): HitlInstance
 export class Hitl implements HitlInstance {
   readonly runtime: HitlRuntime;
   readonly state: State;
-  readonly plugins: HitlPlugin[];
+  readonly adapters: HitlAdapter[];
   readonly inbox: HitlInbox;
   readonly routeHandlers: HitlInstance["routeHandlers"];
   readonly fetch: HitlInstance["fetch"];
@@ -96,7 +96,7 @@ export class Hitl implements HitlInstance {
   constructor(options: HitlOptions) {
     this.runtime = buildRuntime(options);
     this.state = this.runtime.state;
-    this.plugins = this.runtime.plugins;
+    this.adapters = this.runtime.adapters;
     this.inbox = createInbox(this.runtime);
     const secret = options.secret ?? process.env.HITLDEV_SECRET;
     const fetchHandler = createFetchHandler(this.runtime, secret);

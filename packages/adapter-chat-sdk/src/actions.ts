@@ -4,13 +4,13 @@ import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";
 import { needsModal, parseModalValues } from "./fields";
 import { approvalModal } from "./render";
 
-/** Bots that already have hitldev handlers wired, so multiple plugins sharing a
+/** Bots that already have hitldev handlers wired, so multiple adapters sharing a
  * Chat instance register the global onAction/onModalSubmit handlers only once. */
 const wired = new WeakSet<object>();
 
 /**
  * Wire approve/deny clicks and modal submits on a Chat instance to the inbox.
- * The inbox is resolved lazily so it can be created after the plugins (which
+ * The inbox is resolved lazily so it can be created after the adapters (which
  * `new Hitl()` requires up front). Idempotent per bot.
  */
 export function registerHitlHandlers(bot: Chat, getInbox: () => HitlInbox): void {

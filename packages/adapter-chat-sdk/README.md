@@ -1,6 +1,6 @@
 # @hitl/adapter-chat-sdk
 
-A hitldev channel plugin backed by the [Vercel Chat SDK](https://chat-sdk.dev). One adapter delivers approvals to Slack, Teams, Discord, and every other Chat SDK platform — the SDK owns webhook verification, payload parsing, and native card rendering (Block Kit, Adaptive Cards, embeds + modal).
+A hitldev channel adapter backed by the [Vercel Chat SDK](https://chat-sdk.dev). One adapter delivers approvals to Slack, Teams, Discord, and every other Chat SDK platform — the SDK owns webhook verification, payload parsing, and native card rendering (Block Kit, Adaptive Cards, embeds + modal).
 
 ## Install
 
@@ -20,14 +20,14 @@ import { Chat } from "chat";
 import { createSlackAdapter } from "@chat-adapter/slack";
 
 const bot = new Chat({
-  adapters: { slack: createSlackAdapter() },
+  adapters: { slack: createSlackAdapter() }, // Chat SDK platform adapters
   state: createRedisState(), // any Chat SDK state adapter
 });
 
 export const hitl = new Hitl({
   resolver: workflowResolver(),
-  plugins: [
-    // `inbox` is lazy: `new Hitl()` needs the plugins before hitl.inbox exists.
+  adapters: [ // hitldev channel adapters
+    // `inbox` is lazy: `new Hitl()` needs the adapters before hitl.inbox exists.
     chatHitl({ id: "approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
   ],
 });
@@ -36,9 +36,9 @@ export const hitl = new Hitl({
 export const POST = bot.webhooks.slack; // app/api/webhooks/slack/route.ts
 ```
 
-`chatHitl` registers approve/deny and modal handlers on the `bot`, so the Chat SDK webhook resolves approvals through `hitl.inbox`. Multiple `chatHitl` plugins sharing one `bot` register the handlers only once.
+`chatHitl` registers approve/deny and modal handlers on the `bot`, so the Chat SDK webhook resolves approvals through `hitl.inbox`. Multiple `chatHitl` adapters sharing one `bot` register the handlers only once.
 
-## How it maps to `HitlPlugin`
+## How it maps to `HitlAdapter`
 
 - **send** — posts an approval card (message + Approve/Deny buttons carrying the request id) to `channel`; the `SentMessage` handle is kept in memory for `update`.
 - **update** — edits the card in place to show the outcome once resolved.
@@ -48,7 +48,7 @@ export const POST = bot.webhooks.slack; // app/api/webhooks/slack/route.ts
 
 ### Caveats
 
-- `update` relies on the in-process `SentMessage` handle. After a server restart the handle is gone and `update` becomes a no-op — the approval still resolves; only the in-place card edit is skipped. This matches the behaviour of the previous per-platform plugins.
+- `update` relies on the in-process `SentMessage` handle. After a server restart the handle is gone and `update` becomes a no-op — the approval still resolves; only the in-place card edit is skipped. This matches the behaviour of the previous per-platform adapters.
 
 ## JSX
 
