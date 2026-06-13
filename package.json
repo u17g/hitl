@@ -1,14 +1,26 @@
 {
   "name": "hitl-sdk-monorepo",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
+  "homepage": "https://github.com/u17g/hitl#readme",
+  "bugs": {
+    "url": "https://github.com/u17g/hitl/issues"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "publish-packages": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
   },

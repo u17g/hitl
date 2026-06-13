@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "Postgres store for hitl. Bring your own pg-compatible pool.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "state-pg": "./dist/cli.js"

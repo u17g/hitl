@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "SQLite store for hitl, built on node:sqlite with zero dependencies.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.13.0"
