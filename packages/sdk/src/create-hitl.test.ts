@@ -26,6 +26,8 @@ import type {
 // - POST dispatches to the first plugin whose handleCallback returns non-null
 // - POST with no matching plugin -> 404; invalid feedbacks -> 400
 // - GET /approvals (+ ?status=), GET /approvals/:id, GET /batches/:id
+// - app.inbox reads/writes match the HTTP inbox; POST /approvals/:id and /batches/:id resolve
+// - the inbox write routes map unknown id -> 404, invalid feedbacks -> 400
 // - routeHandlers.GET/POST and the Node handler delegate to the same fetch logic
 
 const BASE = "http://x/.well-known/hitldev/v1";
@@ -409,6 +411,108 @@ describe("inbox API", () => {
 
     const missing = await app.fetch(new Request(`${BASE}/approvals/nope`));
     expect(missing.status).toBe(404);
+  });
+});
+
+describe("inbox facade", () => {
+  it("defaults the channel to the built-in web inbox when no plugins are given", async () => {
+    const resolver = new FakeResolver();
+    const app = createHitl({ resolver, store: new InMemoryStore() });
+    expect(app.plugins.map((p) => p.id)).toEqual(["inbox"]);
+
+    const id = await createRequest(app);
+    const result = await app.inbox.approve(id);
+
+    expect(result).toMatchObject({ type: "APPROVED", id });
+    expect(resolver.resolved).toHaveLength(1);
+  });
+
+  it("always includes the web inbox channel alongside configured plugins", () => {
+    const { app } = setup({ pluginIds: ["lead-approvals"] });
+    // The configured channel stays first (the default); the inbox is appended.
+    expect(app.plugins.map((p) => p.id)).toEqual(["lead-approvals", "inbox"]);
+  });
+
+  it("app.inbox.list matches the HTTP inbox", async () => {
+    const { app } = setup();
+    const id = await createRequest(app);
+
+    const viaHttp = (
+      (await (await app.fetch(new Request(`${BASE}/approvals?status=pending`))).json()) as {
+        approvals: { id: string }[];
+      }
+    ).approvals.map((a) => a.id);
+    const viaInbox = (await app.inbox.list({ status: "pending" })).map((a) => a.id);
+
+    expect(viaInbox).toEqual(viaHttp);
+    expect(viaInbox).toEqual([id]);
+  });
+
+  it("app.inbox.approve resolves the approval and resumes the engine", async () => {
+    const { app, resolver } = setup();
+    const id = await createRequest(app);
+
+    const result = await app.inbox.approve(id, { by: { name: "u" } });
+
+    expect(result).toMatchObject({ type: "APPROVED", id });
+    expect(resolver.resolved).toEqual([{ token: "tok_1", payload: result }]);
+    expect((await app.inbox.get(id))?.status).toBe("resolved");
+  });
+});
+
+describe("inbox write routes", () => {
+  it("POST /approvals/:id approves and resumes the engine", async () => {
+    const { app, resolver } = setup();
+    const id = await createRequest(app);
+
+    const res = await post(app, `/approvals/${id}`, { decision: "approve", by: { name: "u" } });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, result: { type: "APPROVED", id, by: { name: "u" } } });
+    expect(resolver.resolved).toHaveLength(1);
+  });
+
+  it("POST /approvals/:id denies with a reason", async () => {
+    const { app } = setup();
+    const id = await createRequest(app);
+
+    const res = await post(app, `/approvals/${id}`, { decision: "deny", reason: "spam" });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { result: { type: string; reason?: string } };
+    expect(body.result).toMatchObject({ type: "DENIED", reason: "spam" });
+  });
+
+  it("POST /batches/:batchId submits every item", async () => {
+    const { app, resolver } = setup();
+    const { batchId } = await createBatch(app);
+
+    const res = await post(app, `/batches/${batchId}`, {
+      decisions: [
+        { requestId: `${batchId}:0`, decision: "approve" },
+        { requestId: `${batchId}:1`, decision: "deny", reason: "no" },
+      ],
+      by: { name: "u" },
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; results: { type: string }[] };
+    expect(body.results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
+    expect(resolver.resolved.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
+  });
+
+  it("maps an unknown id to 404 and invalid feedbacks to 400", async () => {
+    const { app } = setup();
+
+    const notFound = await post(app, "/approvals/missing", { decision: "approve" });
+    expect(notFound.status).toBe(404);
+
+    const id = await createRequest(app);
+    const bad = await post(app, `/approvals/${id}`, {
+      decision: "approve",
+      feedbacks: { bogus: "x" },
+    });
+    expect(bad.status).toBe(400);
   });
 });
 

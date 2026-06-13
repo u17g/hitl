@@ -1,17 +1,16 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { field, InMemoryStore, webui, type ApprovalResult } from "./index";
+import { field, InMemoryStore, type ApprovalResult } from "./index";
 import { createTestHitl } from "./testing";
 
 // Test list:
-// - the client's waitForApproval resolves through the webui callback on the server
+// - the client's waitForApproval resolves through the built-in inbox write route
 // - the result's feedbacks are typed from the field definitions
-// - notify threads through the configured plugin
-// - the batch loop resolves through the webui batch submit with typed results
+// - notify threads through the always-on web inbox channel
+// - the batch loop resolves through the built-in batch submit route with typed results
 
 describe("public API", () => {
-  it("runs the full approve-with-edits loop through the webui plugin", async () => {
+  it("runs the full approve-with-edits loop through the inbox write route", async () => {
     const { app, client } = createTestHitl({
-      plugins: [webui()],
       store: new InMemoryStore(),
     });
 
@@ -35,7 +34,7 @@ describe("public API", () => {
     await client.notify({ parent: requestId, message: "Original message: hello" });
 
     const res = await app.fetch(
-      new Request(`http://x/.well-known/hitldev/v1/webui/approvals/${requestId}`, {
+      new Request(`http://x/.well-known/hitldev/v1/approvals/${requestId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -58,9 +57,8 @@ describe("public API", () => {
     }
   });
 
-  it("runs the batch loop through the webui plugin with typed results", async () => {
+  it("runs the batch loop through the inbox submit route with typed results", async () => {
     const { app, client } = createTestHitl({
-      plugins: [webui()],
       store: new InMemoryStore(),
     });
 
@@ -83,7 +81,7 @@ describe("public API", () => {
     })();
 
     const res = await app.fetch(
-      new Request(`http://x/.well-known/hitldev/v1/webui/batches/${batchId}`, {
+      new Request(`http://x/.well-known/hitldev/v1/batches/${batchId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

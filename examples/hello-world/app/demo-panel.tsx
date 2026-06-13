@@ -41,8 +41,8 @@ export function DemoPanel() {
 
   const refresh = useCallback(async () => {
     const [pendingRes, resolvedRes] = await Promise.all([
-      fetch("/.well-known/hitldev/v1/approvals?status=pending"),
-      fetch("/.well-known/hitldev/v1/approvals?status=resolved"),
+      fetch("/api/inbox?status=pending"),
+      fetch("/api/inbox?status=resolved"),
     ]);
     const pendingBody = await readJson<{ approvals: ApprovalRecord[] }>(pendingRes);
     const resolvedBody = await readJson<{ approvals: ApprovalRecord[] }>(resolvedRes);
@@ -80,12 +80,12 @@ export function DemoPanel() {
   async function decide(id: string, decision: "approve" | "deny") {
     setBusy(true);
     try {
-      const res = await fetch(`/.well-known/hitldev/v1/webui/approvals/${id}`, {
+      const res = await fetch("/api/inbox", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision, by: { name: "demo-ui" } }),
+        body: JSON.stringify({ id, decision, by: { name: "demo-ui" } }),
       });
-      await readJson<{ ok: boolean }>(res);
+      await readJson<{ result: { type: string } }>(res);
       pushLog(`${decision === "approve" ? "Approved" : "Denied"} ${id}`, decision === "approve" ? "ok" : undefined);
       await refresh();
     } catch (err) {

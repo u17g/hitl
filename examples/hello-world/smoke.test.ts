@@ -1,11 +1,10 @@
-import { InMemoryStore, webui } from "@hitldev/sdk";
+import { InMemoryStore } from "@hitldev/sdk";
 import { createTestHitl } from "@hitldev/sdk/testing";
 import { describe, expect, it } from "vitest";
 
 describe("hello-world smoke", () => {
   it("runs the approve loop used by workflows/hello.ts", async () => {
     const { app, client } = createTestHitl({
-      plugins: [webui()],
       store: new InMemoryStore(),
     });
 
@@ -21,7 +20,7 @@ describe("hello-world smoke", () => {
     expect(record.message).toBe("Say hello to world?");
 
     const res = await app.fetch(
-      new Request(`http://x/.well-known/hitldev/v1/webui/approvals/${record.id}`, {
+      new Request(`http://x/.well-known/hitldev/v1/approvals/${record.id}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ decision: "approve", by: { name: "you" } }),

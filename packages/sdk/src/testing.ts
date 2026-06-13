@@ -5,7 +5,8 @@ import type { Store } from "./store";
 import type { HitlPlugin } from "./types";
 
 export interface CreateTestHitlOptions {
-  plugins: HitlPlugin[];
+  /** Extra channels on top of the always-on web inbox. Optional. */
+  plugins?: HitlPlugin[];
   store?: Store;
   secret?: string;
 }
