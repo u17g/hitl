@@ -1,20 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import type { HitlResolver, HitlSuspension } from "./binding";
 import { createHitlClient, type HitlClient } from "./client";
-import { resolveApproval, resolveBatchApproval } from "./core";
+import { resolveHumanRequest, resolveBatchHumanRequest } from "./core";
 import { Hitl, type HitlInstance } from "./hitl";
 import { field } from "./fields";
+import { humanActions } from "./human-actions-builder";
+import { submitAction, type HumanActions } from "./human-actions";
 import { InMemoryState } from "./state";
 import type {
-  ApprovalRequest,
-  ApprovalResult,
-  BatchApprovalRequest,
+  HumanRequest,
+  BatchHumanRequest,
   HitlAdapter,
+  HumanResult,
   Notification,
 } from "./types";
 
 // Test list:
-// - waitForApproval suspends, POSTs the resume token to /requests, and resolves on callback
+// - waitForHuman suspends, POSTs the resume token to /requests, and resolves on callback
 // - sends the bearer secret; a 401 from the server rejects the wait
 // - non-2xx responses reject (so the durable fetch step can retry)
 // - timeout: sleeps for the duration, then the /timeout endpoint decides -> TIMED_OUT
@@ -22,7 +24,7 @@ import type {
 // - reminder is a no-op (server-side) after the approval is resolved
 // - reminders scheduled after the timeout are skipped client-side
 // - same-time reminders fire in array order; escalate notify/redeliver pass through
-// - waitForBatchApprovals: one suspension per item, one POST /batches, results in item order
+// - waitForHuman batch: one suspension per item, one POST /batches, results in item order
 // - batch timeout keeps resolved items and times out pending ones
 // - notify POSTs /notifications
 
@@ -69,10 +71,10 @@ class FakeEngine {
 }
 
 interface FakeAdapter extends HitlAdapter {
-  sent: ApprovalRequest[];
-  sentBatches: BatchApprovalRequest[];
+  sent: HumanRequest[];
+  sentBatches: BatchHumanRequest[];
   updates: unknown[][];
-  batchUpdates: Array<[string, ApprovalResult[]]>;
+  batchUpdates: Array<[string, HumanResult[]]>;
   notifications: Notification[];
 }
 
@@ -137,12 +139,18 @@ const fields = {
   subject: field.textField({ label: "Subject", default: "Hi" }),
   body: field.textArea({ label: "Body", default: "Hello there" }),
 };
+const actions = humanActions().submit({ fields }).build();
+const batchActions = humanActions()
+  .submit({ fields })
+  .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
+  .build();
+const submitOnly = humanActions().submit({}).build();
 
-describe("waitForApproval", () => {
+describe("waitForHuman", () => {
   it("POSTs the resume token to /requests and resolves on callback", async () => {
     const { adapters, hitl, client, requestCalls } = makeHarness();
 
-    const pending = client.waitForApproval({ message: "Approve?", fields });
+    const pending = client.waitForHuman({ message: "Approve?", actions });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     expect(requestCalls[0]!.url).toBe("http://hitl.test/.well-known/hitldev/v1/requests");
@@ -150,32 +158,40 @@ describe("waitForApproval", () => {
     expect(sentBody.token).toBe("tok_1");
 
     const requestId = adapters[0]!.sent[0]!.id;
-    const result = await resolveApproval(hitl.runtime, {
+    const result = await resolveHumanRequest(hitl.runtime, {
       requestId,
-      decision: "approve",
+      actionId: "submit",
       by: { name: "ryosuke" },
     });
 
     expect(await pending).toEqual(result);
-    expect(result).toEqual({ type: "APPROVED", id: requestId, by: { name: "ryosuke" } });
+    expect(result).toEqual({
+      type: "RESOLVED",
+      actionId: "submit",
+      id: requestId,
+      by: { name: "ryosuke" },
+      feedbacks: { subject: "Hi", body: "Hello there" },
+    });
   });
 
-  it("typed feedbacks flow back on REVIEWED", async () => {
+  it("typed feedbacks flow back on RESOLVED with edited", async () => {
     const { adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForApproval({ message: "m", fields });
+    const pending = client.waitForHuman({ message: "m", actions });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
-    await resolveApproval(hitl.runtime, {
+    await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      decision: "approve",
+      actionId: "submit",
       feedbacks: { subject: "Edited", body: "Hello there" },
     });
 
     const result = await pending;
     expect(result).toMatchObject({
-      type: "REVIEWED",
+      type: "RESOLVED",
+      actionId: "submit",
       feedbacks: { subject: "Edited", body: "Hello there" },
+      edited: true,
     });
   });
 
@@ -185,28 +201,28 @@ describe("waitForApproval", () => {
       clientSecret: "s3cret",
     });
 
-    const pending = client.waitForApproval({ message: "m" });
+    const pending = client.waitForHuman({ message: "m", actions: submitOnly });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     expect(requestCalls[0]!.headers.authorization).toBe("Bearer s3cret");
 
-    await resolveApproval(hitl.runtime, {
+    await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      decision: "approve",
+      actionId: "submit",
     });
     await pending;
   });
 
   it("rejects when the server returns 401", async () => {
     const { client } = makeHarness({ secret: "s3cret", clientSecret: "wrong" });
-    await expect(client.waitForApproval({ message: "m" })).rejects.toThrow(/401/);
+    await expect(client.waitForHuman({ message: "m", actions: submitOnly })).rejects.toThrow(/401/);
   });
 
   it("resolves as TIMED_OUT when the timeout elapses first", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
     engine.autoResolveSleep();
 
-    const result = await client.waitForApproval({ message: "m", timeout: "72h" });
+    const result = await client.waitForHuman({ message: "m", actions: submitOnly, timeout: "72h" });
 
     expect(engine.sleepCalls).toEqual([72 * 60 * 60 * 1000]);
     expect(result.type).toBe("TIMED_OUT");
@@ -217,12 +233,12 @@ describe("waitForApproval", () => {
   it("returns the callback result when it wins the race against the timeout", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForApproval({ message: "m", timeout: "72h" });
+    const pending = client.waitForHuman({ message: "m", actions: submitOnly, timeout: "72h" });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
-    const result = await resolveApproval(hitl.runtime, {
+    const result = await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      decision: "approve",
+      actionId: "submit",
     });
     expect(await pending).toEqual(result);
     void engine;
@@ -231,8 +247,9 @@ describe("waitForApproval", () => {
   it("fires the remind endpoint when the timer elapses while pending", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForApproval({
+    const pending = client.waitForHuman({
       message: "Approve?",
+      actions: submitOnly,
       reminder: [{ after: "1h", message: "Still waiting" }],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
@@ -243,27 +260,28 @@ describe("waitForApproval", () => {
 
     await vi.waitFor(() => expect(adapters[0]!.notifications).toHaveLength(1));
     expect(adapters[0]!.notifications[0]).toEqual({
-      parent: requestId,
+      threadId: requestId,
       message: "Still waiting",
       channel: "a",
-      parentExternalId: `ext_${requestId}`,
+      threadRef: `ext_${requestId}`,
     });
 
-    await resolveApproval(hitl.runtime, { requestId, decision: "approve" });
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "submit" });
     await pending;
   });
 
   it("skips the reminder server-side after the approval is resolved", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
-    const pending = client.waitForApproval({
+    const pending = client.waitForHuman({
       message: "m",
+      actions: submitOnly,
       reminder: [{ after: "1h", message: "ping" }],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
-    await resolveApproval(hitl.runtime, {
+    await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      decision: "approve",
+      actionId: "submit",
     });
     await pending;
 
@@ -275,8 +293,9 @@ describe("waitForApproval", () => {
     const { engine, adapters, client } = makeHarness();
     engine.autoResolveSleep();
 
-    await client.waitForApproval({
+    await client.waitForHuman({
       message: "m",
+      actions: submitOnly,
       timeout: "1h",
       reminder: [{ after: "2h", message: "too late" }],
     });
@@ -286,8 +305,9 @@ describe("waitForApproval", () => {
 
   it("fires same-time reminders in array order", async () => {
     const { engine, adapters, hitl, client } = makeHarness({ adapterIds: ["a", "oncall"] });
-    const pending = client.waitForApproval({
+    const pending = client.waitForHuman({
       message: "m",
+      actions: submitOnly,
       reminder: [
         { after: "1h", message: "first" },
         { after: "1h", channel: "oncall", message: "second" },
@@ -300,19 +320,19 @@ describe("waitForApproval", () => {
     expect(adapters[0]!.notifications[0]?.message).toBe("first");
     expect(adapters[1]!.notifications[0]?.message).toBe("second");
 
-    await resolveApproval(hitl.runtime, {
+    await resolveHumanRequest(hitl.runtime, {
       requestId: adapters[0]!.sent[0]!.id,
-      decision: "approve",
+      actionId: "submit",
     });
     await pending;
   });
 
   it("escalates with redeliver on the fallback channel", async () => {
     const { engine, adapters, hitl, client } = makeHarness({ adapterIds: ["primary", "oncall"] });
-    const pending = client.waitForApproval({
+    const pending = client.waitForHuman({
       message: "Escalate me",
       channel: "primary",
-      fields,
+      actions,
       reminder: [{ after: "1h", channel: "oncall", mode: "redeliver" }],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
@@ -326,7 +346,7 @@ describe("waitForApproval", () => {
       message: "Escalate me",
     });
 
-    await resolveApproval(hitl.runtime, { requestId, decision: "approve" });
+    await resolveHumanRequest(hitl.runtime, { requestId, actionId: "submit" });
     await pending;
 
     expect(adapters[0]!.updates).toHaveLength(1);
@@ -334,13 +354,13 @@ describe("waitForApproval", () => {
   });
 });
 
-describe("waitForBatchApprovals", () => {
+describe("waitForHuman batch", () => {
   it("creates one suspension per item and resolves in item order", async () => {
     const { adapters, hitl, client, requestCalls } = makeHarness();
 
-    const pending = client.waitForBatchApprovals({
+    const pending = client.waitForHuman({
       title: "Outbound emails",
-      fields,
+      actions: batchActions,
       items: [
         { message: "Email to ACME", defaults: { subject: "Hello ACME" } },
         { message: "Email to Globex" },
@@ -349,27 +369,32 @@ describe("waitForBatchApprovals", () => {
     await vi.waitFor(() => expect(adapters[0]!.sentBatches).toHaveLength(1));
 
     const body = JSON.parse(requestCalls[0]!.body) as {
-      items: Array<{ token: string; fields: typeof fields }>;
+      actions: HumanActions;
+      items: Array<{ token: string; defaults?: Record<string, unknown> }>;
     };
     expect(body.items.map((i) => i.token)).toEqual(["tok_1", "tok_2"]);
-    expect(body.items[0]!.fields.subject).toMatchObject({ default: "Hello ACME" });
+    expect(submitAction(body.actions)!.fields!.subject).toMatchObject({ default: "Hi" });
+    expect(body.items[0]!.defaults).toEqual({ subject: "Hello ACME" });
 
     const batchId = adapters[0]!.sentBatches[0]!.batchId;
-    const results = await resolveBatchApproval(hitl.runtime, {
+    const results = await resolveBatchHumanRequest(hitl.runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "deny", reason: "no" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "deny", feedbacks: { reason: "no" } },
       ],
     });
 
     expect(await pending).toEqual(results);
-    expect(results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
+    expect(results.map((r) => (r.type === "RESOLVED" ? r.actionId : r.type))).toEqual([
+      "submit",
+      "deny",
+    ]);
   });
 
   it("throws on empty items without suspending", async () => {
     const { client, requestCalls } = makeHarness();
-    await expect(client.waitForBatchApprovals({ items: [] })).rejects.toThrow(
+    await expect(client.waitForHuman({ actions: submitOnly, items: [] })).rejects.toThrow(
       /at least one item/i,
     );
     expect(requestCalls).toHaveLength(0);
@@ -378,27 +403,27 @@ describe("waitForBatchApprovals", () => {
   it("times out pending items and keeps resolved ones", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForBatchApprovals({
-      fields,
+    const pending = client.waitForHuman({
+      actions,
       items: [{ message: "A" }, { message: "B" }],
       timeout: "1h",
     });
     await vi.waitFor(() => expect(adapters[0]!.sentBatches).toHaveLength(1));
     const batchId = adapters[0]!.sentBatches[0]!.batchId;
 
-    await resolveApproval(hitl.runtime, { requestId: `${batchId}:0`, decision: "approve" });
+    await resolveHumanRequest(hitl.runtime, { requestId: `${batchId}:0`, actionId: "submit" });
     engine.flushSleep();
 
     const results = await pending;
-    expect(results[0]).toMatchObject({ type: "APPROVED", id: `${batchId}:0` });
+    expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "submit", id: `${batchId}:0` });
     expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
   });
 
   it("threads a reminder notify under the batch message", async () => {
     const { engine, adapters, hitl, client } = makeHarness();
 
-    const pending = client.waitForBatchApprovals({
-      fields,
+    const pending = client.waitForHuman({
+      actions,
       items: [{ message: "A" }, { message: "B" }],
       reminder: [{ after: "1h", message: "Still waiting" }],
     });
@@ -408,17 +433,17 @@ describe("waitForBatchApprovals", () => {
     engine.flushSleep();
     await vi.waitFor(() => expect(adapters[0]!.notifications).toHaveLength(1));
     expect(adapters[0]!.notifications[0]).toEqual({
-      parent: batchId,
+      threadId: batchId,
       message: "Still waiting",
       channel: "a",
-      parentExternalId: `bext_${batchId}`,
+      threadRef: `bext_${batchId}`,
     });
 
-    await resolveBatchApproval(hitl.runtime, {
+    await resolveBatchHumanRequest(hitl.runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "approve" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "submit" },
       ],
     });
     await pending;

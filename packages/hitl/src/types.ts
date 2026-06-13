@@ -1,4 +1,6 @@
 import type { HitlField } from "./fields";
+import type { HumanActions } from "./human-actions";
+import type { HumanResult } from "./human-result";
 
 export interface Reviewer {
   id?: string;
@@ -6,60 +8,58 @@ export interface Reviewer {
   email?: string;
 }
 
-/** Discriminated union returned by `waitForApproval`. `F` is inferred from the field definitions. */
-export type ApprovalResult<F = Record<string, unknown>> =
-  | { type: "APPROVED"; id: string; by?: Reviewer }
-  | { type: "DENIED"; id: string; by?: Reviewer; reason?: string }
-  | { type: "REVIEWED"; id: string; by?: Reviewer; feedbacks: F }
-  | { type: "TIMED_OUT"; id: string };
+export type { HumanResult };
 
-/** What an adapter receives to render and deliver an approval request. */
-export interface ApprovalRequest {
+/**
+ * What an adapter receives to render and deliver a human step.
+ * Not to be confused with `HitlRequest` in `binding.ts`, which is the durable
+ * step HTTP envelope (`url`, `method`, `body`) sent to the hitldev server.
+ */
+export interface HumanRequest {
   id: string;
   channel: string;
   message: string;
-  fields: Record<string, HitlField>;
+  actions: HumanActions;
+  context?: Record<string, unknown>;
 }
 
 /**
- * What an adapter receives to render and deliver a batch of approvals as a
- * single message. The field schema is shared across items; each item carries
- * its resolved initial values.
+ * What an adapter receives to render and deliver a batch as a single message.
+ * The action schema is shared across items; each item carries its resolved initial values.
  */
-export interface BatchApprovalRequest {
+export interface BatchHumanRequest {
   batchId: string;
   channel: string;
   title?: string;
-  /** Field schema shared by every item. */
-  fields: Record<string, HitlField>;
-  /** Input order. `defaults` are the shared field defaults overridden per item. */
+  actions: HumanActions;
+  /** Input order. `defaults` are submit field defaults overridden per item. */
   items: Array<{ id: string; message: string; defaults: Record<string, unknown> }>;
+  context?: Record<string, unknown>;
 }
 
 export interface Notification {
   message: string;
-  /** Approval id to thread under. */
-  parent?: string;
-  /** Channel message id of the parent approval (e.g. Slack thread_ts), resolved by the core. */
-  parentExternalId?: string;
+  /** Human step or batch id — timeline entries and notify group under this. */
+  threadId?: string;
+  /** Chat SDK thread ref; skip resolution when already known. */
+  threadRef?: string;
+  detail?: Record<string, unknown>;
   channel?: string;
 }
 
 /**
- * A parsed inbound interaction resolved through `hitl.inbox` (`approve` /
- * `deny` / `submitBatch`). Feedback values are raw; the core validates and
- * types them.
+ * A parsed inbound interaction resolved through `hitl.inbox.resolve`.
+ * Feedback values are raw; the core validates and types them.
  */
 export interface HitlCallback {
   requestId: string;
-  decision: "approve" | "deny";
+  actionId: string;
   by?: Reviewer;
-  reason?: string;
-  /** Raw edited values. Presence of edits turns an approval into a REVIEWED result. */
+  /** Raw edited values validated against the chosen action's fields. */
   feedbacks?: Record<string, unknown>;
   /** Channel-specific ack to return to the caller (e.g. Slack expects a fast 200). */
   response?: Response;
-  /** When true, return response immediately without resolving an approval. */
+  /** When true, return response immediately without resolving a human request. */
   ackOnly?: boolean;
 }
 
@@ -71,9 +71,7 @@ export interface HitlBatchCallback {
   batchId: string;
   decisions: Array<{
     requestId: string;
-    decision: "approve" | "deny";
-    reason?: string;
-    /** Raw edited values. Presence of edits turns an approval into a REVIEWED result. */
+    actionId: string;
     feedbacks?: Record<string, unknown>;
   }>;
   by?: Reviewer;
@@ -84,20 +82,20 @@ export interface HitlBatchCallback {
 }
 
 export interface HitlAdapter {
-  /** Routing key used by `waitForApproval({ channel })` / `notify({ channel })`. */
+  /** Routing key used by `waitForHuman({ channel })` / `notify({ channel })`. */
   id: string;
-  /** Render and deliver an approval request. */
-  send(request: ApprovalRequest): Promise<{ externalId: string }>;
+  /** Render and deliver a human step request. */
+  send(request: HumanRequest): Promise<{ externalId: string }>;
   /** Reflect resolution back into the channel (e.g. replace buttons with "Approved by @ryosuke"). */
-  update?(externalId: string, result: ApprovalResult): Promise<void>;
+  update?(externalId: string, result: HumanResult): Promise<void>;
   notify(notification: Notification): Promise<void>;
   /** Render and deliver a batch as a single message. Absent → the core sends items one by one. */
-  sendBatch?(request: BatchApprovalRequest): Promise<{ externalId: string }>;
+  sendBatch?(request: BatchHumanRequest): Promise<{ externalId: string }>;
   /**
    * Whether this request fits the channel's batch UI (size limits, field
    * support). `false` → the core falls back to per-item delivery.
    */
-  canSendBatch?(request: BatchApprovalRequest): boolean;
+  canSendBatch?(request: BatchHumanRequest): boolean;
   /** Reflect batch resolution back into the channel. `results` is in item order. */
-  updateBatch?(externalId: string, results: ApprovalResult[]): Promise<void>;
+  updateBatch?(externalId: string, results: HumanResult[]): Promise<void>;
 }

@@ -1,32 +1,33 @@
 import { describe, expect, it } from "vitest";
 import type { HitlResolver } from "./binding";
 import {
-  createApprovalRequest,
+  createHumanRequest,
   notifyVia,
-  remindApproval,
-  resolveApproval,
-  timeoutApproval,
+  remindHumanRequest,
+  resolveHumanRequest,
+  timeoutHumanRequest,
   type HitlRuntime,
 } from "./core";
 import { field } from "./fields";
+import { humanActions } from "./human-actions-builder";
 import { InMemoryState } from "./state";
-import type { ApprovalRequest, HitlAdapter, Notification } from "./types";
+import type { HumanRequest, HitlAdapter, Notification } from "./types";
 
 // Test list:
-// - createApprovalRequest records the request, sends via the adapter, stores the externalId
+// - createHumanRequest records the request, sends via the adapter, stores the externalId
 // - selects adapter by channel id; defaults to the first; throws on unknown id / no adapters
-// - createApprovalRequest is idempotent on the resume token (at-least-once fetch)
+// - createHumanRequest is idempotent on the resume token (at-least-once fetch)
 // - a retry after a crash between create and send finishes the delivery
-// - resolveApproval(approve, no feedbacks) -> APPROVED, resolver called with stored token, adapter.update called
-// - resolveApproval(approve, edited feedbacks) -> REVIEWED with validated, typed feedbacks
-// - resolveApproval(approve, feedbacks equal to defaults) -> APPROVED (no edits)
-// - resolveApproval(deny with reason) -> DENIED
+// - resolveHumanRequest(submit, no feedbacks) -> RESOLVED, resolver called with stored token, adapter.update called
+// - resolveHumanRequest(submit, edited feedbacks) -> RESOLVED with edited: true and validated feedbacks
+// - resolveHumanRequest(submit, feedbacks equal to defaults) -> RESOLVED without edited
+// - resolveHumanRequest(deny with reason) -> RESOLVED actionId deny
 // - invalid feedbacks reject and leave the request pending
-// - timeoutApproval: pending -> TIMED_OUT recorded + channel updated
-// - timeoutApproval: already resolved -> returns the stored result, no update
-// - timeoutApproval: loses the CAS race -> returns the winning result
-// - remindApproval: threaded notify while pending; no-op once resolved
-// - remindApproval: escalate notify / escalate redeliver on the fallback channel
+// - timeoutHumanRequest: pending -> TIMED_OUT recorded + channel updated
+// - timeoutHumanRequest: already resolved -> returns the stored result, no update
+// - timeoutHumanRequest: loses the CAS race -> returns the winning result
+// - remindHumanRequest: threaded notify while pending; no-op once resolved
+// - remindHumanRequest: escalate notify / escalate redeliver on the fallback channel
 // - notifyVia routes by channel and resolves parent (approval or batch) to its externalId
 
 class FakeResolver implements HitlResolver {
@@ -38,11 +39,11 @@ class FakeResolver implements HitlResolver {
 }
 
 function fakeAdapter(id: string): HitlAdapter & {
-  sent: ApprovalRequest[];
+  sent: HumanRequest[];
   updates: unknown[][];
   notifications: Notification[];
 } {
-  const sent: ApprovalRequest[] = [];
+  const sent: HumanRequest[] = [];
   const updates: unknown[][] = [];
   const notifications: Notification[] = [];
   return {
@@ -75,15 +76,20 @@ const fields = {
   subject: field.textField({ label: "Subject", default: "Hi" }),
   body: field.textArea({ label: "Body", default: "Hello there" }),
 };
+const actions = humanActions()
+  .submit({ fields })
+  .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
+  .build();
+const submitOnly = humanActions().submit({}).build();
 
-describe("createApprovalRequest", () => {
+describe("createHumanRequest", () => {
   it("records the request, sends via the default adapter, and stores the externalId", async () => {
     const { runtime, state, adapters } = makeRuntime(["a", "b"]);
 
-    const { id } = await createApprovalRequest(runtime, {
+    const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "Approve?",
-      fields,
+      actions,
     });
 
     expect(adapters[0]!.sent).toHaveLength(1);
@@ -103,10 +109,10 @@ describe("createApprovalRequest", () => {
   it("routes to the adapter matching the channel id", async () => {
     const { runtime, adapters } = makeRuntime(["a", "b"]);
 
-    await createApprovalRequest(runtime, {
+    await createHumanRequest(runtime, {
       token: "tok_1",
       message: "m",
-      fields: {},
+      actions: submitOnly,
       channel: "b",
     });
 
@@ -117,22 +123,22 @@ describe("createApprovalRequest", () => {
   it("throws on an unknown channel id", async () => {
     const { runtime } = makeRuntime(["a"]);
     await expect(
-      createApprovalRequest(runtime, { token: "t", message: "m", fields: {}, channel: "nope" }),
+      createHumanRequest(runtime, { token: "t", message: "m", actions: submitOnly, channel: "nope" }),
     ).rejects.toThrow(/nope/);
   });
 
   it("throws when no adapters are configured", async () => {
     const { runtime } = makeRuntime([]);
     await expect(
-      createApprovalRequest(runtime, { token: "t", message: "m", fields: {} }),
+      createHumanRequest(runtime, { token: "t", message: "m", actions: submitOnly }),
     ).rejects.toThrow(/no .*adapter/i);
   });
 
   it("returns the existing id without re-sending when the token is already known", async () => {
     const { runtime, adapters } = makeRuntime();
 
-    const first = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
-    const second = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const first = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const second = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
     expect(second.id).toBe(first.id);
     expect(adapters[0]!.sent).toHaveLength(1);
@@ -141,9 +147,9 @@ describe("createApprovalRequest", () => {
   it("finishes the delivery when a retry finds a record without an externalId", async () => {
     const { runtime, state, adapters } = makeRuntime();
     // Simulate a crash between create and send: the record exists, no externalId.
-    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", fields });
+    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", actions });
 
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
     expect(id).toBe("a1");
     expect(adapters[0]!.sent).toHaveLength(1);
@@ -151,63 +157,85 @@ describe("createApprovalRequest", () => {
   });
 });
 
-describe("resolveApproval", () => {
+describe("resolveHumanRequest", () => {
   async function startApproval(runtime: HitlRuntime, token = "tok_1") {
-    const { id } = await createApprovalRequest(runtime, { token, message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token, message: "m", actions });
     return id;
   }
 
-  it("approve without feedbacks resolves APPROVED, resumes the engine, and updates the channel", async () => {
+  it("submit without feedbacks resolves RESOLVED, resumes the engine, and updates the channel", async () => {
     const { runtime, resolver, adapters } = makeRuntime();
     const requestId = await startApproval(runtime);
 
-    const result = await resolveApproval(runtime, {
+    const result = await resolveHumanRequest(runtime, {
       requestId,
-      decision: "approve",
+      actionId: "submit",
       by: { name: "ryosuke" },
     });
 
-    expect(result).toEqual({ type: "APPROVED", id: requestId, by: { name: "ryosuke" } });
+    expect(result).toEqual({
+      type: "RESOLVED",
+      actionId: "submit",
+      id: requestId,
+      by: { name: "ryosuke" },
+      feedbacks: { subject: "Hi", body: "Hello there" },
+    });
     expect(resolver.resolved).toEqual([{ token: "tok_1", payload: result }]);
     expect(adapters[0]!.updates).toEqual([[`ext_${requestId}`, result]]);
   });
 
-  it("approve with edited feedbacks resolves REVIEWED with validated values", async () => {
+  it("submit with edited feedbacks resolves RESOLVED with edited: true", async () => {
     const { runtime } = makeRuntime();
     const requestId = await startApproval(runtime);
 
-    const result = await resolveApproval(runtime, {
+    const result = await resolveHumanRequest(runtime, {
       requestId,
-      decision: "approve",
+      actionId: "submit",
       feedbacks: { subject: "Edited", body: "Hello there" },
     });
 
     expect(result).toMatchObject({
-      type: "REVIEWED",
+      type: "RESOLVED",
+      actionId: "submit",
       feedbacks: { subject: "Edited", body: "Hello there" },
+      edited: true,
     });
   });
 
-  it("approve with feedbacks identical to defaults resolves plain APPROVED", async () => {
+  it("submit with feedbacks identical to defaults resolves RESOLVED without edited", async () => {
     const { runtime } = makeRuntime();
     const requestId = await startApproval(runtime);
 
-    const result = await resolveApproval(runtime, {
+    const result = await resolveHumanRequest(runtime, {
       requestId,
-      decision: "approve",
+      actionId: "submit",
       feedbacks: { subject: "Hi", body: "Hello there" },
     });
 
-    expect(result.type).toBe("APPROVED");
+    expect(result).toMatchObject({
+      type: "RESOLVED",
+      actionId: "submit",
+      feedbacks: { subject: "Hi", body: "Hello there" },
+    });
+    expect(result).not.toHaveProperty("edited");
   });
 
-  it("deny resolves DENIED with the reason", async () => {
+  it("deny resolves RESOLVED with actionId deny and the reason", async () => {
     const { runtime } = makeRuntime();
     const requestId = await startApproval(runtime);
 
-    const result = await resolveApproval(runtime, { requestId, decision: "deny", reason: "spam" });
+    const result = await resolveHumanRequest(runtime, {
+      requestId,
+      actionId: "deny",
+      feedbacks: { reason: "spam" },
+    });
 
-    expect(result).toEqual({ type: "DENIED", id: requestId, reason: "spam" });
+    expect(result).toMatchObject({
+      type: "RESOLVED",
+      actionId: "deny",
+      id: requestId,
+      feedbacks: { reason: "spam" },
+    });
   });
 
   it("rejects invalid feedbacks and leaves the request pending", async () => {
@@ -215,9 +243,9 @@ describe("resolveApproval", () => {
     const requestId = await startApproval(runtime);
 
     await expect(
-      resolveApproval(runtime, {
+      resolveHumanRequest(runtime, {
         requestId,
-        decision: "approve",
+        actionId: "submit",
         feedbacks: { subject: "ok", body: "ok", extra: "nope" },
       }),
     ).rejects.toThrow(/extra/);
@@ -229,17 +257,17 @@ describe("resolveApproval", () => {
   it("rejects an unknown request id", async () => {
     const { runtime } = makeRuntime();
     await expect(
-      resolveApproval(runtime, { requestId: "missing", decision: "approve" }),
+      resolveHumanRequest(runtime, { requestId: "missing", actionId: "submit" }),
     ).rejects.toThrow(/missing/);
   });
 });
 
-describe("timeoutApproval", () => {
+describe("timeoutHumanRequest", () => {
   it("resolves a pending approval as TIMED_OUT and updates the channel", async () => {
     const { runtime, state, adapters } = makeRuntime();
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
-    const result = await timeoutApproval(runtime, id);
+    const result = await timeoutHumanRequest(runtime, id);
 
     expect(result).toEqual({ type: "TIMED_OUT", id });
     expect((await state.get(id))?.status).toBe("resolved");
@@ -248,11 +276,11 @@ describe("timeoutApproval", () => {
 
   it("returns the stored result when the approval is already resolved", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
-    const resolved = await resolveApproval(runtime, { requestId: id, decision: "approve" });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    const resolved = await resolveHumanRequest(runtime, { requestId: id, actionId: "submit" });
     adapters[0]!.updates.length = 0;
 
-    const result = await timeoutApproval(runtime, id);
+    const result = await timeoutHumanRequest(runtime, id);
 
     expect(result).toEqual(resolved);
     expect(adapters[0]!.updates).toHaveLength(0);
@@ -260,32 +288,32 @@ describe("timeoutApproval", () => {
 
   it("returns the winning result when it loses the resolve race", async () => {
     const { runtime, state } = makeRuntime();
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
     // Simulate a callback landing between the pending check and the CAS write.
     const originalResolve = state.resolve.bind(state);
     state.resolve = async () => {
-      await originalResolve(id, { type: "APPROVED", id });
+      await originalResolve(id, { type: "RESOLVED", actionId: "submit", id, feedbacks: {} });
       throw new Error(`Approval "${id}" is already resolved`);
     };
 
-    const result = await timeoutApproval(runtime, id);
+    const result = await timeoutHumanRequest(runtime, id);
 
-    expect(result).toEqual({ type: "APPROVED", id });
+    expect(result).toEqual({ type: "RESOLVED", actionId: "submit", id, feedbacks: {} });
   });
 
   it("throws on an unknown approval id", async () => {
     const { runtime } = makeRuntime();
-    await expect(timeoutApproval(runtime, "missing")).rejects.toThrow(/missing/);
+    await expect(timeoutHumanRequest(runtime, "missing")).rejects.toThrow(/missing/);
   });
 });
 
-describe("remindApproval", () => {
+describe("remindHumanRequest", () => {
   it("sends a threaded notify while pending", async () => {
     const { runtime, adapters } = makeRuntime(["a"]);
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
-    const { pending } = await remindApproval(runtime, id, {
+    const { pending } = await remindHumanRequest(runtime, id, {
       kind: "remind",
       message: "Still waiting",
     });
@@ -293,29 +321,29 @@ describe("remindApproval", () => {
     expect(pending).toBe(true);
     expect(adapters[0]!.notifications).toEqual([
       {
-        parent: id,
+        threadId: id,
         message: "Still waiting",
         channel: "a",
-        parentExternalId: `ext_${id}`,
+        threadRef: `ext_${id}`,
       },
     ]);
   });
 
   it("uses the default reminder message when message is omitted", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
-    await remindApproval(runtime, id, { kind: "remind" });
+    await remindHumanRequest(runtime, id, { kind: "remind" });
 
     expect(adapters[0]!.notifications[0]?.message).toBe("Reminder: approval still pending");
   });
 
   it("is a no-op once the approval is resolved", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
-    await resolveApproval(runtime, { requestId: id, decision: "approve" });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
+    await resolveHumanRequest(runtime, { requestId: id, actionId: "submit" });
 
-    const { pending } = await remindApproval(runtime, id, { kind: "remind" });
+    const { pending } = await remindHumanRequest(runtime, id, { kind: "remind" });
 
     expect(pending).toBe(false);
     expect(adapters[0]!.notifications).toHaveLength(0);
@@ -323,14 +351,14 @@ describe("remindApproval", () => {
 
   it("escalates with a notify on the fallback channel", async () => {
     const { runtime, adapters } = makeRuntime(["primary", "oncall"]);
-    const { id } = await createApprovalRequest(runtime, {
+    const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "m",
-      fields,
+      actions,
       channel: "primary",
     });
 
-    await remindApproval(runtime, id, {
+    await remindHumanRequest(runtime, id, {
       kind: "escalate",
       channel: "oncall",
       message: "Needs eyes",
@@ -341,22 +369,22 @@ describe("remindApproval", () => {
       {
         message: "Needs eyes",
         channel: "oncall",
-        parent: id,
-        parentExternalId: `ext_${id}`,
+        threadId: id,
+        threadRef: `ext_${id}`,
       },
     ]);
   });
 
   it("escalates with redeliver on the fallback channel", async () => {
     const { runtime, state, adapters } = makeRuntime(["primary", "oncall"]);
-    const { id } = await createApprovalRequest(runtime, {
+    const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "Escalate me",
-      fields,
+      actions,
       channel: "primary",
     });
 
-    await remindApproval(runtime, id, {
+    await remindHumanRequest(runtime, id, {
       kind: "escalate",
       channel: "oncall",
       mode: "redeliver",
@@ -370,14 +398,14 @@ describe("remindApproval", () => {
     expect((await state.get(id))?.externalIds?.oncall).toBe(`ext_${id}`);
 
     // Resolution updates both deliveries.
-    await resolveApproval(runtime, { requestId: id, decision: "approve" });
+    await resolveHumanRequest(runtime, { requestId: id, actionId: "submit" });
     expect(adapters[0]!.updates).toHaveLength(1);
     expect(adapters[1]!.updates).toHaveLength(1);
   });
 
   it("throws on an unknown approval id", async () => {
     const { runtime } = makeRuntime();
-    await expect(remindApproval(runtime, "missing", { kind: "remind" })).rejects.toThrow(
+    await expect(remindHumanRequest(runtime, "missing", { kind: "remind" })).rejects.toThrow(
       /missing/,
     );
   });
@@ -387,19 +415,19 @@ describe("notifyVia", () => {
   it("routes to the default adapter", async () => {
     const { runtime, adapters } = makeRuntime(["a", "b"]);
     await notifyVia(runtime, { message: "progress" });
-    expect(adapters[0]!.notifications).toEqual([{ message: "progress" }]);
+    expect(adapters[0]!.notifications[0]).toMatchObject({ message: "progress", channel: "a" });
   });
 
   it("resolves the parent approval id to the channel externalId", async () => {
     const { runtime, adapters } = makeRuntime();
-    const { id } = await createApprovalRequest(runtime, { token: "tok_1", message: "m", fields });
+    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions });
 
-    await notifyVia(runtime, { message: "context", parent: id });
+    await notifyVia(runtime, { message: "context", threadId: id });
 
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "context",
-      parent: id,
-      parentExternalId: `ext_${id}`,
+      threadId: id,
+      threadRef: `ext_${id}`,
     });
   });
 });

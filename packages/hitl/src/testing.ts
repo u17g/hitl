@@ -25,7 +25,7 @@ export interface TestHitl {
 /**
  * In-process server + client pair for tests: an in-memory engine stands in for
  * the durable one (suspensions are plain promises, timers fire via
- * `flushSleep`), so full waitForApproval → callback → result loops run without
+ * `flushSleep`), so full waitForHuman → callback → result loops run without
  * a workflow engine or HTTP server.
  */
 export function createTestHitl(options: CreateTestHitlOptions): TestHitl {

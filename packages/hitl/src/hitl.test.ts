@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { HitlResolver } from "./binding";
 import { Hitl } from "./hitl";
 import { field } from "./fields";
+import { humanActions } from "./human-actions-builder";
 import { InMemoryState } from "./state";
 import type {
-  ApprovalRequest,
-  BatchApprovalRequest,
+  HumanRequest,
+  BatchHumanRequest,
   HitlAdapter,
   Notification,
 } from "./types";
@@ -36,15 +37,15 @@ class FakeResolver implements HitlResolver {
 }
 
 interface FakeAdapter extends HitlAdapter {
-  sent: ApprovalRequest[];
-  sentBatches: BatchApprovalRequest[];
+  sent: HumanRequest[];
+  sentBatches: BatchHumanRequest[];
   notifications: Notification[];
 }
 
 /** An adapter whose callback parser accepts JSON bodies with a matching adapter id. */
 function jsonAdapter(id: string): FakeAdapter {
-  const sent: ApprovalRequest[] = [];
-  const sentBatches: BatchApprovalRequest[] = [];
+  const sent: HumanRequest[] = [];
+  const sentBatches: BatchHumanRequest[] = [];
   const notifications: Notification[] = [];
   return {
     id,
@@ -93,9 +94,14 @@ function post(
 }
 
 const fields = { subject: field.textField({ label: "Subject", default: "Hi" }) };
+const actions = humanActions()
+  .submit({ fields })
+  .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
+  .build();
+const submitOnly = humanActions().submit({}).build();
 
 async function createRequest(hitl: Hitl, token = "tok_1") {
-  const res = await post(hitl, "/requests", { token, message: "Approve?", fields });
+  const res = await post(hitl, "/requests", { token, message: "Approve?", actions });
   expect(res.status).toBe(201);
   return ((await res.json()) as { id: string }).id;
 }
@@ -103,10 +109,10 @@ async function createRequest(hitl: Hitl, token = "tok_1") {
 async function createBatch(hitl: Hitl) {
   const res = await post(hitl, "/batches", {
     title: "Outbound emails",
-    fields,
+    actions,
     items: [
-      { token: "tok_0", message: "Email A", fields },
-      { token: "tok_1", message: "Email B", fields },
+      { token: "tok_0", message: "Email A" },
+      { token: "tok_1", message: "Email B" },
     ],
   });
   expect(res.status).toBe(201);
@@ -163,7 +169,7 @@ describe("internal API: requests", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ pending: true });
-    expect(adapters[0]!.notifications[0]).toMatchObject({ message: "Still waiting", parent: id });
+    expect(adapters[0]!.notifications[0]).toMatchObject({ message: "Still waiting", threadId: id });
   });
 
   it("returns 400 on malformed JSON", async () => {
@@ -228,13 +234,13 @@ describe("internal API auth", () => {
   it("rejects a missing or wrong bearer with 401 when a secret is configured", async () => {
     const { hitl } = setup({ secret: "s3cret" });
 
-    const missing = await post(hitl, "/requests", { token: "t", message: "m", fields: {} });
+    const missing = await post(hitl, "/requests", { token: "t", message: "m", actions: submitOnly });
     expect(missing.status).toBe(401);
 
     const wrong = await post(
       hitl,
       "/requests",
-      { token: "t", message: "m", fields: {} },
+      { token: "t", message: "m", actions: submitOnly },
       { authorization: "Bearer nope" },
     );
     expect(wrong.status).toBe(401);
@@ -242,7 +248,7 @@ describe("internal API auth", () => {
 
   it("accepts the matching bearer", async () => {
     const { hitl } = setup({ secret: "s3cret" });
-    const res = await post(hitl, "/requests", { token: "t", message: "m", fields: {} }, auth);
+    const res = await post(hitl, "/requests", { token: "t", message: "m", actions: submitOnly }, auth);
     expect(res.status).toBe(201);
   });
 });
@@ -252,7 +258,7 @@ describe("non-internal routes are not served", () => {
     const { hitl, resolver } = setup();
     await createRequest(hitl);
 
-    const res = await post(hitl, "/callback", { requestId: "x", decision: "approve" });
+    const res = await post(hitl, "/callback", { requestId: "x", actionId: "submit" });
 
     expect(res.status).toBe(404);
     expect(resolver.resolved).toHaveLength(0);
@@ -262,7 +268,7 @@ describe("non-internal routes are not served", () => {
     const { hitl, resolver } = setup();
     const id = await createRequest(hitl);
 
-    const resolve = await post(hitl, `/approvals/${id}`, { decision: "approve" });
+    const resolve = await post(hitl, `/approvals/${id}`, { actionId: "submit" });
     expect(resolve.status).toBe(404);
     expect(resolver.resolved).toHaveLength(0);
   });
@@ -285,9 +291,14 @@ describe("inbox facade", () => {
     expect(hitl.adapters.map((p) => p.id)).toEqual(["inbox"]);
 
     const id = await createRequest(hitl);
-    const result = await hitl.inbox.approve(id);
+    const result = await hitl.inbox.resolve(id, { actionId: "submit" });
 
-    expect(result).toMatchObject({ type: "APPROVED", id });
+    expect(result).toMatchObject({
+      type: "RESOLVED",
+      actionId: "submit",
+      id,
+      feedbacks: { subject: "Hi" },
+    });
     expect(resolver.resolved).toHaveLength(1);
   });
 
@@ -303,7 +314,7 @@ describe("inbox facade", () => {
     const pending = (await hitl.inbox.list({ status: "pending" })).map((a) => a.id);
     expect(pending).toEqual([id]);
 
-    await hitl.inbox.approve(id);
+    await hitl.inbox.resolve(id, { actionId: "submit" });
 
     const stillPending = await hitl.inbox.list({ status: "pending" });
     expect(stillPending).toEqual([]);
@@ -327,40 +338,54 @@ describe("inbox facade", () => {
     expect(await hitl.inbox.get("nope")).toBeNull();
   });
 
-  it("hitl.inbox.approve resolves the approval and resumes the engine", async () => {
+  it("hitl.inbox.resolve resolves the approval and resumes the engine", async () => {
     const { hitl, resolver } = setup();
     const id = await createRequest(hitl);
 
-    const result = await hitl.inbox.approve(id, { by: { name: "u" } });
+    const result = await hitl.inbox.resolve(id, { actionId: "submit", by: { name: "u" } });
 
-    expect(result).toMatchObject({ type: "APPROVED", id });
+    expect(result).toMatchObject({
+      type: "RESOLVED",
+      actionId: "submit",
+      id,
+      by: { name: "u" },
+      feedbacks: { subject: "Hi" },
+    });
     expect(resolver.resolved).toEqual([{ token: "tok_1", payload: result }]);
     expect((await hitl.inbox.get(id))?.status).toBe("resolved");
   });
 
-  it("hitl.inbox.deny resolves with a reason", async () => {
+  it("hitl.inbox.resolve with deny action resolves with a reason", async () => {
     const { hitl } = setup();
     const id = await createRequest(hitl);
 
-    const result = await hitl.inbox.deny(id, { reason: "spam" });
+    const result = await hitl.inbox.resolve(id, { actionId: "deny", feedbacks: { reason: "spam" } });
 
-    expect(result).toMatchObject({ type: "DENIED", reason: "spam" });
+    expect(result).toMatchObject({
+      type: "RESOLVED",
+      actionId: "deny",
+      feedbacks: { reason: "spam" },
+    });
   });
 
-  it("hitl.inbox.submitBatch resolves every item", async () => {
+  it("hitl.inbox.resolveBatch resolves every item", async () => {
     const { hitl, resolver } = setup();
     const { batchId } = await createBatch(hitl);
 
-    const results = await hitl.inbox.submitBatch(
+    const results = await hitl.inbox.resolveBatch(
       batchId,
       [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "deny", reason: "no" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "deny", feedbacks: { reason: "no" } },
       ],
       { by: { name: "u" } },
     );
 
-    expect(results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
+    expect(results.map((r) => (r.type === "RESOLVED" ? r.actionId : r.type))).toEqual([
+      "submit",
+      "deny",
+    ]);
+    expect(results.every((r) => r.type === "RESOLVED")).toBe(true);
     expect(resolver.resolved.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
   });
 
@@ -369,7 +394,7 @@ describe("inbox facade", () => {
     const id = await createRequest(hitl);
 
     await expect(
-      hitl.inbox.approve(id, { feedbacks: { bogus: "x" } }),
+      hitl.inbox.resolve(id, { actionId: "submit", feedbacks: { bogus: "x" } }),
     ).rejects.toThrow();
   });
 });
@@ -380,7 +405,7 @@ describe("adapters", () => {
     const res = await hitl.routeHandlers.POST(
       new Request(`${BASE}/requests`, {
         method: "POST",
-        body: JSON.stringify({ token: "t", message: "m", fields }),
+        body: JSON.stringify({ token: "t", message: "m", actions }),
         headers: { "content-type": "application/json" },
       }),
     );
@@ -396,7 +421,7 @@ describe("adapters", () => {
     const req = Object.assign(
       (async function* () {
         yield Buffer.from(
-          JSON.stringify({ token: "t", message: "m", fields }),
+          JSON.stringify({ token: "t", message: "m", actions }),
         );
       })(),
       {

@@ -1,5 +1,5 @@
-import type { HitlField } from "./fields";
-import type { ApprovalResult, Notification } from "./types";
+import type { HumanActions } from "./human-actions";
+import type { HumanResult, Notification } from "./types";
 
 /**
  * Wire types of the internal `.well-known/hitldev/v1` API: the workflow-side
@@ -11,7 +11,8 @@ export interface CreateRequestBody {
   /** Opaque engine resume token from `suspend()`; also the idempotency key. */
   token: string;
   message: string;
-  fields: Record<string, HitlField>;
+  actions: HumanActions;
+  context?: Record<string, unknown>;
   /** Adapter id; defaults to the first configured adapter. */
   channel?: string;
 }
@@ -24,16 +25,18 @@ export interface CreateBatchItemBody {
   /** Opaque engine resume token for this item's suspension. */
   token: string;
   message: string;
-  /** Shared field schema with this item's defaults merged in. */
-  fields: Record<string, HitlField>;
+  /** Per-item overrides for submit field defaults. */
+  defaults?: Record<string, unknown>;
 }
 
 export interface CreateBatchBody {
   title?: string;
   /** Adapter id; defaults to the first configured adapter. */
   channel?: string;
-  /** Field schema shared by every item; drives the batch UI. */
-  fields: Record<string, HitlField>;
+  actions: HumanActions;
+  context?: Record<string, unknown>;
+  /** Target action for per-item defaults when no submit action exists. */
+  defaultsActionId?: string;
   items: CreateBatchItemBody[];
 }
 
@@ -56,12 +59,12 @@ export interface RemindResponse {
 }
 
 export interface TimeoutResponse {
-  result: ApprovalResult;
+  result: HumanResult;
 }
 
 export interface BatchTimeoutResponse {
   /** Item order: pending items as TIMED_OUT, resolved items keep their stored result. */
-  results: ApprovalResult[];
+  results: HumanResult[];
 }
 
 export type NotifyBody = Notification;

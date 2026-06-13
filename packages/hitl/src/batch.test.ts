@@ -4,17 +4,19 @@ import type { HitlResolver } from "./binding";
 import {
   createBatchRequest,
   remindBatch,
-  resolveApproval,
-  resolveBatchApproval,
+  resolveHumanRequest,
+  resolveBatchHumanRequest,
   timeoutBatch,
   type HitlRuntime,
 } from "./core";
-import { field, type HitlField } from "./fields";
+import { field } from "./fields";
+import { humanActions } from "./human-actions-builder";
+import { submitAction } from "./human-actions";
 import { InMemoryState } from "./state";
 import type {
-  ApprovalRequest,
-  ApprovalResult,
-  BatchApprovalRequest,
+  HumanRequest,
+  HumanResult,
+  BatchHumanRequest,
   HitlAdapter,
   Notification,
 } from "./types";
@@ -25,7 +27,7 @@ import type {
 // - throws on empty items
 // - is idempotent on the first item's resume token (at-least-once fetch)
 // - one batch callback resolves every item via the resolver; results in input order
-// - per-item decisions map independently: deny+reason -> DENIED, edits -> REVIEWED, defaults -> APPROVED
+// - per-item decisions map independently: deny+reason -> RESOLVED deny, edits -> RESOLVED edited, defaults -> RESOLVED submit
 // - invalid feedbacks on any item reject the whole batch and leave every item pending
 // - already-resolved items are skipped on batch submit
 // - throws when a pending item has no decision
@@ -43,18 +45,18 @@ class FakeResolver implements HitlResolver {
 }
 
 interface FakeAdapter extends HitlAdapter {
-  sent: ApprovalRequest[];
-  sentBatches: BatchApprovalRequest[];
+  sent: HumanRequest[];
+  sentBatches: BatchHumanRequest[];
   updates: unknown[][];
-  batchUpdates: Array<[string, ApprovalResult[]]>;
+  batchUpdates: Array<[string, HumanResult[]]>;
   notifications: Notification[];
 }
 
 function fakeAdapter(id: string, opts?: { batch?: boolean }): FakeAdapter {
-  const sent: ApprovalRequest[] = [];
-  const sentBatches: BatchApprovalRequest[] = [];
+  const sent: HumanRequest[] = [];
+  const sentBatches: BatchHumanRequest[] = [];
   const updates: unknown[][] = [];
-  const batchUpdates: Array<[string, ApprovalResult[]]> = [];
+  const batchUpdates: Array<[string, HumanResult[]]> = [];
   const notifications: Notification[] = [];
   const adapter: FakeAdapter = {
     id,
@@ -97,23 +99,24 @@ const fields = {
   subject: field.textField({ label: "Subject", default: "Hi" }),
   body: field.textArea({ label: "Body", default: "Hello there" }),
 };
+const actions = humanActions()
+  .submit({ fields })
+  .deny({ fields: { reason: field.textField({ label: "Reason" }) } })
+  .build();
+const submitOnly = humanActions().submit({}).build();
 
-function withDefault(field: HitlField, value: unknown): HitlField {
-  return { ...field, default: value } as HitlField;
-}
-
-/** Two items; the first overrides the shared `subject` default — pre-merged as the client would send it. */
+/** Two items; the first overrides the shared `subject` default. */
 function emailBatch(): CreateBatchBody {
   return {
     title: "Outbound emails",
-    fields,
+    actions,
     items: [
       {
         token: "tok_0",
         message: "Email to ACME",
-        fields: { ...fields, subject: withDefault(fields.subject, "Hello ACME") },
+        defaults: { subject: "Hello ACME" },
       },
-      { token: "tok_1", message: "Email to Globex", fields },
+      { token: "tok_1", message: "Email to Globex" },
     ],
   };
 }
@@ -131,7 +134,7 @@ describe("createBatchRequest", () => {
       batchId,
       channel: "a",
       title: "Outbound emails",
-      fields,
+      actions,
       items: [
         {
           id: `${batchId}:0`,
@@ -151,7 +154,10 @@ describe("createBatchRequest", () => {
     const items = await state.listByBatch(batchId);
     expect(items.map((r) => r.id)).toEqual(ids);
     expect(items.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
-    expect(items[0]!.fields.subject).toMatchObject({ kind: "text", default: "Hello ACME" });
+    expect(submitAction(items[0]!.actions)!.fields!.subject).toMatchObject({
+      kind: "text",
+      default: "Hello ACME",
+    });
     expect(items.every((r) => r.status === "pending")).toBe(true);
   });
 
@@ -179,7 +185,7 @@ describe("createBatchRequest", () => {
   it("throws on empty items", async () => {
     const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(
-      createBatchRequest(runtime, { fields: {}, items: [] }),
+      createBatchRequest(runtime, { actions: submitOnly, items: [] }),
     ).rejects.toThrow(/at least one item/i);
   });
 
@@ -194,23 +200,35 @@ describe("createBatchRequest", () => {
   });
 });
 
-describe("resolveBatchApproval", () => {
+describe("resolveBatchHumanRequest", () => {
   it("one submit resolves every item via the resolver; results come back in input order", async () => {
     const { runtime, resolver, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
-    const results = await resolveBatchApproval(runtime, {
+    const results = await resolveBatchHumanRequest(runtime, {
       batchId,
       by: { name: "ryosuke" },
       decisions: [
-        { requestId: `${batchId}:1`, decision: "approve" },
-        { requestId: `${batchId}:0`, decision: "approve" },
+        { requestId: `${batchId}:1`, actionId: "submit" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
       ],
     });
 
     expect(results).toEqual([
-      { type: "APPROVED", id: `${batchId}:0`, by: { name: "ryosuke" } },
-      { type: "APPROVED", id: `${batchId}:1`, by: { name: "ryosuke" } },
+      {
+        type: "RESOLVED",
+        actionId: "submit",
+        id: `${batchId}:0`,
+        by: { name: "ryosuke" },
+        feedbacks: { subject: "Hello ACME", body: "Hello there" },
+      },
+      {
+        type: "RESOLVED",
+        actionId: "submit",
+        id: `${batchId}:1`,
+        by: { name: "ryosuke" },
+        feedbacks: { subject: "Hi", body: "Hello there" },
+      },
     ]);
     expect(resolver.resolved).toEqual([
       { token: "tok_0", payload: results[0] },
@@ -222,33 +240,42 @@ describe("resolveBatchApproval", () => {
   it("maps per-item decisions independently", async () => {
     const { runtime } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, {
-      fields,
+      actions,
       items: [
-        { token: "t0", message: "approve me", fields },
-        { token: "t1", message: "deny me", fields },
+        { token: "t0", message: "approve me" },
+        { token: "t1", message: "deny me" },
         {
           token: "t2",
           message: "edit me",
-          fields: { ...fields, subject: withDefault(fields.subject, "Prefilled") },
+          defaults: { subject: "Prefilled" },
         },
       ],
     });
 
-    const results = await resolveBatchApproval(runtime, {
+    const results = await resolveBatchHumanRequest(runtime, {
       batchId,
       decisions: [
-        // feedbacks equal to merged defaults -> APPROVED
-        { requestId: `${batchId}:0`, decision: "approve", feedbacks: { subject: "Hi" } },
-        { requestId: `${batchId}:1`, decision: "deny", reason: "spam" },
-        // edited away from the item's merged default -> REVIEWED
-        { requestId: `${batchId}:2`, decision: "approve", feedbacks: { subject: "Edited" } },
+        // feedbacks equal to merged defaults -> RESOLVED submit
+        { requestId: `${batchId}:0`, actionId: "submit", feedbacks: { subject: "Hi" } },
+        { requestId: `${batchId}:1`, actionId: "deny", feedbacks: { reason: "spam" } },
+        // edited away from the item's merged default -> RESOLVED edited
+        { requestId: `${batchId}:2`, actionId: "submit", feedbacks: { subject: "Edited" } },
       ],
     });
 
-    expect(results.map((r) => r.type)).toEqual(["APPROVED", "DENIED", "REVIEWED"]);
-    expect(results[1]).toMatchObject({ reason: "spam" });
+    expect(results.map((r) => (r.type === "RESOLVED" ? r.actionId : r.type))).toEqual([
+      "submit",
+      "deny",
+      "submit",
+    ]);
+    expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "submit" });
+    expect(results[0]).not.toHaveProperty("edited");
+    expect(results[1]).toMatchObject({ type: "RESOLVED", actionId: "deny", feedbacks: { reason: "spam" } });
     expect(results[2]).toMatchObject({
+      type: "RESOLVED",
+      actionId: "submit",
       feedbacks: { subject: "Edited", body: "Hello there" },
+      edited: true,
     });
   });
 
@@ -257,11 +284,11 @@ describe("resolveBatchApproval", () => {
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await expect(
-      resolveBatchApproval(runtime, {
+      resolveBatchHumanRequest(runtime, {
         batchId,
         decisions: [
-          { requestId: `${batchId}:0`, decision: "approve" },
-          { requestId: `${batchId}:1`, decision: "approve", feedbacks: { bogus: "x" } },
+          { requestId: `${batchId}:0`, actionId: "submit" },
+          { requestId: `${batchId}:1`, actionId: "submit", feedbacks: { bogus: "x" } },
         ],
       }),
     ).rejects.toThrow(/bogus/);
@@ -275,19 +302,24 @@ describe("resolveBatchApproval", () => {
     const { runtime, adapters } = makeRuntime([fakeAdapter("a", { batch: false })]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
-    await resolveApproval(runtime, { requestId: `${batchId}:0`, decision: "deny", reason: "no" });
+    await resolveHumanRequest(runtime, { requestId: `${batchId}:0`, actionId: "deny", feedbacks: { reason: "no" } });
     adapters[0]!.updates.length = 0;
 
-    const results = await resolveBatchApproval(runtime, {
+    const results = await resolveBatchHumanRequest(runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "approve" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "submit" },
       ],
     });
 
-    expect(results[0]).toEqual({ type: "DENIED", id: `${batchId}:0`, reason: "no" });
-    expect(results[1]).toMatchObject({ type: "APPROVED" });
+    expect(results[0]).toMatchObject({
+      type: "RESOLVED",
+      actionId: "deny",
+      id: `${batchId}:0`,
+      feedbacks: { reason: "no" },
+    });
+    expect(results[1]).toMatchObject({ type: "RESOLVED", actionId: "submit" });
   });
 
   it("throws when a pending item has no decision", async () => {
@@ -295,9 +327,9 @@ describe("resolveBatchApproval", () => {
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
     await expect(
-      resolveBatchApproval(runtime, {
+      resolveBatchHumanRequest(runtime, {
         batchId,
-        decisions: [{ requestId: `${batchId}:0`, decision: "approve" }],
+        decisions: [{ requestId: `${batchId}:0`, actionId: "submit" }],
       }),
     ).rejects.toThrow(/missing decision/i);
 
@@ -308,7 +340,7 @@ describe("resolveBatchApproval", () => {
   it("throws on an unknown batch id", async () => {
     const { runtime } = makeRuntime([fakeAdapter("a")]);
     await expect(
-      resolveBatchApproval(runtime, { batchId: "missing", decisions: [] }),
+      resolveBatchHumanRequest(runtime, { batchId: "missing", decisions: [] }),
     ).rejects.toThrow(/missing/);
   });
 
@@ -316,11 +348,11 @@ describe("resolveBatchApproval", () => {
     const { runtime, adapters } = makeRuntime([fakeAdapter("a", { batch: false })]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
-    const results = await resolveBatchApproval(runtime, {
+    const results = await resolveBatchHumanRequest(runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "approve" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "submit" },
       ],
     });
 
@@ -336,11 +368,11 @@ describe("timeoutBatch", () => {
     const { runtime, state, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
 
-    await resolveApproval(runtime, { requestId: `${batchId}:0`, decision: "approve" });
+    await resolveHumanRequest(runtime, { requestId: `${batchId}:0`, actionId: "submit" });
 
     const results = await timeoutBatch(runtime, batchId);
 
-    expect(results[0]).toMatchObject({ type: "APPROVED", id: `${batchId}:0` });
+    expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "submit", id: `${batchId}:0` });
     expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
     expect((await state.get(`${batchId}:1`))?.status).toBe("resolved");
     expect(adapters[0]!.batchUpdates.at(-1)).toEqual([`bext_${batchId}`, results]);
@@ -365,10 +397,10 @@ describe("remindBatch", () => {
     expect(pending).toBe(true);
     expect(adapters[0]!.notifications).toEqual([
       {
-        parent: batchId,
+        threadId: batchId,
         message: "Still waiting",
         channel: "a",
-        parentExternalId: `bext_${batchId}`,
+        threadRef: `bext_${batchId}`,
       },
     ]);
   });
@@ -379,17 +411,17 @@ describe("remindBatch", () => {
 
     await remindBatch(runtime, batchId, { kind: "remind" });
 
-    expect(adapters[0]!.notifications[0]?.parentExternalId).toBe(`ext_${batchId}:0`);
+    expect(adapters[0]!.notifications[0]?.threadRef).toBe(`ext_${batchId}:0`);
   });
 
   it("is a no-op once every item is resolved", async () => {
     const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
     const { batchId } = await createBatchRequest(runtime, emailBatch());
-    await resolveBatchApproval(runtime, {
+    await resolveBatchHumanRequest(runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "approve" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "submit" },
       ],
     });
 
@@ -414,11 +446,11 @@ describe("remindBatch", () => {
     expect(oncall.sentBatches[0]).toMatchObject({ batchId, channel: "oncall" });
     expect((await state.getBatch(batchId))?.externalIds?.oncall).toBe(`bext_${batchId}`);
 
-    const results = await resolveBatchApproval(runtime, {
+    const results = await resolveBatchHumanRequest(runtime, {
       batchId,
       decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "approve" },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "submit" },
       ],
     });
 

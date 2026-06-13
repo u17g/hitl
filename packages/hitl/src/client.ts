@@ -7,42 +7,14 @@ import type {
 } from "./api-types";
 import type { WorkflowPrimitives } from "./binding";
 import { parseDuration, type Duration } from "./duration";
-import type { FeedbackValues, HitlField } from "./fields";
+import type { HumanItem, WaitForHumanOptions } from "./human-options";
+import { validateWaitForHumanOptions } from "./human-options";
+import type { HumanActionDef } from "./human-actions";
+import type { HumanResult } from "./human-result";
 import { isEscalate, type ReminderEntry } from "./reminder";
-import type { ApprovalResult, Notification } from "./types";
+import type { Notification } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitldev/v1";
-
-export interface ApprovalOptions<F extends Record<string, HitlField>> {
-  message: string;
-  fields?: F;
-  /** Adapter id; defaults to the first adapter configured on the server. */
-  channel?: string;
-  /** e.g. "72h"; resolves as { type: "TIMED_OUT" }. */
-  timeout?: Duration;
-  /** Remind or escalate while pending. `{ after, message }` reminds; `{ after, channel }` escalates. */
-  reminder?: ReminderEntry[];
-}
-
-export interface BatchApprovalItem<F extends Record<string, HitlField>> {
-  message: string;
-  /** Overrides the shared field defaults for this item. */
-  defaults?: Partial<FeedbackValues<F>>;
-}
-
-export interface BatchApprovalOptions<F extends Record<string, HitlField>> {
-  /** Heading of the batch message. */
-  title?: string;
-  /** Field schema shared by every item. */
-  fields?: F;
-  items: ReadonlyArray<BatchApprovalItem<F>>;
-  /** Adapter id; defaults to the first adapter configured on the server. */
-  channel?: string;
-  /** One timeout for the whole batch; pending items resolve as TIMED_OUT. */
-  timeout?: Duration;
-  /** Remind or escalate while any item is pending. */
-  reminder?: ReminderEntry[];
-}
 
 export interface CreateHitlClientOptions extends WorkflowPrimitives {
   /** Base URL of the app hosting the hitldev server, e.g. `https://my-app.vercel.app`. Lazy so engines can resolve it at run time. */
@@ -59,12 +31,14 @@ export interface CreateHitlClientOptions extends WorkflowPrimitives {
  * adapters live only on the server.
  */
 export interface HitlClient {
-  waitForApproval<F extends Record<string, HitlField>>(
-    opts: ApprovalOptions<F>,
-  ): Promise<ApprovalResult<FeedbackValues<F>>>;
-  waitForBatchApprovals<F extends Record<string, HitlField>>(
-    opts: BatchApprovalOptions<F>,
-  ): Promise<ApprovalResult<FeedbackValues<F>>[]>;
+  waitForHuman<const Actions extends readonly HumanActionDef[]>(
+    opts: WaitForHumanOptions<Actions> & { items?: undefined },
+  ): Promise<HumanResult<Actions>>;
+
+  waitForHuman<const Actions extends readonly HumanActionDef[]>(
+    opts: WaitForHumanOptions<Actions> & { items: ReadonlyArray<HumanItem<Actions>> },
+  ): Promise<HumanResult<Actions>[]>;
+
   notify(notification: Notification): Promise<void>;
 }
 
@@ -90,14 +64,23 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     return JSON.parse(res.body) as T;
   }
 
-  async function waitForApproval<F extends Record<string, HitlField>>(
-    opts: ApprovalOptions<F>,
-  ): Promise<ApprovalResult<FeedbackValues<F>>> {
-    const suspension = suspend<ApprovalResult<FeedbackValues<F>>>();
+  async function waitForHuman<const Actions extends readonly HumanActionDef[]>(
+    opts: WaitForHumanOptions<Actions>,
+  ): Promise<HumanResult<Actions> | HumanResult<Actions>[]> {
+    validateWaitForHumanOptions(opts);
+
+    if (opts.items !== undefined) {
+      return waitForHumanBatch(opts as WaitForHumanOptions<Actions> & {
+        items: NonNullable<WaitForHumanOptions<Actions>["items"]>;
+      });
+    }
+
+    const suspension = suspend<HumanResult<Actions>>();
     const { id } = await callApi<CreateRequestResponse>("/requests", {
       token: suspension.token,
       message: opts.message,
-      fields: opts.fields ?? {},
+      actions: opts.actions,
+      context: opts.context,
       channel: opts.channel,
     });
 
@@ -105,31 +88,29 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       promise: suspension.promise,
       remind: (entry) => callApi(`/requests/${id}/remind`, toRemindBody(entry)),
       timeout: async () =>
-        (await callApi<TimeoutResponse>(`/requests/${id}/timeout`, {})).result as ApprovalResult<
-          FeedbackValues<F>
-        >,
+        (await callApi<TimeoutResponse>(`/requests/${id}/timeout`, {}))
+          .result as HumanResult<Actions>,
     });
   }
 
-  async function waitForBatchApprovals<F extends Record<string, HitlField>>(
-    opts: BatchApprovalOptions<F>,
-  ): Promise<ApprovalResult<FeedbackValues<F>>[]> {
-    if (opts.items.length === 0) {
-      throw new Error("waitForBatchApprovals needs at least one item.");
-    }
-    const fields = opts.fields ?? {};
-
+  async function waitForHumanBatch<const Actions extends readonly HumanActionDef[]>(
+    opts: WaitForHumanOptions<Actions> & {
+      items: NonNullable<WaitForHumanOptions<Actions>["items"]>;
+    },
+  ): Promise<HumanResult<Actions>[]> {
     // One durable wait per item, created serially: token order must be stable across replays.
-    const suspensions = opts.items.map(() => suspend<ApprovalResult<FeedbackValues<F>>>());
+    const suspensions = opts.items.map(() => suspend<HumanResult<Actions>>());
 
     const { batchId } = await callApi<CreateBatchResponse>("/batches", {
       title: opts.title,
       channel: opts.channel,
-      fields,
+      actions: opts.actions,
+      context: opts.context,
+      defaultsActionId: opts.defaultsActionId,
       items: opts.items.map((item, index) => ({
         token: suspensions[index]!.token,
         message: item.message,
-        fields: mergeItemFields(fields, item.defaults),
+        defaults: item.defaults,
       })),
     });
 
@@ -138,14 +119,10 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       remind: (entry) => callApi(`/batches/${batchId}/remind`, toRemindBody(entry)),
       timeout: async () =>
         (await callApi<BatchTimeoutResponse>(`/batches/${batchId}/timeout`, {}))
-          .results as ApprovalResult<FeedbackValues<F>>[],
+          .results as HumanResult<Actions>[],
     });
   }
 
-  /**
-   * The reminder/timeout loop. The schedule and the durable timers live here in
-   * the workflow; whether the subject is still pending is the server's call.
-   */
   async function waitWithReminders<T>(
     opts: { timeout?: Duration; reminder?: ReminderEntry[] },
     subject: {
@@ -180,7 +157,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
         timeoutMs !== undefined &&
         schedule[reminderIndex]!.ms >= timeoutMs
       ) {
-        reminderIndex++; // a reminder at or past the timeout would never be seen
+        reminderIndex++;
       }
       if (reminderIndex < schedule.length) {
         const nextReminderMs = schedule[reminderIndex]!.ms - elapsedMs;
@@ -209,7 +186,6 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
         return subject.timeout();
       }
 
-      // Fire every reminder scheduled at this instant, in array order.
       while (reminderIndex < schedule.length && schedule[reminderIndex]!.ms <= elapsedMs) {
         await subject.remind(schedule[reminderIndex]!.entry);
         reminderIndex++;
@@ -218,8 +194,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
   }
 
   return {
-    waitForApproval,
-    waitForBatchApprovals,
+    waitForHuman: waitForHuman as HitlClient["waitForHuman"],
     notify: (notification) => callApi("/notifications", notification).then(() => undefined),
   };
 }
@@ -229,16 +204,4 @@ function toRemindBody(entry: ReminderEntry): RemindBody {
     return { kind: "escalate", channel: entry.channel, message: entry.message, mode: entry.mode };
   }
   return { kind: "remind", message: entry.message };
-}
-
-function mergeItemFields(
-  fields: Record<string, HitlField>,
-  defaults: Record<string, unknown> | undefined,
-): Record<string, HitlField> {
-  const merged: Record<string, HitlField> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    const override = defaults?.[key];
-    merged[key] = override === undefined ? field : ({ ...field, default: override } as HitlField);
-  }
-  return merged;
 }

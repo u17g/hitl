@@ -3,18 +3,19 @@ import type { CreateBatchBody, CreateRequestBody, NotifyBody, RemindBody } from 
 import { authorizeInternalApi } from "./auth";
 import type { HitlResolver } from "./binding";
 import {
-  createApprovalRequest,
+  createHumanRequest,
   createBatchRequest,
   NotFoundError,
   notifyVia,
-  remindApproval,
+  remindHumanRequest,
   remindBatch,
-  timeoutApproval,
+  timeoutHumanRequest,
   timeoutBatch,
   type HitlRuntime,
 } from "./core";
 import { INBOX_CHANNEL_ID, inboxChannel } from "./inbox-channel";
 import { createInbox, type HitlInbox } from "./inbox";
+import { validateActions } from "./human-actions";
 import { defaultInMemoryState, type State } from "./state";
 import type { HitlAdapter } from "./types";
 
@@ -49,7 +50,7 @@ export interface HitlInstance {
   readonly runtime: HitlRuntime;
   readonly state: State;
   readonly adapters: HitlAdapter[];
-  /** Programmatic inbox: read state and resolve approvals from your own handlers. */
+  /** Programmatic inbox: read state and resolve human requests from your own handlers. */
   readonly inbox: HitlInbox;
 }
 
@@ -152,14 +153,25 @@ async function handleInternalApi(
     switch (route.kind) {
       case "create-request": {
         const create = body as Partial<CreateRequestBody>;
-        if (typeof create.token !== "string" || typeof create.message !== "string") {
-          return json({ error: "token and message are required" }, 400);
+        if (
+          typeof create.token !== "string" ||
+          typeof create.message !== "string" ||
+          !Array.isArray(create.actions) ||
+          create.actions.length === 0
+        ) {
+          return json({ error: "token, message, and a non-empty actions array are required" }, 400);
         }
-        const result = await createApprovalRequest(runtime, {
-          ...create,
+        try {
+          validateActions(create.actions);
+        } catch (error) {
+          return json({ error: error instanceof Error ? error.message : "Invalid actions" }, 400);
+        }
+        const result = await createHumanRequest(runtime, {
           token: create.token,
           message: create.message,
-          fields: create.fields ?? {},
+          actions: create.actions,
+          context: create.context,
+          channel: create.channel,
         });
         return json(result, 201);
       }
@@ -168,19 +180,30 @@ async function handleInternalApi(
         if (!Array.isArray(create.items) || create.items.length === 0) {
           return json({ error: "items must be a non-empty array" }, 400);
         }
+        if (!Array.isArray(create.actions) || create.actions.length === 0) {
+          return json({ error: "actions must be a non-empty array" }, 400);
+        }
+        try {
+          validateActions(create.actions);
+        } catch (error) {
+          return json({ error: error instanceof Error ? error.message : "Invalid actions" }, 400);
+        }
         const result = await createBatchRequest(runtime, {
-          ...create,
-          fields: create.fields ?? {},
+          title: create.title,
+          channel: create.channel,
+          actions: create.actions,
+          context: create.context,
+          defaultsActionId: create.defaultsActionId,
           items: create.items,
         });
         return json(result, 201);
       }
       case "request-timeout":
-        return json({ result: await timeoutApproval(runtime, route.id) });
+        return json({ result: await timeoutHumanRequest(runtime, route.id) });
       case "batch-timeout":
         return json({ results: await timeoutBatch(runtime, route.id) });
       case "request-remind":
-        return json(await remindApproval(runtime, route.id, body as RemindBody));
+        return json(await remindHumanRequest(runtime, route.id, body as RemindBody));
       case "batch-remind":
         return json(await remindBatch(runtime, route.id, body as RemindBody));
       case "notify":

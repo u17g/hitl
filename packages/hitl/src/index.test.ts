@@ -1,12 +1,25 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { field, InMemoryState, type ApprovalResult } from "./index";
+import { field, humanActions, InMemoryState, type HumanResult } from "./index";
 import { createTestHitl } from "./testing";
 
 // Test list:
-// - the client's waitForApproval resolves through hitl.inbox
+// - the client's waitForHuman resolves through hitl.inbox
 // - the result's feedbacks are typed from the field definitions
 // - notify threads through the always-on web inbox channel
-// - the batch loop resolves through hitl.inbox.submitBatch with typed results
+// - the batch loop resolves through hitl.inbox.resolveBatch with typed results
+
+const approvalActions = humanActions()
+  .submit({
+    fields: {
+      subject: field.textField({ label: "Subject", default: "Hi" }),
+      body: field.textArea({ label: "Body", default: "Hello" }),
+    },
+  })
+  .build();
+
+const batchActions = humanActions()
+  .submit({ fields: { subject: field.textField({ label: "Subject", default: "Hi" }) } })
+  .build();
 
 describe("public API", () => {
   it("runs the full approve-with-edits loop through hitl.inbox", async () => {
@@ -14,12 +27,9 @@ describe("public API", () => {
       state: new InMemoryState(),
     });
 
-    const pending = client.waitForApproval({
+    const pending = client.waitForHuman({
       message: "Send this reply?",
-      fields: {
-        subject: field.textField({ label: "Subject", default: "Hi" }),
-        body: field.textArea({ label: "Body", default: "Hello" }),
-      },
+      actions: approvalActions,
       timeout: "72h",
     });
 
@@ -31,32 +41,35 @@ describe("public API", () => {
       }
     })();
 
-    await client.notify({ parent: requestId, message: "Original message: hello" });
+    await client.notify({ threadId: requestId, message: "Original message: hello" });
 
-    await hitl.inbox.approve(requestId, {
+    await hitl.inbox.resolve(requestId, {
+      actionId: "submit",
       feedbacks: { subject: "Edited subject", body: "Hello" },
       by: { name: "ryosuke" },
     });
 
     const approval = await pending;
     expect(approval).toMatchObject({
-      type: "REVIEWED",
+      type: "RESOLVED",
+      actionId: "submit",
       feedbacks: { subject: "Edited subject", body: "Hello" },
+      edited: true,
     });
 
-    if (approval.type === "REVIEWED") {
+    if (approval.type === "RESOLVED" && approval.actionId === "submit") {
       expectTypeOf(approval.feedbacks).toEqualTypeOf<{ subject: string; body: string }>();
     }
   });
 
-  it("runs the batch loop through hitl.inbox.submitBatch with typed results", async () => {
+  it("runs the batch loop through hitl.inbox.resolveBatch with typed results", async () => {
     const { hitl, client } = createTestHitl({
       state: new InMemoryState(),
     });
 
-    const pending = client.waitForBatchApprovals({
+    const pending = client.waitForHuman({
       title: "Outbound emails",
-      fields: { subject: field.textField({ label: "Subject", default: "Hi" }) },
+      actions: batchActions,
       items: [
         { message: "Email to ACME", defaults: { subject: "Hello ACME" } },
         { message: "Email to Globex" },
@@ -72,20 +85,30 @@ describe("public API", () => {
       }
     })();
 
-    await hitl.inbox.submitBatch(
+    await hitl.inbox.resolveBatch(
       batchId,
       [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "approve", feedbacks: { subject: "Edited" } },
+        { requestId: `${batchId}:0`, actionId: "submit" },
+        { requestId: `${batchId}:1`, actionId: "submit", feedbacks: { subject: "Edited" } },
       ],
       { by: { name: "ryosuke" } },
     );
 
     const results = await pending;
     expect(results).toHaveLength(2);
-    expect(results[0]).toMatchObject({ type: "APPROVED", by: { name: "ryosuke" } });
-    expect(results[1]).toMatchObject({ type: "REVIEWED", feedbacks: { subject: "Edited" } });
+    expect(results[0]).toMatchObject({
+      type: "RESOLVED",
+      actionId: "submit",
+      by: { name: "ryosuke" },
+    });
+    expect(results[0]).not.toHaveProperty("edited");
+    expect(results[1]).toMatchObject({
+      type: "RESOLVED",
+      actionId: "submit",
+      feedbacks: { subject: "Edited" },
+      edited: true,
+    });
 
-    expectTypeOf(results).toEqualTypeOf<ApprovalResult<{ subject: string }>[]>();
+    expectTypeOf(results).toEqualTypeOf<HumanResult<typeof batchActions>[]>();
   });
 });

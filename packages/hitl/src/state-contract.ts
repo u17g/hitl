@@ -1,5 +1,6 @@
 import { field } from "./fields";
-import type { NewApprovalRecord, NewBatchRecord, State } from "./state";
+import { humanActions } from "./human-actions-builder";
+import type { NewHumanRequestRecord, NewBatchRecord, State } from "./state";
 
 /**
  * Test-runner hooks injected by the caller so this module stays free of any
@@ -23,13 +24,15 @@ export function describeStateContract(
 ): void {
   const { describe, it, expect } = api;
 
-  function newRecord(id: string): NewApprovalRecord {
+  function newRecord(id: string): NewHumanRequestRecord {
     return {
       id,
       token: `tok_${id}`,
       channel: "lead-approvals",
       message: "Inbound lead",
-      fields: { subject: field.textField({ label: "Subject" }) },
+      actions: humanActions()
+        .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+        .build(),
     };
   }
 
@@ -88,29 +91,51 @@ export function describeStateContract(
     it("resolves a record with a result", async () => {
       const state = await factory();
       await state.create(newRecord("a1"));
-      await state.resolve("a1", { type: "APPROVED", id: "a1" });
+      const resolved = {
+        type: "RESOLVED" as const,
+        actionId: "submit" as const,
+        id: "a1",
+        feedbacks: {},
+      };
+      await state.resolve("a1", resolved);
 
       const record = await state.get("a1");
       expect(record?.status).toBe("resolved");
-      expect(record?.result).toEqual({ type: "APPROVED", id: "a1" });
+      expect(record?.result).toEqual(resolved);
       expect(record?.resolvedAt).toBeTruthy();
     });
 
     it("throws when resolving twice", async () => {
       const state = await factory();
       await state.create(newRecord("a1"));
-      await state.resolve("a1", { type: "APPROVED", id: "a1" });
+      const first = {
+        type: "RESOLVED" as const,
+        actionId: "submit" as const,
+        id: "a1",
+        feedbacks: {},
+      };
+      await state.resolve("a1", first);
 
-      await expect(state.resolve("a1", { type: "DENIED", id: "a1" })).rejects.toThrow(
-        /already resolved/i,
-      );
+      await expect(
+        state.resolve("a1", {
+          type: "RESOLVED",
+          actionId: "deny",
+          id: "a1",
+          feedbacks: {},
+        }),
+      ).rejects.toThrow(/already resolved/i);
     });
 
     it("lists pending records only", async () => {
       const state = await factory();
       await state.create(newRecord("a1"));
       await state.create(newRecord("a2"));
-      await state.resolve("a1", { type: "APPROVED", id: "a1" });
+      await state.resolve("a1", {
+        type: "RESOLVED",
+        actionId: "submit",
+        id: "a1",
+        feedbacks: {},
+      });
 
       const pending = await state.list({ status: "pending" });
       expect(pending.map((r) => r.id)).toEqual(["a2"]);
@@ -123,7 +148,12 @@ export function describeStateContract(
       const state = await factory();
       await state.create(newRecord("a1"));
       await state.create(newRecord("a2"));
-      await state.resolve("a1", { type: "APPROVED", id: "a1" });
+      await state.resolve("a1", {
+        type: "RESOLVED",
+        actionId: "submit",
+        id: "a1",
+        feedbacks: {},
+      });
 
       const resolved = await state.list({ status: "resolved" });
       expect(resolved.map((r) => r.id)).toEqual(["a1"]);
@@ -148,18 +178,23 @@ export function describeStateContract(
       expect(await state.findByToken("missing")).toBeNull();
     });
 
-    it("throws when attaching an external id to an unknown approval", async () => {
+    it("throws when attaching an external id to an unknown human request", async () => {
       const state = await factory();
       await expect(state.setExternalId("missing", "slack-ts-123")).rejects.toThrow(
-        /unknown approval/i,
+        /unknown human request/i,
       );
     });
 
-    it("throws when resolving an unknown approval", async () => {
+    it("throws when resolving an unknown human request", async () => {
       const state = await factory();
-      await expect(state.resolve("missing", { type: "APPROVED", id: "missing" })).rejects.toThrow(
-        /unknown approval/i,
-      );
+      await expect(
+        state.resolve("missing", {
+          type: "RESOLVED",
+          actionId: "submit",
+          id: "missing",
+          feedbacks: {},
+        }),
+      ).rejects.toThrow(/unknown human request/i);
     });
 
     it("creates and gets a batch", async () => {
@@ -210,7 +245,7 @@ export function describeStateContract(
       );
     });
 
-    it("round-trips batchId and batchIndex on approval records", async () => {
+    it("round-trips batchId and batchIndex on human request records", async () => {
       const state = await factory();
       await state.createBatch(newBatch("b1"));
       await state.create({ ...newRecord("a1"), batchId: "b1", batchIndex: 0 });
@@ -236,6 +271,40 @@ export function describeStateContract(
       const state = await factory();
       await state.create(newRecord("a1"));
       expect(await state.listByBatch("missing")).toEqual([]);
+    });
+
+    it("appends and lists timeline entries by thread id", async () => {
+      const state = await factory();
+      await state.appendTimeline({
+        id: "t1",
+        threadId: "step-1",
+        message: "CRM context",
+        detail: { link: "https://example.com" },
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      await state.appendTimeline({
+        id: "t2",
+        threadId: "step-1",
+        message: "Follow-up",
+        createdAt: "2026-01-01T00:01:00.000Z",
+      });
+
+      expect(await state.listTimeline("step-1")).toEqual([
+        {
+          id: "t1",
+          threadId: "step-1",
+          message: "CRM context",
+          detail: { link: "https://example.com" },
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+        {
+          id: "t2",
+          threadId: "step-1",
+          message: "Follow-up",
+          createdAt: "2026-01-01T00:01:00.000Z",
+        },
+      ]);
+      expect(await state.listTimeline("missing")).toEqual([]);
     });
   });
 }

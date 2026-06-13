@@ -15,24 +15,38 @@ export { createInbox } from "./inbox";
 export type { BatchDecision, HitlInbox } from "./inbox";
 
 export { createHitlClient, DEFAULT_BASE_PATH } from "./client";
-export type {
-  ApprovalOptions,
-  BatchApprovalItem,
-  BatchApprovalOptions,
-  CreateHitlClientOptions,
-  HitlClient,
-} from "./client";
+export type { CreateHitlClientOptions, HitlClient } from "./client";
+
+export type { ActionStyle, HumanActionDef, HumanActions } from "./human-actions";
+export {
+  action,
+  actionById,
+  actionFields,
+  defaultStyle,
+  denyAction,
+  denyFields,
+  effectiveStyle,
+  submitAction,
+  submitFields,
+  validateActions,
+  normalizeActions,
+} from "./human-actions";
+export { ActionsBuilder, humanActions } from "./human-actions-builder";
+export type { HumanResult } from "./human-result";
+export { isResolved } from "./human-result";
+export type { HumanItem, WaitForHumanOptions } from "./human-options";
+export type { TimelineEntry } from "./timeline";
 
 export {
-  createApprovalRequest,
+  createHumanRequest,
   createBatchRequest,
   NotFoundError,
   notifyVia,
-  remindApproval,
+  remindHumanRequest,
   remindBatch,
-  resolveApproval,
-  resolveBatchApproval,
-  timeoutApproval,
+  resolveHumanRequest,
+  resolveBatchHumanRequest,
+  timeoutHumanRequest,
   timeoutBatch,
 } from "./core";
 export type { HitlRuntime } from "./core";
@@ -51,9 +65,8 @@ export type {
 } from "./api-types";
 
 export type {
-  ApprovalRequest,
-  ApprovalResult,
-  BatchApprovalRequest,
+  HumanRequest,
+  BatchHumanRequest,
   HitlBatchCallback,
   HitlCallback,
   HitlAdapter,
@@ -63,9 +76,9 @@ export type {
 
 export { InMemoryState } from "./state";
 export type {
-  ApprovalRecord,
+  HumanRequestRecord,
   BatchRecord,
-  NewApprovalRecord,
+  NewHumanRequestRecord,
   NewBatchRecord,
   State,
 } from "./state";
