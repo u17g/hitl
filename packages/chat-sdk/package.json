@@ -1,7 +1,7 @@
 {
-  "name": "@hitldev/discord",
+  "name": "@hitldev/chat-sdk",
   "version": "0.0.0",
-  "description": "Discord channel plugin for hitldev: embed approval messages, modals, and interaction callbacks.",
+  "description": "Chat SDK channel plugin for hitldev: deliver approvals to Slack, Teams, Discord and more from one adapter.",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -17,8 +17,14 @@
   "dependencies": {
     "@hitldev/sdk": "workspace:*"
   },
+  "peerDependencies": {
+    "chat": "^4.30.0"
+  },
   "devDependencies": {
+    "ai": "^6.0.182",
+    "chat": "^4.30.0",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "^4.0.0"
   }
 }

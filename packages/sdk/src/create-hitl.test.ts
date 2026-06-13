@@ -6,8 +6,6 @@ import { InMemoryStore } from "./store";
 import type {
   ApprovalRequest,
   BatchApprovalRequest,
-  HitlBatchCallback,
-  HitlCallback,
   HitlPlugin,
   Notification,
 } from "./types";
@@ -23,10 +21,8 @@ import type {
 // - POST {base}/batches/:id/timeout and /remind work like the approval ones
 // - POST {base}/notifications routes a notify
 // - malformed JSON on an internal route -> 400
-// - POST dispatches to the first plugin whose handleCallback returns non-null
-// - POST {base}/{provider} dispatches straight to that provider's plugin
-// - a provider-scoped POST does not fall through to other plugins on reject
-// - POST with no matching plugin -> 404; invalid feedbacks -> 400
+// - POST with no matching internal/inbox route -> 404 (the core no longer
+//   dispatches channel callbacks; existing libraries receive and resolve via inbox)
 // - GET /approvals (+ ?status=), GET /approvals/:id, GET /batches/:id
 // - app.inbox reads/writes match the HTTP inbox; POST /approvals/:id and /batches/:id resolve
 // - the inbox write routes map unknown id -> 404, invalid feedbacks -> 400
@@ -68,26 +64,6 @@ function jsonPlugin(id: string): FakePlugin {
     },
     async notify(notification) {
       notifications.push(notification);
-    },
-    async handleCallback(req): Promise<HitlCallback | HitlBatchCallback | null> {
-      let body: Record<string, unknown>;
-      try {
-        body = (await req.clone().json()) as Record<string, unknown>;
-      } catch {
-        return null;
-      }
-      if (body.pluginId !== id) return null;
-      if (body.batchId !== undefined) {
-        return {
-          batchId: body.batchId as string,
-          decisions: body.decisions as HitlBatchCallback["decisions"],
-        };
-      }
-      return {
-        requestId: body.requestId as string,
-        decision: body.decision as "approve" | "deny",
-        feedbacks: body.feedbacks as Record<string, unknown> | undefined,
-      };
     },
   };
 }
@@ -273,7 +249,7 @@ describe("internal API auth", () => {
     expect(res.status).toBe(201);
   });
 
-  it("does not gate plugin callbacks or the inbox behind the bearer", async () => {
+  it("does not gate the inbox write routes or reads behind the bearer", async () => {
     const { app, resolver } = setup({ secret: "s3cret" });
     const id = (
       (await (
@@ -281,9 +257,9 @@ describe("internal API auth", () => {
       ).json()) as { id: string }
     ).id;
 
-    // Channel callbacks authenticate themselves (e.g. Slack signing); no bearer here.
-    const callback = await post(app, "/callback", { pluginId: "a", requestId: id, decision: "approve" });
-    expect(callback.status).toBe(200);
+    // The inbox UI authenticates its own users; no internal-API bearer here.
+    const resolve = await post(app, `/approvals/${id}`, { decision: "approve" });
+    expect(resolve.status).toBe(200);
     expect(resolver.resolved).toHaveLength(1);
 
     const inbox = await app.fetch(new Request(`${BASE}/approvals`));
@@ -291,152 +267,23 @@ describe("internal API auth", () => {
   });
 });
 
-describe("callback dispatch", () => {
-  it("dispatches POST to the matching plugin and resolves the approval", async () => {
+describe("callbacks are no longer dispatched by the core", () => {
+  it("returns 404 for a POST that matches no internal or inbox route", async () => {
     const { app, resolver } = setup();
-    const id = await createRequest(app);
+    await createRequest(app);
 
-    const res = await post(app, "/callback", { pluginId: "a", requestId: id, decision: "approve" });
+    // What used to be a channel callback endpoint: the core no longer parses or
+    // dispatches it. Existing libraries receive interactivity and resolve via inbox.
+    const res = await post(app, "/callback", { requestId: "x", decision: "approve" });
 
-    expect(res.status).toBe(200);
-    expect(resolver.resolved).toEqual([
-      { token: "tok_1", payload: { type: "APPROVED", id } },
-    ]);
-  });
-
-  it("returns 404 when no plugin recognizes the callback", async () => {
-    const { app } = setup();
-    const res = await post(app, "/callback", { pluginId: "unknown" });
     expect(res.status).toBe(404);
-  });
-
-  it("returns ackOnly response without resolving the approval", async () => {
-    const resolver = new FakeResolver();
-    const ackPlugin: HitlPlugin = {
-      id: "ack",
-      async send(request) {
-        return { externalId: `ext_${request.id}` };
-      },
-      async notify() {},
-      async handleCallback(): Promise<HitlCallback | null> {
-        return {
-          requestId: "ignored",
-          decision: "approve",
-          ackOnly: true,
-          response: new Response(JSON.stringify({ type: 9 }), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }),
-        };
-      },
-    };
-    const app = createHitl({ plugins: [ackPlugin], resolver, store: new InMemoryStore() });
-
-    const res = await post(app, "/callback", {});
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ type: 9 });
     expect(resolver.resolved).toHaveLength(0);
   });
 
-  it("returns 400 on invalid feedbacks", async () => {
+  it("returns 404 for a provider-style path too", async () => {
     const { app } = setup();
-    const id = await createRequest(app);
-
-    const res = await post(app, "/callback", {
-      pluginId: "a",
-      requestId: id,
-      decision: "approve",
-      feedbacks: { bogus: "x" },
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("dispatches a batch submit and resolves every item", async () => {
-    const { app, resolver } = setup();
-    const { batchId } = await createBatch(app);
-
-    const res = await post(app, "/callback", {
-      pluginId: "a",
-      batchId,
-      decisions: [
-        { requestId: `${batchId}:0`, decision: "approve" },
-        { requestId: `${batchId}:1`, decision: "deny", reason: "no" },
-      ],
-    });
-
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { ok: boolean; results: { type: string }[] };
-    expect(body.ok).toBe(true);
-    expect(body.results.map((r) => r.type)).toEqual(["APPROVED", "DENIED"]);
-    expect(resolver.resolved.map((r) => r.token)).toEqual(["tok_0", "tok_1"]);
-  });
-
-  it("routes POST {base}/{provider} straight to that provider's plugin", async () => {
-    const resolver = new FakeResolver();
-    const consulted: string[] = [];
-    const plugin = (id: string, provider: string): HitlPlugin => ({
-      id,
-      provider,
-      async send(request) {
-        return { externalId: `ext_${request.id}` };
-      },
-      async notify() {},
-      async handleCallback(req): Promise<HitlCallback | null> {
-        consulted.push(id);
-        const body = (await req.clone().json()) as { requestId: string };
-        return { requestId: body.requestId, decision: "approve" };
-      },
-    });
-    // `a` comes first and would accept any callback by content; the path scopes
-    // dispatch to `b` regardless, and `a` is never consulted.
-    const app = createHitl({
-      plugins: [plugin("a", "slack"), plugin("b", "teams")],
-      resolver,
-      store: new InMemoryStore(),
-    });
-    const id = await createRequest(app);
-
-    const res = await post(app, "/teams", { requestId: id });
-
-    expect(res.status).toBe(200);
-    expect(consulted).toEqual(["b"]);
-    expect(resolver.resolved).toEqual([{ token: "tok_1", payload: { type: "APPROVED", id } }]);
-  });
-
-  it("does not fall through to other plugins when the scoped provider rejects", async () => {
-    const resolver = new FakeResolver();
-    const consulted: string[] = [];
-    const rejecting: HitlPlugin = {
-      id: "slack",
-      provider: "slack",
-      async send(request) {
-        return { externalId: `ext_${request.id}` };
-      },
-      async notify() {},
-      async handleCallback() {
-        consulted.push("slack");
-        return null;
-      },
-    };
-    const greedy: HitlPlugin = {
-      id: "teams",
-      provider: "teams",
-      async send(request) {
-        return { externalId: `ext_${request.id}` };
-      },
-      async notify() {},
-      async handleCallback() {
-        consulted.push("teams");
-        return { requestId: "x", decision: "approve" };
-      },
-    };
-    const app = createHitl({ plugins: [rejecting, greedy], resolver, store: new InMemoryStore() });
-
     const res = await post(app, "/slack", { requestId: "x" });
-
     expect(res.status).toBe(404);
-    expect(consulted).toEqual(["slack"]);
   });
 });
 
@@ -464,7 +311,7 @@ describe("inbox API", () => {
     const pendingBody = (await pendingRes.json()) as { approvals: { id: string }[] };
     expect(pendingBody.approvals.map((a) => a.id)).toEqual([id]);
 
-    await post(app, "/callback", { pluginId: "a", requestId: id, decision: "approve" });
+    await post(app, `/approvals/${id}`, { decision: "approve" });
 
     const stillPending = await app.fetch(new Request(`${BASE}/approvals?status=pending`));
     expect(((await stillPending.json()) as { approvals: unknown[] }).approvals).toEqual([]);
