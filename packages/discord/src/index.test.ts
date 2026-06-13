@@ -59,6 +59,12 @@ function makePlugin(fetchImpl: typeof fetch, publicKeyHex?: string) {
   });
 }
 
+describe("discordHitl provider", () => {
+  it("declares the discord callback-path segment", () => {
+    expect(makePlugin(fetch).provider).toBe("discord");
+  });
+});
+
 describe("discordHitl send", () => {
   it("posts an embed message with approve/deny buttons", async () => {
     const { calls, fetchImpl } = fakeDiscord();

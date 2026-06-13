@@ -22,7 +22,7 @@
   "settings": {
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://example.com/hitl"
+      "request_url": "https://example.com/.well-known/hitldev/v1/slack"
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": false,

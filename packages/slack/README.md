@@ -55,7 +55,7 @@ The fastest path is to import the bundled [manifest.json](./manifest.json).
 
 1. Open [Slack API → Your Apps](https://api.slack.com/apps) and choose **Create New App** → **From an app manifest**.
 2. Pick your workspace, paste the contents of `manifest.json`, and create the app.
-3. Before saving in production, edit `settings.interactivity.request_url` in the manifest (or under **Interactivity & Shortcuts** in the app settings) to your mounted hitl handler URL, e.g. `https://your-app.example/.well-known/hitldev/v1`.
+3. Before saving in production, edit `settings.interactivity.request_url` in the manifest (or under **Interactivity & Shortcuts** in the app settings) to your mounted hitl handler URL with the `slack` callback segment, e.g. `https://your-app.example/.well-known/hitldev/v1/slack`.
 4. Under **OAuth & Permissions**, click **Install to Workspace** (or reinstall after scope changes).
 5. Copy the **Bot User OAuth Token** (`xoxb-...`) to `SLACK_BOT_TOKEN`.
 6. Invite the bot to your approval channel (`/invite @hitldev` in `#inbound-leads`), or rely on `chat:write.public` (included in the manifest) to post to public channels without joining.
@@ -67,7 +67,7 @@ If you prefer not to use the manifest:
 | Setting | Value |
 |---|---|
 | **Bot Token Scopes** | `chat:write`, `chat:write.public` |
-| **Interactivity** | Enabled; Request URL → `https://your-app.example/.well-known/hitldev/v1` |
+| **Interactivity** | Enabled; Request URL → `https://your-app.example/.well-known/hitldev/v1/slack` |
 | **Socket Mode** | Off (not used by this plugin) |
 
 ## Environment variables

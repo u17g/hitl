@@ -63,6 +63,7 @@ export function slackHitl(options: SlackHitlOptions): HitlPlugin {
 
   return {
     id: options.id,
+    provider: "slack",
 
     async send(request: ApprovalRequest): Promise<{ externalId: string }> {
       const data = await postMessage({

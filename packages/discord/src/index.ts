@@ -66,6 +66,7 @@ export function discordHitl(options: DiscordHitlOptions): HitlPlugin {
 
   return {
     id: options.id,
+    provider: "discord",
 
     async send(request: ApprovalRequest): Promise<{ externalId: string }> {
       const payload = renderApprovalMessage(request);
