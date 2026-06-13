@@ -1,14 +1,27 @@
-import { waitForApproval } from "@/lib/hitl-workflow";
+import { field, humanActions, isResolved } from "hitl";
+import { waitForHuman } from "@/lib/hitl-workflow";
+
+const actions = humanActions()
+  .action("submit", { label: "Approve" })
+  .action("deny", {
+    label: "Deny",
+    fields: { reason: field.textArea({ label: "Reason" }) },
+  })
+  .build();
 
 export async function helloWorkflow(name: string) {
   "use workflow";
 
-  const approval = await waitForApproval({
+  const approval = await waitForHuman({
     message: `Say hello to ${name}?`,
+    actions,
   });
 
-  if (approval.type !== "APPROVED" && approval.type !== "REVIEWED") {
-    return { ok: false, type: approval.type };
+  if (!isResolved(approval, "submit")) {
+    return {
+      ok: false,
+      actionId: approval.type === "RESOLVED" ? approval.actionId : approval.type,
+    };
   }
 
   await greet(name);

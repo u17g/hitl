@@ -1,15 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { normalizeActions } from "hitl";
+import type { HumanRequestRecord, HitlField, TimelineEntry } from "hitl";
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 
-interface ApprovalRecord {
-  id: string;
-  message: string;
-  status: "pending" | "resolved";
-  createdAt: string;
-  resolvedAt?: string;
-  result?: { type: string; reason?: string };
-}
+/** GET /api/inbox attaches timeline entries per human request. */
+type InboxHumanRequest = HumanRequestRecord & { timeline?: TimelineEntry[] };
 
 interface RunResponse {
   runId: string;
@@ -24,13 +20,187 @@ async function readJson<T>(res: Response): Promise<T> {
   return body;
 }
 
+function fieldDefault(field: HitlField): unknown {
+  if (field.default !== undefined) return field.default;
+  if (field.kind === "confirm") return false;
+  return "";
+}
+
+function FieldInput({
+  name,
+  field,
+  value,
+  onChange,
+  disabled,
+}: {
+  name: string;
+  field: HitlField;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  disabled?: boolean;
+}) {
+  const id = `field-${name}`;
+  if (field.kind === "textarea") {
+    return (
+      <label style={styles.fieldLabel} htmlFor={id}>
+        {field.label}
+        <textarea
+          id={id}
+          style={styles.textarea}
+          value={String(value ?? "")}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+        />
+      </label>
+    );
+  }
+  if (field.kind === "select") {
+    return (
+      <label style={styles.fieldLabel} htmlFor={id}>
+        {field.label}
+        <select
+          id={id}
+          style={styles.input}
+          value={String(value ?? "")}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+        >
+          {(field.options ?? []).map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  if (field.kind === "confirm") {
+    return (
+      <label style={styles.checkboxLabel}>
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
+        />
+        {field.label}
+      </label>
+    );
+  }
+  return (
+    <label style={styles.fieldLabel} htmlFor={id}>
+      {field.label}
+      <input
+        id={id}
+        style={styles.input}
+        value={String(value ?? "")}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+      />
+    </label>
+  );
+}
+
+function FeedbackForm({
+  title,
+  fields,
+  onSubmit,
+  onCancel,
+  busy,
+}: {
+  title: string;
+  fields: Record<string, HitlField>;
+  onSubmit: (feedbacks: Record<string, unknown>) => void;
+  onCancel: () => void;
+  busy: boolean;
+}) {
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    const initial: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(fields)) {
+      initial[key] = fieldDefault(field);
+    }
+    return initial;
+  });
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    onSubmit(values);
+  }
+
+  return (
+    <form style={styles.form} onSubmit={handleSubmit}>
+      <p style={styles.formTitle}>{title}</p>
+      {Object.entries(fields).map(([key, field]) => (
+        <FieldInput
+          key={key}
+          name={key}
+          field={field}
+          value={values[key]}
+          onChange={(value) => setValues((prev) => ({ ...prev, [key]: value }))}
+          disabled={busy}
+        />
+      ))}
+      <div style={styles.actions}>
+        <button type="submit" style={styles.primaryBtn} disabled={busy}>
+          Confirm
+        </button>
+        <button type="button" style={styles.ghostBtn} onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function actionButtonStyle(id: string): CSSProperties {
+  if (id === "submit") return approveBtnStyle;
+  if (id === "deny") return denyBtnStyle;
+  return ghostBtnStyle;
+}
+
+const approveBtnStyle: CSSProperties = {
+  padding: "0.45rem 0.85rem",
+  background: "#15803d",
+  color: "#fff",
+  border: "none",
+  borderRadius: "8px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const denyBtnStyle: CSSProperties = {
+  padding: "0.45rem 0.85rem",
+  background: "#fff",
+  color: "#b91c1c",
+  border: "1px solid #fecaca",
+  borderRadius: "8px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const ghostBtnStyle: CSSProperties = {
+  padding: "0.35rem 0.65rem",
+  background: "transparent",
+  border: "1px solid #d1d5db",
+  borderRadius: "6px",
+  fontSize: "0.8125rem",
+  cursor: "pointer",
+};
+
 export function DemoPanel() {
   const [name, setName] = useState("world");
-  const [pending, setPending] = useState<ApprovalRecord[]>([]);
-  const [resolved, setResolved] = useState<ApprovalRecord[]>([]);
+  const [pending, setPending] = useState<InboxHumanRequest[]>([]);
+  const [resolved, setResolved] = useState<InboxHumanRequest[]>([]);
   const [lastRun, setLastRun] = useState<RunResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [activeForm, setActiveForm] = useState<{
+    id: string;
+    actionId: string;
+    fields: Record<string, HitlField>;
+    title: string;
+  } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const pushLog = useCallback((text: string, tone?: LogEntry["tone"]) => {
     setLogs((prev) => [
@@ -44,15 +214,25 @@ export function DemoPanel() {
       fetch("/api/inbox?status=pending"),
       fetch("/api/inbox?status=resolved"),
     ]);
-    const pendingBody = await readJson<{ approvals: ApprovalRecord[] }>(pendingRes);
-    const resolvedBody = await readJson<{ approvals: ApprovalRecord[] }>(resolvedRes);
-    setPending(pendingBody.approvals);
-    setResolved(resolvedBody.approvals.slice(0, 8));
+    const pendingBody = await readJson<{ requests: InboxHumanRequest[] }>(pendingRes);
+    const resolvedBody = await readJson<{ requests: InboxHumanRequest[] }>(resolvedRes);
+    setPending(
+      pendingBody.requests.map((item) => ({
+        ...item,
+        actions: normalizeActions(item.actions),
+      })),
+    );
+    setResolved(
+      resolvedBody.requests.slice(0, 8).map((item) => ({
+        ...item,
+        actions: normalizeActions(item.actions),
+      })),
+    );
   }, []);
 
   useEffect(() => {
     void refresh().catch((err: unknown) => {
-      pushLog(err instanceof Error ? err.message : "Failed to load approvals", "err");
+      pushLog(err instanceof Error ? err.message : "Failed to load requests", "err");
     });
     const timer = setInterval(() => void refresh().catch(() => {}), 2000);
     return () => clearInterval(timer);
@@ -77,16 +257,21 @@ export function DemoPanel() {
     }
   }
 
-  async function decide(id: string, decision: "approve" | "deny") {
+  async function resolve(
+    id: string,
+    actionId: string,
+    feedbacks?: Record<string, unknown>,
+  ) {
     setBusy(true);
     try {
       const res = await fetch("/api/inbox", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, decision, by: { name: "demo-ui" } }),
+        body: JSON.stringify({ id, actionId, feedbacks, by: { name: "demo-ui" } }),
       });
       await readJson<{ result: { type: string } }>(res);
-      pushLog(`${decision === "approve" ? "Approved" : "Denied"} ${id}`, decision === "approve" ? "ok" : undefined);
+      pushLog(`Resolved ${id} (${actionId})`, actionId === "submit" ? "ok" : undefined);
+      setActiveForm(null);
       await refresh();
     } catch (err) {
       pushLog(err instanceof Error ? err.message : "Failed to submit decision", "err");
@@ -95,13 +280,31 @@ export function DemoPanel() {
     }
   }
 
+  function beginAction(item: InboxHumanRequest, actionId: string) {
+    const def = item.actions.find((a) => a.id === actionId);
+    const fields = def?.fields ?? {};
+    if (Object.keys(fields).length === 0) {
+      void resolve(item.id, actionId);
+      return;
+    }
+    setActiveForm({
+      id: item.id,
+      actionId,
+      fields,
+      title: def?.label ?? actionId,
+    });
+  }
+
+  const selected =
+    [...pending, ...resolved].find((item) => item.id === selectedId) ?? pending[0] ?? null;
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.title}>hitldev hello-world</h1>
         <p style={styles.lead}>
-          Start the workflow, then approve the pending request. After approval, check the dev server
-          terminal for <code style={styles.code}>Hello, …!</code>
+          Start the workflow, then submit or deny the pending request. Deny opens a reason field;
+          timeline entries appear when notify is used.
         </p>
       </header>
 
@@ -132,17 +335,17 @@ export function DemoPanel() {
 
       <section style={styles.card}>
         <div style={styles.cardHead}>
-          <h2 style={styles.cardTitle}>2. Pending approvals</h2>
-          <button style={styles.ghostBtn} onClick={() => void refresh()} disabled={busy}>
+          <h2 style={styles.cardTitle}>2. Pending requests</h2>
+          <button style={ghostBtnStyle} onClick={() => void refresh()} disabled={busy}>
             Refresh
           </button>
         </div>
         {pending.length === 0 ? (
-          <p style={styles.empty}>No pending approvals. Start a workflow above.</p>
+          <p style={styles.empty}>No pending requests. Start a workflow above.</p>
         ) : (
           <ul style={styles.list}>
             {pending.map((item) => (
-              <li key={item.id} style={styles.approval}>
+              <li key={item.id} style={styles.request}>
                 <div>
                   <p style={styles.message}>{item.message}</p>
                   <p style={styles.meta}>
@@ -150,19 +353,22 @@ export function DemoPanel() {
                   </p>
                 </div>
                 <div style={styles.actions}>
+                  {item.actions.map((def) => (
+                    <button
+                      key={def.id}
+                      style={actionButtonStyle(def.id)}
+                      disabled={busy}
+                      onClick={() => beginAction(item, def.id)}
+                    >
+                      {def.label ?? (def.id === "submit" ? "Submit" : def.id === "deny" ? "Deny" : def.id)}
+                    </button>
+                  ))}
                   <button
-                    style={styles.approveBtn}
+                    style={ghostBtnStyle}
                     disabled={busy}
-                    onClick={() => void decide(item.id, "approve")}
+                    onClick={() => setSelectedId(item.id)}
                   >
-                    Approve
-                  </button>
-                  <button
-                    style={styles.denyBtn}
-                    disabled={busy}
-                    onClick={() => void decide(item.id, "deny")}
-                  >
-                    Deny
+                    Details
                   </button>
                 </div>
               </li>
@@ -171,13 +377,59 @@ export function DemoPanel() {
         )}
       </section>
 
+      {activeForm && (
+        <section style={styles.card}>
+          <FeedbackForm
+            title={activeForm.title}
+            fields={activeForm.fields}
+            busy={busy}
+            onCancel={() => setActiveForm(null)}
+            onSubmit={(feedbacks) => void resolve(activeForm.id, activeForm.actionId, feedbacks)}
+          />
+        </section>
+      )}
+
+      {selected && (
+        <section style={styles.card}>
+          <h2 style={styles.cardTitle}>Timeline & detail</h2>
+          <p style={styles.meta}>
+            Selected: <code style={styles.code}>{selected.id}</code>
+          </p>
+          {selected.context && Object.keys(selected.context).length > 0 && (
+            <pre style={styles.pre}>{JSON.stringify(selected.context, null, 2)}</pre>
+          )}
+          {(selected.timeline ?? []).length === 0 ? (
+            <p style={styles.empty}>No timeline entries yet.</p>
+          ) : (
+            <ul style={styles.list}>
+              {(selected.timeline ?? []).map((entry) => (
+                <li key={entry.id} style={styles.resolved}>
+                  <span style={styles.badge}>FYI</span>
+                  <div>
+                    <div>{entry.message}</div>
+                    {entry.detail && (
+                      <pre style={styles.preSmall}>{JSON.stringify(entry.detail, null, 2)}</pre>
+                    )}
+                    <p style={styles.meta}>{new Date(entry.createdAt).toLocaleString()}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {resolved.length > 0 && (
         <section style={styles.card}>
           <h2 style={styles.cardTitle}>Recently resolved</h2>
           <ul style={styles.list}>
             {resolved.map((item) => (
               <li key={item.id} style={styles.resolved}>
-                <span style={styles.badge}>{item.result?.type ?? "RESOLVED"}</span>
+                <span style={styles.badge}>
+                  {item.result?.type === "RESOLVED"
+                    ? item.result.actionId
+                    : (item.result?.type ?? "—")}
+                </span>
                 <span>{item.message}</span>
               </li>
             ))}
@@ -244,11 +496,21 @@ const styles: Record<string, CSSProperties> = {
   cardTitle: { fontSize: "1rem", fontWeight: 600, margin: "0 0 0.75rem" },
   row: { display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "flex-end" },
   label: { display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.875rem", flex: 1, minWidth: "12rem" },
+  fieldLabel: { display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.875rem" },
+  checkboxLabel: { display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" },
   input: {
     padding: "0.55rem 0.75rem",
     border: "1px solid #d1d5db",
     borderRadius: "8px",
     fontSize: "1rem",
+  },
+  textarea: {
+    padding: "0.55rem 0.75rem",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "1rem",
+    minHeight: "4.5rem",
+    resize: "vertical",
   },
   primaryBtn: {
     padding: "0.6rem 1rem",
@@ -286,7 +548,7 @@ const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
   },
   list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "0.75rem" },
-  approval: {
+  request: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -298,11 +560,11 @@ const styles: Record<string, CSSProperties> = {
   },
   message: { margin: "0 0 0.25rem", fontWeight: 500 },
   meta: { margin: 0, fontSize: "0.8125rem", color: "#6b7280" },
-  actions: { display: "flex", gap: "0.5rem", flexShrink: 0 },
+  actions: { display: "flex", gap: "0.5rem", flexShrink: 0, flexWrap: "wrap" },
   empty: { margin: 0, color: "#6b7280", fontSize: "0.9375rem" },
   resolved: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: "0.65rem",
     fontSize: "0.9375rem",
     padding: "0.5rem 0",
@@ -316,6 +578,24 @@ const styles: Record<string, CSSProperties> = {
     padding: "0.15rem 0.45rem",
     borderRadius: "4px",
     flexShrink: 0,
+  },
+  form: { display: "flex", flexDirection: "column", gap: "0.75rem" },
+  formTitle: { margin: 0, fontWeight: 600 },
+  pre: {
+    margin: "0.5rem 0 0",
+    padding: "0.75rem",
+    background: "#f9fafb",
+    borderRadius: "8px",
+    fontSize: "0.8125rem",
+    overflow: "auto",
+  },
+  preSmall: {
+    margin: "0.25rem 0 0",
+    padding: "0.5rem",
+    background: "#f9fafb",
+    borderRadius: "6px",
+    fontSize: "0.75rem",
+    overflow: "auto",
   },
   logList: { listStyle: "none", margin: 0, padding: 0, fontSize: "0.8125rem" },
   logItem: { padding: "0.25rem 0" },

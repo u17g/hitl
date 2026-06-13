@@ -1,6 +1,14 @@
-import { InMemoryState } from "hitl";
+import { field, humanActions, InMemoryState } from "hitl";
 import { createTestHitl } from "hitl/testing";
 import { describe, expect, it } from "vitest";
+
+const actions = humanActions()
+  .action("submit", { label: "Approve" })
+  .action("deny", {
+    label: "Deny",
+    fields: { reason: field.textArea({ label: "Reason" }) },
+  })
+  .build();
 
 describe("hello-world smoke", () => {
   it("runs the approve loop used by workflows/hello.ts", async () => {
@@ -8,7 +16,10 @@ describe("hello-world smoke", () => {
       state: new InMemoryState(),
     });
 
-    const pending = client.waitForApproval({ message: "Say hello to world?" });
+    const pending = client.waitForHuman({
+      message: "Say hello to world?",
+      actions,
+    });
 
     const record = await (async () => {
       for (;;) {
@@ -18,9 +29,10 @@ describe("hello-world smoke", () => {
       }
     })();
     expect(record.message).toBe("Say hello to world?");
+    expect(record.actions.map((a) => a.id)).toEqual(["submit", "deny"]);
 
-    await hitl.inbox.approve(record.id, { by: { name: "you" } });
+    await hitl.inbox.resolve(record.id, { actionId: "submit", by: { name: "you" } });
 
-    await expect(pending).resolves.toMatchObject({ type: "APPROVED" });
+    await expect(pending).resolves.toMatchObject({ type: "RESOLVED", actionId: "submit" });
   });
 });

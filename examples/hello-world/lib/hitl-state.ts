@@ -5,12 +5,22 @@ import type { State } from "hitl";
 import { SqliteState } from "@hitl/state-sqlite";
 
 const dbDir = join(process.cwd(), ".hitl");
-const dbPath = join(dbDir, "approvals.db");
-mkdirSync(dbDir, { recursive: true });
+const dbPath =
+  process.env.NEXT_PHASE === "phase-production-build"
+    ? ":memory:"
+    : join(dbDir, "human_requests.db");
 
-let state: State | undefined;
+if (dbPath !== ":memory:") {
+  mkdirSync(dbDir, { recursive: true });
+}
+
+const globalForHitl = globalThis as typeof globalThis & { __hitlState?: State };
 
 export function getState(): State {
-  state ??= new SqliteState(new DatabaseSync(dbPath));
-  return state;
+  if (!globalForHitl.__hitlState) {
+    const db = new DatabaseSync(dbPath);
+    db.exec("PRAGMA busy_timeout = 5000");
+    globalForHitl.__hitlState = new SqliteState(db);
+  }
+  return globalForHitl.__hitlState;
 }

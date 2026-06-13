@@ -1,30 +1,35 @@
 import { hitl } from "@/lib/hitl";
 
-// Your own inbox endpoint, built on the programmatic `hitl.inbox` API. The UI
-// calls these handlers — it never needs to know hitldev's internal HTTP shape.
-
 export async function GET(req: Request) {
   const status = new URL(req.url).searchParams.get("status");
-  const approvals = await hitl.inbox.list(
+  const requests = await hitl.inbox.list(
     status === "pending" || status === "resolved" ? { status } : undefined,
   );
-  return Response.json({ approvals });
+
+  const enriched = await Promise.all(
+    requests.map(async (request) => ({
+      ...request,
+      timeline: await hitl.state.listTimeline(request.id),
+    })),
+  );
+
+  return Response.json({ requests: enriched });
 }
 
 export async function POST(req: Request) {
-  const { id, decision, by, reason, feedbacks } = (await req.json()) as {
+  const { id, actionId, by, feedbacks } = (await req.json()) as {
     id: string;
-    decision: "approve" | "deny";
+    actionId: string;
     by?: { name?: string };
-    reason?: string;
     feedbacks?: Record<string, unknown>;
   };
 
+  if (!actionId) {
+    return Response.json({ error: "actionId is required" }, { status: 400 });
+  }
+
   try {
-    const result =
-      decision === "approve"
-        ? await hitl.inbox.approve(id, { feedbacks, by })
-        : await hitl.inbox.deny(id, { reason, by });
+    const result = await hitl.inbox.resolve(id, { actionId, feedbacks, by });
     return Response.json({ result });
   } catch (error) {
     return Response.json(
