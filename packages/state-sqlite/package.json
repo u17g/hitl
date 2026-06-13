@@ -14,17 +14,17 @@
     "state-sqlite": "./dist/cli.js"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "node ./scripts/build.mjs",
+    "build": "node ../../scripts/build-lib.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -34,7 +34,6 @@
   "devDependencies": {
     "hitl": "workspace:*",
     "@types/node": "^25.9.3",
-    "esbuild": "^0.25.5",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }

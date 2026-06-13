@@ -11,6 +11,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.29.8
         version: 2.31.0(@types/node@25.9.3)
+      esbuild:
+        specifier: ^0.25.5
+        version: 0.25.12
       turbo:
         specifier: ^2.5.4
         version: 2.9.16
@@ -125,6 +128,9 @@ importers:
         specifier: workspace:*
         version: link:../hitl
     devDependencies:
+      '@types/node':
+        specifier: ^25.9.3
+        version: 25.9.3
       chat:
         specifier: ^4.30.0
         version: 4.30.0(ai@6.0.204(zod@4.3.6))(zod@4.3.6)
@@ -149,6 +155,9 @@ importers:
 
   packages/resolver-inngest:
     devDependencies:
+      '@types/node':
+        specifier: ^25.9.3
+        version: 25.9.3
       hitl:
         specifier: workspace:*
         version: link:../hitl
@@ -164,6 +173,9 @@ importers:
 
   packages/resolver-workflow-sdk:
     devDependencies:
+      '@types/node':
+        specifier: ^25.9.3
+        version: 25.9.3
       hitl:
         specifier: workspace:*
         version: link:../hitl
@@ -214,9 +226,6 @@ importers:
       '@types/pg':
         specifier: ^8.15.4
         version: 8.20.0
-      esbuild:
-        specifier: ^0.25.5
-        version: 0.25.12
       hitl:
         specifier: workspace:*
         version: link:../hitl
@@ -235,9 +244,6 @@ importers:
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
-      esbuild:
-        specifier: ^0.25.5
-        version: 0.25.12
       hitl:
         specifier: workspace:*
         version: link:../hitl
