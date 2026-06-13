@@ -4,7 +4,7 @@ import type {
   HitlInbox,
   HitlPlugin,
   Notification,
-} from "@hitldev/sdk";
+} from "hitl";
 import type { Chat, SentMessage } from "chat";
 import { registerHitlHandlers } from "./actions";
 import { encodeExternalId, threadRef } from "./external-id";

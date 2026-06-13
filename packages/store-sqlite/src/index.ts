@@ -6,7 +6,7 @@ import type {
   NewApprovalRecord,
   NewBatchRecord,
   Store,
-} from "@hitldev/sdk";
+} from "hitl";
 import { applyMigrations } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";

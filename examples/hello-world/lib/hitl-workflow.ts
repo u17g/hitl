@@ -1,4 +1,4 @@
-import type { HitlRequest } from "@hitldev/sdk";
+import type { HitlRequest } from "hitl";
 import { workflowHitl } from "@hitldev/vercel-workflow";
 
 // The one durable step the workflow client needs: a plain "use step" function

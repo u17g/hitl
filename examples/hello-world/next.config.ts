@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@hitldev/store-sqlite"],
   serverExternalPackages: [
-    "@hitldev/sdk",
+    "hitl",
     "@hitldev/vercel-workflow",
     "workflow",
   ],

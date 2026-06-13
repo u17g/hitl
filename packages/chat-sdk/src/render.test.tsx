@@ -1,4 +1,4 @@
-import { field, type ApprovalRequest, type ApprovalResult } from "@hitldev/sdk";
+import { field, type ApprovalRequest, type ApprovalResult } from "hitl";
 import { toCardElement, toModalElement } from "chat";
 import { describe, expect, it } from "vitest";
 import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";

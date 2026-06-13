@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { field, type NewApprovalRecord } from "@hitldev/sdk";
-import { describeStoreContract } from "@hitldev/sdk/store-contract";
+import { field, type NewApprovalRecord } from "hitl";
+import { describeStoreContract } from "hitl/store-contract";
 import { SqliteStore, schemaSql } from "./index";
 
 describeStoreContract(

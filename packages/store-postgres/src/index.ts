@@ -5,7 +5,7 @@ import type {
   NewApprovalRecord,
   NewBatchRecord,
   Store,
-} from "@hitldev/sdk";
+} from "hitl";
 import { applyMigrations, type PgQueryable } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";

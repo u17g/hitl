@@ -1,4 +1,4 @@
-import { field, type HitlInbox } from "@hitldev/sdk";
+import { field, type HitlInbox } from "hitl";
 import { describe, expect, it, vi } from "vitest";
 import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";
 import { registerHitlHandlers } from "./actions";

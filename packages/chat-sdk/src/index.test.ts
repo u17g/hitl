@@ -1,4 +1,4 @@
-import { field, type ApprovalRequest, type HitlInbox } from "@hitldev/sdk";
+import { field, type ApprovalRequest, type HitlInbox } from "hitl";
 import { toCardElement } from "chat";
 import { describe, expect, it, vi } from "vitest";
 import { chatHitl } from "./index";

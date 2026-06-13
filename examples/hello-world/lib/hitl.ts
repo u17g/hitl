@@ -1,4 +1,4 @@
-import { createHitl } from "@hitldev/sdk";
+import { createHitl } from "hitl";
 import { workflowResolver } from "@hitldev/vercel-workflow";
 import { getStore } from "./hitl-store";
 

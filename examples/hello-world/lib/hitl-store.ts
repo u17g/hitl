@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Store } from "@hitldev/sdk";
+import type { Store } from "hitl";
 import { SqliteStore } from "@hitldev/store-sqlite";
 
 const dbDir = join(process.cwd(), ".hitldev");

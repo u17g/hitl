@@ -1,4 +1,4 @@
-import type { HitlRequest } from "@hitldev/sdk";
+import type { HitlRequest } from "hitl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { workflowHitl } from "./index";
 

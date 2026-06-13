@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
-import { field, type HitlPlugin } from "@hitldev/sdk";
-import { createTestHitl } from "@hitldev/sdk/testing";
+import { field, type HitlPlugin } from "hitl";
+import { createTestHitl } from "hitl/testing";
 import { describe, expect, it, vi } from "vitest";
 import { SqliteStore } from "./index";
 

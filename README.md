@@ -45,7 +45,7 @@ A Workflow DevKit workflow using the plain AI SDK for drafting and hitldev for t
 // workflows/inbound-lead.ts
 import { z } from "zod";
 import { generateObject } from "ai";
-import { field } from "@hitldev/sdk";
+import { field } from "hitl";
 import { waitForApproval } from "../lib/hitl-workflow";
 import { sendEmail } from "../lib/email";
 
@@ -88,7 +88,7 @@ Wire the server once:
 
 ```ts
 // lib/hitl.ts — the server: store + channel plugin, mounted as route handlers.
-import { createHitl } from "@hitldev/sdk";
+import { createHitl } from "hitl";
 import { chatHitl } from "@hitldev/chat-sdk";
 import { workflowResolver } from "@hitldev/vercel-workflow";
 import { Chat } from "chat";
@@ -125,7 +125,7 @@ Build the workflow client once too. It needs one durable step — a plain `"use 
 
 ```ts
 // lib/hitl-workflow.ts — the workflow side: a thin HTTP client. No store, no plugins.
-import type { HitlRequest } from "@hitldev/sdk";
+import type { HitlRequest } from "hitl";
 import { workflowHitl } from "@hitldev/vercel-workflow";
 
 async function hitlRequest(req: HitlRequest) {
@@ -304,7 +304,7 @@ const { waitForApproval, waitForBatchApprovals, notify } = workflowHitl({
 
 `request` is the one piece you write yourself: a `"use step"` function returning the response as plain `{ status, ok, body }` (a `Response` can't cross a step boundary). Defining it in your app — rather than importing a magic durable `fetch` — keeps it an ordinary step the Workflow DevKit compiler can see.
 
-For engines other than Workflow DevKit, drop down to `createHitlClient` from `@hitldev/sdk` and inject the engine's primitives directly (see [Engine bindings](#engine-bindings)).
+For engines other than Workflow DevKit, drop down to `createHitlClient` from `hitl` and inject the engine's primitives directly (see [Engine bindings](#engine-bindings)).
 
 ## How it works
 
@@ -378,7 +378,7 @@ Switching engines means switching one import (`@hitldev/vercel-workflow` → `@h
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
 - **Environment:** set `HITLDEV_SECRET` to the same value for the server and the workflow client — it authenticates the internal `.well-known/hitldev/v1` API. Without it the API is open (and logs a warning), which is fine for local dev. Set `HITLDEV_URL` if the server's base URL isn't the deployment's own URL (`workflowHitl` reads it from the run metadata by default).
 - hitldev needs a store for approvals, held by the **server** (`createHitl`). It defaults to one in-memory store per process; pass a `@hitldev/store-postgres` or `@hitldev/store-sqlite` store for persistence and to share state across server instances.
-- **Custom `Store` implementations:** beyond the single-approval methods, a store implements `findByToken` (idempotent request creation keys on the resume token) and the batch methods (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) — two extra columns plus a companion `<table>_batches` table in the SQL schema, applied automatically by the bundled stores. `describeStoreContract` from `@hitldev/sdk/store-contract` covers the expected behavior.
+- **Custom `Store` implementations:** beyond the single-approval methods, a store implements `findByToken` (idempotent request creation keys on the resume token) and the batch methods (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) — two extra columns plus a companion `<table>_batches` table in the SQL schema, applied automatically by the bundled stores. `describeStoreContract` from `hitl/store-contract` covers the expected behavior.
 - **SQLite** — schema is created automatically in the constructor; no extra step:
 
 ```ts
@@ -427,7 +427,7 @@ Batches (`waitForBatchApprovals`) are delivered per item (one approval card each
 
 | Package | Contents |
 |---|---|
-| `@hitldev/sdk` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, always-on web inbox + `hitl.inbox`, inbox + internal API, `Store` interface + `InMemoryStore`, `@hitldev/sdk/testing` |
+| `hitl` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, always-on web inbox + `hitl.inbox`, inbox + internal API, `Store` interface + `InMemoryStore`, `hitl/testing` |
 | `@hitldev/vercel-workflow` | `workflowHitl()` (workflow client) + `workflowResolver()` (server) — Workflow DevKit engine binding |
 | `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
 | `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
@@ -450,7 +450,7 @@ Batches (`waitForBatchApprovals`) are delivered per item (one approval card each
 examples/
   hello-world/      # Next.js + Workflow DevKit + web inbox minimal example
 packages/
-  sdk/              # @hitldev/sdk (core: createHitl, createHitlClient, field builders, web inbox + hitl.inbox)
+  hitl/             # hitl (core: createHitl, createHitlClient, field builders, web inbox + hitl.inbox)
   vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit binding: workflowHitl + workflowResolver)
   store-postgres/   # @hitldev/store-postgres (PostgresStore)
   store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)

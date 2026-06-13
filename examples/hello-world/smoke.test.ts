@@ -1,5 +1,5 @@
-import { InMemoryStore } from "@hitldev/sdk";
-import { createTestHitl } from "@hitldev/sdk/testing";
+import { InMemoryStore } from "hitl";
+import { createTestHitl } from "hitl/testing";
 import { describe, expect, it } from "vitest";
 
 describe("hello-world smoke", () => {

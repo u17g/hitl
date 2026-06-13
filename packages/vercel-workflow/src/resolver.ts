@@ -1,4 +1,4 @@
-import type { HitlResolver } from "@hitldev/sdk";
+import type { HitlResolver } from "hitl";
 
 /**
  * Server-side resolver for Workflow DevKit: resumes the hook a workflow

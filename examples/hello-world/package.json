@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hitldev/sdk": "workspace:*",
+    "hitl": "workspace:*",
     "@hitldev/store-sqlite": "workspace:*",
     "@hitldev/vercel-workflow": "workspace:*",
     "next": "^15.3.3",

@@ -1,4 +1,4 @@
-import { field } from "@hitldev/sdk";
+import { field } from "hitl";
 import { describe, expect, it } from "vitest";
 import { needsModal, parseFieldValue, parseModalValues } from "./fields";
 

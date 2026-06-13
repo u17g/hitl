@@ -1,4 +1,4 @@
-import type { HitlInbox, Reviewer } from "@hitldev/sdk";
+import type { HitlInbox, Reviewer } from "hitl";
 import type { ActionEvent, Chat, ModalSubmitEvent } from "chat";
 import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";
 import { needsModal, parseModalValues } from "./fields";

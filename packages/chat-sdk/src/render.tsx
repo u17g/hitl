@@ -1,5 +1,5 @@
 /** @jsxImportSource chat */
-import type { ApprovalRequest, ApprovalResult, HitlField } from "@hitldev/sdk";
+import type { ApprovalRequest, ApprovalResult, HitlField } from "hitl";
 import { Actions, Button, Card, CardText, Modal } from "chat";
 import { ACTION_APPROVE, ACTION_DENY, MODAL_CALLBACK } from "./constants";
 import { fieldInputs } from "./fields";

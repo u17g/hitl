@@ -17,15 +17,15 @@ importers:
 
   examples/hello-world:
     dependencies:
-      '@hitldev/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
       '@hitldev/store-sqlite':
         specifier: workspace:*
         version: link:../../packages/store-sqlite
       '@hitldev/vercel-workflow':
         specifier: workspace:*
         version: link:../../packages/vercel-workflow
+      hitl:
+        specifier: workspace:*
+        version: link:../../packages/hitl
       next:
         specifier: ^15.3.3
         version: 15.5.19(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -57,9 +57,9 @@ importers:
 
   packages/chat-sdk:
     dependencies:
-      '@hitldev/sdk':
+      hitl:
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../hitl
     devDependencies:
       ai:
         specifier: ^6.0.182
@@ -112,7 +112,7 @@ importers:
         specifier: ^4.0.0
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(typescript@5.9.3)
 
-  packages/sdk:
+  packages/hitl:
     devDependencies:
       '@types/node':
         specifier: ^25.9.3
@@ -126,12 +126,12 @@ importers:
 
   packages/store-postgres:
     devDependencies:
-      '@hitldev/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
+      hitl:
+        specifier: workspace:*
+        version: link:../hitl
       pg-mem:
         specifier: ^3.0.5
         version: 3.0.14
@@ -144,12 +144,12 @@ importers:
 
   packages/store-sqlite:
     devDependencies:
-      '@hitldev/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       '@types/node':
         specifier: ^25.9.3
         version: 25.9.3
+      hitl:
+        specifier: workspace:*
+        version: link:../hitl
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
@@ -159,9 +159,9 @@ importers:
 
   packages/vercel-workflow:
     devDependencies:
-      '@hitldev/sdk':
+      hitl:
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../hitl
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

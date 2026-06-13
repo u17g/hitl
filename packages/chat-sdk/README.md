@@ -13,7 +13,7 @@ pnpm add @hitldev/chat-sdk chat @chat-adapter/slack
 ## Usage
 
 ```ts
-import { createHitl } from "@hitldev/sdk";
+import { createHitl } from "hitl";
 import { chatHitl } from "@hitldev/chat-sdk";
 import { workflowResolver } from "@hitldev/vercel-workflow";
 import { Chat } from "chat";

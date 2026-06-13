@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hitldev/sdk": "workspace:*"
+    "hitl": "workspace:*"
   },
   "peerDependencies": {
     "chat": "^4.30.0"

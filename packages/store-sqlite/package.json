@@ -18,10 +18,10 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@hitldev/sdk": "workspace:*"
+    "hitl": "workspace:*"
   },
   "devDependencies": {
-    "@hitldev/sdk": "workspace:*",
+    "hitl": "workspace:*",
     "@types/node": "^25.9.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

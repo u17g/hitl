@@ -3,7 +3,7 @@ import {
   type HitlClient,
   type HitlRequestFn,
   type HitlResolver,
-} from "@hitldev/sdk";
+} from "hitl";
 import { createHook, getWorkflowMetadata, sleep } from "workflow";
 
 export { workflowResolver } from "./resolver";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { newDb } from "pg-mem";
-import { describeStoreContract } from "@hitldev/sdk/store-contract";
+import { describeStoreContract } from "hitl/store-contract";
 import { PostgresStore, type PgQueryable } from "./index";
 
 function newPool(): PgQueryable {
