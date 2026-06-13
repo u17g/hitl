@@ -44,7 +44,7 @@ The workflow and the server are separate processes (Workflow DevKit runs workflo
 Hitl SDK asks four things of the execution engine, split across the two sides:
 
 1. **Suspend with a token** (workflow side): create a durable wait and obtain an opaque resume token
-2. **A durable timer** (workflow side, for `timeout` and `reminder`). The client expands reminder rules into a sorted fire schedule at wait start, then sleeps until each fire or timeout. Wall-clock rules resolve against `process.env.TZ`, the host timezone, or an explicit `tz` option.
+2. **A durable timer** (workflow side, for `timeout` and `reminders`). The client expands reminder rules into a sorted fire schedule at wait start, then sleeps until each fire or timeout. Wall-clock rules resolve against `process.env.TZ`, the host timezone, or an explicit `tz` option.
 3. **A durable request** (workflow side): an HTTP call to the server, memoized across replays
 4. **Resolve by token** (server side): resume the wait with a payload when a callback arrives
 

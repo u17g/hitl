@@ -6,7 +6,7 @@ import { Hitl, type HitlInstance } from "./hitl";
 import { field } from "./fields";
 import { humanActions } from "./human-actions-builder";
 import { submitAction, type HumanActions } from "./human-actions";
-import { remind } from "./reminder";
+import { escalate, remind } from "./reminder";
 import { InMemoryState } from "./state";
 import type {
   HumanRequest,
@@ -252,7 +252,7 @@ describe("waitForHuman", () => {
     const pending = client.waitForHuman({
       message: "Approve?",
       actions: submitOnly,
-      reminder: [{ after: "1h", message: "Still waiting" }],
+      reminders: [remind.after("1h", { message: "Still waiting" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
     const requestId = adapters[0]!.sent[0]!.id;
@@ -277,7 +277,7 @@ describe("waitForHuman", () => {
     const pending = client.waitForHuman({
       message: "m",
       actions: submitOnly,
-      reminder: [{ after: "1h", message: "ping" }],
+      reminders: [remind.after("1h", { message: "ping" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
@@ -299,7 +299,7 @@ describe("waitForHuman", () => {
       message: "m",
       actions: submitOnly,
       timeout: "1h",
-      reminder: [{ after: "2h", message: "too late" }],
+      reminders: [remind.after("2h", { message: "too late" })],
     });
 
     expect(adapters[0]!.notifications).toHaveLength(0);
@@ -310,9 +310,9 @@ describe("waitForHuman", () => {
     const pending = client.waitForHuman({
       message: "m",
       actions: submitOnly,
-      reminder: [
-        { after: "1h", message: "first" },
-        { after: "1h", channel: "oncall", message: "second" },
+      reminders: [
+        remind.after("1h", { message: "first" }),
+        escalate.to("oncall").after("1h", { message: "second" }),
       ],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
@@ -338,7 +338,7 @@ describe("waitForHuman", () => {
     const pending = client.waitForHuman({
       message: "Approve?",
       actions: submitOnly,
-      reminder: [remind.tomorrowAt("07:00", { tz: "UTC", message: "Morning ping" })],
+      reminders: [remind.tomorrowAt("07:00", { tz: "UTC", message: "Morning ping" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
     const requestId = adapters[0]!.sent[0]!.id;
@@ -368,7 +368,7 @@ describe("waitForHuman", () => {
       message: "Escalate me",
       channel: "primary",
       actions,
-      reminder: [{ after: "1h", channel: "oncall", mode: "redeliver" }],
+      reminders: [escalate.to("oncall").after("1h", { mode: "redeliver" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
     const requestId = adapters[0]!.sent[0]!.id;
@@ -460,7 +460,7 @@ describe("waitForHuman batch", () => {
     const pending = client.waitForHuman({
       actions,
       items: [{ message: "A" }, { message: "B" }],
-      reminder: [{ after: "1h", message: "Still waiting" }],
+      reminders: [remind.after("1h", { message: "Still waiting" })],
     });
     await vi.waitFor(() => expect(adapters[0]!.sentBatches).toHaveLength(1));
     const batchId = adapters[0]!.sentBatches[0]!.batchId;

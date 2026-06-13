@@ -14,7 +14,7 @@ export async function helloWorkflow(name: string) {
         fields: { reason: field.textArea({ label: "Reason" }) },
       })
       .build(),
-    reminder: [remind.after("1h", { message: "Still waiting for approval" })],
+    reminders: [remind.after("1h", { message: "Still waiting for approval" })],
   });
 
   if (!isResolved(approval, "submit")) {

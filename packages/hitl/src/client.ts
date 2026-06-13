@@ -125,7 +125,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
   }
 
   async function waitWithReminders<T>(
-    opts: { timeout?: Duration; reminder?: ReminderEntry[] },
+    opts: { timeout?: Duration; reminders?: ReminderEntry[] },
     subject: {
       promise: Promise<T>;
       remind(entry: ReminderEntry): Promise<unknown>;
@@ -134,7 +134,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
   ): Promise<T> {
     const timeoutMs = opts.timeout === undefined ? undefined : parseDuration(opts.timeout);
     const anchor = new Date();
-    const schedule = expandReminderSchedule(opts.reminder ?? [], anchor, timeoutMs);
+    const schedule = expandReminderSchedule(opts.reminders ?? [], anchor, timeoutMs);
 
     if (timeoutMs === undefined && schedule.length === 0) {
       return subject.promise;

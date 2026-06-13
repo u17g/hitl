@@ -20,37 +20,19 @@ export type ReminderTiming =
       skip?: Weekday[];
     };
 
-export interface RemindEntryWithTiming {
-  timing: ReminderTiming;
-  message?: string;
-}
-
-/** @deprecated Prefer `timing` or the `remind` builder. */
-export interface LegacyRemindEntry {
-  after: Duration;
-  message?: string;
-}
-
 /** Same-channel thread reminder while an approval is pending. */
-export type RemindEntry = RemindEntryWithTiming | LegacyRemindEntry;
-
-export interface EscalateEntryWithTiming {
+export interface RemindEntry {
   timing: ReminderTiming;
-  channel: string;
   message?: string;
-  mode?: "notify" | "redeliver";
-}
-
-/** @deprecated Prefer `timing` or the `escalate` builder. */
-export interface LegacyEscalateEntry {
-  after: Duration;
-  channel: string;
-  message?: string;
-  mode?: "notify" | "redeliver";
 }
 
 /** Fallback channel notification or re-delivery while pending. */
-export type EscalateEntry = EscalateEntryWithTiming | LegacyEscalateEntry;
+export interface EscalateEntry {
+  timing: ReminderTiming;
+  channel: string;
+  message?: string;
+  mode?: "notify" | "redeliver";
+}
 
 export type ReminderEntry = RemindEntry | EscalateEntry;
 
@@ -69,27 +51,6 @@ export interface EveryReminderOpts extends ReminderCommonOpts {
 
 export function isEscalate(entry: ReminderEntry): entry is EscalateEntry {
   return "channel" in entry && entry.channel !== undefined;
-}
-
-export function hasTiming(entry: ReminderEntry): entry is RemindEntryWithTiming | EscalateEntryWithTiming {
-  return "timing" in entry && entry.timing !== undefined;
-}
-
-export function normalizeReminderEntry(entry: ReminderEntry): RemindEntryWithTiming | EscalateEntryWithTiming {
-  if (hasTiming(entry)) {
-    return entry;
-  }
-
-  const timing: ReminderTiming = { kind: "delay", after: entry.after };
-  if (isEscalate(entry)) {
-    return {
-      timing,
-      channel: entry.channel,
-      message: entry.message,
-      mode: entry.mode,
-    };
-  }
-  return { timing, message: entry.message };
 }
 
 export const DEFAULT_REMIND_MESSAGE = "Reminder: approval still pending";
@@ -132,27 +93,27 @@ function everyTiming(interval: Duration, opts: EveryReminderOpts): ReminderTimin
 }
 
 export const remind = {
-  after(after: Duration, opts?: { message?: string }): RemindEntryWithTiming {
+  after(after: Duration, opts?: { message?: string }): RemindEntry {
     return { timing: delayTiming(after), message: opts?.message };
   },
 
-  at(clock: ClockTime, opts?: ReminderCommonOpts & { message?: string }): RemindEntryWithTiming {
+  at(clock: ClockTime, opts?: ReminderCommonOpts & { message?: string }): RemindEntry {
     return { timing: atTiming(clock, opts), message: opts?.message };
   },
 
-  tomorrowAt(clock: ClockTime, opts?: ReminderCommonOpts & { message?: string }): RemindEntryWithTiming {
+  tomorrowAt(clock: ClockTime, opts?: ReminderCommonOpts & { message?: string }): RemindEntry {
     return { timing: atTiming(clock, { ...opts, dayOffset: 1 }), message: opts?.message };
   },
 
-  every(interval: Duration, opts: EveryReminderOpts & { message?: string }): RemindEntryWithTiming {
+  every(interval: Duration, opts: EveryReminderOpts & { message?: string }): RemindEntry {
     return { timing: everyTiming(interval, opts), message: opts.message };
   },
 
-  dailyAt(clock: ClockTime, opts?: EveryReminderOpts & { message?: string }): RemindEntryWithTiming {
+  dailyAt(clock: ClockTime, opts?: EveryReminderOpts & { message?: string }): RemindEntry {
     return { timing: everyTiming("1d", { ...opts, at: clock }), message: opts?.message };
   },
 
-  weekdaysAt(clock: ClockTime, opts?: EveryReminderOpts & { message?: string }): RemindEntryWithTiming {
+  weekdaysAt(clock: ClockTime, opts?: EveryReminderOpts & { message?: string }): RemindEntry {
     return {
       timing: everyTiming("1d", { ...opts, at: clock, skip: opts?.skip ?? [...WEEKEND_DAYS] }),
       message: opts?.message,
@@ -163,18 +124,18 @@ export const remind = {
 class EscalateBuilder {
   constructor(private readonly channel: string) {}
 
-  after(after: Duration, opts?: { message?: string; mode?: "notify" | "redeliver" }): EscalateEntryWithTiming {
+  after(after: Duration, opts?: { message?: string; mode?: "notify" | "redeliver" }): EscalateEntry {
     return { timing: delayTiming(after), channel: this.channel, ...opts };
   }
 
-  at(clock: ClockTime, opts?: ReminderCommonOpts & { message?: string; mode?: "notify" | "redeliver" }): EscalateEntryWithTiming {
+  at(clock: ClockTime, opts?: ReminderCommonOpts & { message?: string; mode?: "notify" | "redeliver" }): EscalateEntry {
     return { timing: atTiming(clock, opts), channel: this.channel, message: opts?.message, mode: opts?.mode };
   }
 
   tomorrowAt(
     clock: ClockTime,
     opts?: ReminderCommonOpts & { message?: string; mode?: "notify" | "redeliver" },
-  ): EscalateEntryWithTiming {
+  ): EscalateEntry {
     return {
       timing: atTiming(clock, { ...opts, dayOffset: 1 }),
       channel: this.channel,
@@ -186,14 +147,14 @@ class EscalateBuilder {
   every(
     interval: Duration,
     opts: EveryReminderOpts & { message?: string; mode?: "notify" | "redeliver" },
-  ): EscalateEntryWithTiming {
+  ): EscalateEntry {
     return { timing: everyTiming(interval, opts), channel: this.channel, message: opts.message, mode: opts.mode };
   }
 
   dailyAt(
     clock: ClockTime,
     opts?: EveryReminderOpts & { message?: string; mode?: "notify" | "redeliver" },
-  ): EscalateEntryWithTiming {
+  ): EscalateEntry {
     return {
       timing: everyTiming("1d", { ...opts, at: clock }),
       channel: this.channel,
@@ -205,7 +166,7 @@ class EscalateBuilder {
   weekdaysAt(
     clock: ClockTime,
     opts?: EveryReminderOpts & { message?: string; mode?: "notify" | "redeliver" },
-  ): EscalateEntryWithTiming {
+  ): EscalateEntry {
     return {
       timing: everyTiming("1d", { ...opts, at: clock, skip: opts?.skip ?? [...WEEKEND_DAYS] }),
       channel: this.channel,

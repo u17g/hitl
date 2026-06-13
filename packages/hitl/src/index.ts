@@ -95,8 +95,6 @@ export type { Duration } from "./duration";
 export type {
   ClockTime,
   EscalateEntry,
-  LegacyEscalateEntry,
-  LegacyRemindEntry,
   RemindEntry,
   ReminderCommonOpts,
   ReminderEntry,
@@ -110,7 +108,6 @@ export {
   escalate,
   escalateMessage,
   isEscalate,
-  normalizeReminderEntry,
   remind,
   remindMessage,
 } from "./reminder";

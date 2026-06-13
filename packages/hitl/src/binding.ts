@@ -44,7 +44,7 @@ export interface WorkflowPrimitives {
    * The token must be stable across replays of the same call site.
    */
   suspend<T>(): HitlSuspension<T>;
-  /** Durable timer used to implement `timeout` and `reminder`. */
+  /** Durable timer used to implement `timeout` and `reminders`. */
   sleep(ms: number): Promise<void>;
   /**
    * Call the hitl server. Engines implement this as a durable step (e.g. a

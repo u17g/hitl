@@ -16,7 +16,7 @@ export interface TestHitl {
   hitl: HitlInstance;
   /** A workflow client whose fetch is wired straight into `hitl.fetch` — no network. */
   client: HitlClient;
-  /** Resolves the next pending durable `sleep()` (drives timeout/reminder paths). */
+  /** Resolves the next pending durable `sleep()` (drives timeout/reminders paths). */
   flushSleep(): void;
   /** Durations passed to `sleep()`, in call order. */
   readonly sleepCalls: number[];

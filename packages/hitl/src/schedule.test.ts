@@ -32,10 +32,10 @@ describe("expandReminderSchedule", () => {
     delete process.env.TZ;
   });
 
-  it("expands legacy after entries", () => {
+  it("expands delay entries", () => {
     vi.setSystemTime(new Date("2026-06-13T10:00:00.000Z"));
     const anchor = new Date();
-    const fires = expandReminderSchedule([{ after: "1h" }], anchor);
+    const fires = expandReminderSchedule([remind.after("1h")], anchor);
     expect(fires).toHaveLength(1);
     expect(fires[0]!.atMs).toBe(3_600_000);
   });

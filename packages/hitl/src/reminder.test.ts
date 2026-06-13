@@ -4,29 +4,19 @@ import {
   escalate,
   escalateMessage,
   isEscalate,
-  normalizeReminderEntry,
   remind,
   remindMessage,
 } from "./reminder";
 
 describe("reminder", () => {
   it("discriminates escalate entries by channel", () => {
-    expect(isEscalate({ after: "1h", message: "ping" })).toBe(false);
-    expect(isEscalate({ after: "1h", channel: "oncall" })).toBe(true);
+    expect(isEscalate(remind.after("1h", { message: "ping" }))).toBe(false);
     expect(isEscalate(escalate.to("oncall").after("1h"))).toBe(true);
   });
 
   it("applies default messages", () => {
-    expect(remindMessage({ after: "1h" })).toBe(DEFAULT_REMIND_MESSAGE);
     expect(remindMessage(remind.after("1h"))).toBe(DEFAULT_REMIND_MESSAGE);
-    expect(escalateMessage({ after: "1h", channel: "oncall" })).toMatch(/Escalation/);
-  });
-
-  it("normalizes legacy after entries", () => {
-    expect(normalizeReminderEntry({ after: "1h", message: "ping" })).toEqual({
-      timing: { kind: "delay", after: "1h" },
-      message: "ping",
-    });
+    expect(escalateMessage(escalate.to("oncall").after("1h"))).toMatch(/Escalation/);
   });
 
   it("builds timing entries from remind helpers", () => {

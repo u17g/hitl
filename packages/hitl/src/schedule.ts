@@ -1,10 +1,5 @@
 import { parseDuration, type Duration } from "./duration";
-import {
-  normalizeReminderEntry,
-  type ReminderEntry,
-  type ReminderTiming,
-  type Weekday,
-} from "./reminder";
+import type { ReminderEntry, ReminderTiming, Weekday } from "./reminder";
 
 export interface FireEvent {
   /** Milliseconds from the schedule anchor. */
@@ -46,11 +41,10 @@ export function expandReminderSchedule(
 ): FireEvent[] {
   const fires: FireEvent[] = [];
 
-  for (const [index, rawEntry] of entries.entries()) {
-    const entry = normalizeReminderEntry(rawEntry);
+  for (const [index, entry] of entries.entries()) {
     const timingFires = expandTiming(entry.timing, anchor, timeoutMs);
     for (const atMs of timingFires) {
-      fires.push({ atMs, entry: rawEntry, _index: index } as FireEvent & { _index: number });
+      fires.push({ atMs, entry, _index: index } as FireEvent & { _index: number });
     }
   }
 

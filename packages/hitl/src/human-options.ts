@@ -23,7 +23,7 @@ export interface WaitForHumanOptions<Actions extends readonly HumanActionDef[]> 
   context?: Record<string, unknown>;
   channel?: string;
   timeout?: Duration;
-  reminder?: ReminderEntry[];
+  reminders?: ReminderEntry[];
 }
 
 export function validateWaitForHumanOptions<Actions extends readonly HumanActionDef[]>(
