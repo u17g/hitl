@@ -18,7 +18,7 @@ For most apps, **no setup step is required**. Constructing `SqliteState` runs mi
 import { DatabaseSync } from "node:sqlite";
 import { SqliteState } from "@hitl/state-sqlite";
 
-const state = new SqliteState(new DatabaseSync(".hitl/approvals.db"));
+const state = new SqliteState(new DatabaseSync(".hitl/human_requests.db"));
 ```
 
 See [`examples/hello-world`](../../examples/hello-world/lib/hitl-state.ts) for a lazy singleton pattern.
@@ -28,8 +28,8 @@ See [`examples/hello-world`](../../examples/hello-world/lib/hitl-state.ts) for a
 Use the CLI when you want to initialize a database file outside your app — CI, scripts, or infra that runs before the server starts:
 
 ```bash
-npx @hitl/state-sqlite setup --db .hitl/approvals.db
-npx @hitl/state-sqlite setup --db .hitl/approvals.db --table custom_approvals
+npx @hitl/state-sqlite setup --db .hitl/human_requests.db
+npx @hitl/state-sqlite setup --db .hitl/human_requests.db --table custom_approvals
 ```
 
 Export DDL without opening a database:
@@ -45,7 +45,7 @@ Programmatically:
 import { schemaSql, migrationSql, SCHEMA_VERSION } from "@hitl/state-sqlite";
 
 schemaSql();
-migrationSql("001_initial", "hitl.approvals");
+migrationSql("001_initial", "hitl.human_requests");
 ```
 
 ## Usage
@@ -57,7 +57,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Hitl } from "hitl";
 import { SqliteState } from "@hitl/state-sqlite";
 
-const dbPath = join(process.cwd(), ".hitl", "approvals.db");
+const dbPath = join(process.cwd(), ".hitl", "human_requests.db");
 mkdirSync(join(process.cwd(), ".hitl"), { recursive: true });
 
 const state = new SqliteState(new DatabaseSync(dbPath));
@@ -68,3 +68,5 @@ export const hitl = new Hitl({ state, /* resolver, adapters, … */ });
 ## Migrations
 
 Schema changes are versioned inside this package (`SCHEMA_VERSION`). Opening the database with `SqliteState` (or re-running `setup`) applies new migrations idempotently after you upgrade `@hitl/state-sqlite`.
+
+Upgrading from the legacy default table `hitl.approvals` is handled automatically by migration `006_rename_human_requests` when you use the new default `hitl.human_requests`. Custom `--table` names are not renamed automatically.

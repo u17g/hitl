@@ -42,7 +42,7 @@ export const POST = bot.webhooks.slack; // app/api/webhooks/slack/route.ts
 
 - **send** — posts an approval card (message + Approve/Deny buttons carrying the request id) to `channel`; the `SentMessage` handle is kept in memory for `update`.
 - **update** — edits the card in place to show the outcome once resolved.
-- **notify** — posts to the channel, threading under the parent approval's message when `parentExternalId` is set.
+- **notify** — posts to the channel, threading under the human step when `threadRef` is set.
 - Feedback fields (`textField` / `textArea` / `select` / `confirm`) are collected through a **modal** opened on Approve, because Chat SDK cards can't hold inline text inputs. So any approval with fields uses the two-step approve → modal → submit flow on every platform.
 - **Batches** have no dedicated UI here: without `sendBatch`, the core delivers each item on its own, so every item goes through the same card + modal flow.
 

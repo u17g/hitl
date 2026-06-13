@@ -12,7 +12,7 @@ npm install hitl @hitl/state-pg pg
 
 ## Setup
 
-Run migrations **before** deploying or on first boot in production. The default table is `hitl.approvals`.
+Run migrations **before** deploying or on first boot in production. The default table is `hitl.human_requests`.
 
 ```bash
 export HITL_POSTGRES_URL=postgres://user:password@host:5432/database
@@ -42,7 +42,7 @@ Programmatically:
 import { schemaSql, migrationSql, SCHEMA_VERSION } from "@hitl/state-pg";
 
 schemaSql(); // all migrations concatenated
-migrationSql("001_initial", "hitl.approvals"); // single migration
+migrationSql("001_initial", "hitl.human_requests"); // single migration
 ```
 
 ### Workflow DevKit Postgres world
@@ -75,3 +75,5 @@ export const hitl = new Hitl({ state, /* resolver, adapters, … */ });
 ## Migrations
 
 Schema changes are versioned inside this package (`SCHEMA_VERSION`). Re-run `setup` or `ensureSchema()` after upgrading `@hitl/state-pg` to apply new migrations idempotently.
+
+Upgrading from the legacy default table `hitl.approvals` is handled automatically by migration `006_rename_human_requests` when you use the new default `hitl.human_requests`. Custom `--table` names are not renamed automatically.

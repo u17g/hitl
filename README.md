@@ -22,25 +22,33 @@ npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams
 ## Usage
 
 ```ts
-import { field } from "hitl";
-import { waitForApproval } from "../lib/hitl-workflow";
+import { field, humanActions, isResolved } from "hitl";
+import { waitForHuman } from "../lib/hitl-workflow";
 
 export async function inboundLead(input: { email: string; draft: { subject: string; body: string } }) {
   "use workflow";
 
-  const approval = await waitForApproval({
+  const actions = humanActions()
+    .action("submit", {
+      fields: {
+        subject: field.textField({ label: "Subject", default: input.draft.subject }),
+        body: field.textArea({ label: "Body", default: input.draft.body }),
+      },
+    })
+    .action("deny", {
+      fields: { reason: field.textArea({ label: "Reason" }) },
+    })
+    .build();
+
+  const approval = await waitForHuman({
     message: `Inbound lead: ${input.email}`,
-    fields: {
-      subject: field.textField({ label: "Subject", default: input.draft.subject }),
-      body: field.textArea({ label: "Body", default: input.draft.body }),
-    },
+    actions,
     timeout: "72h",
   });
 
-  if (approval.type === "DENIED" || approval.type === "TIMED_OUT") return;
+  if (!isResolved(approval, "submit")) return;
 
-  const { subject, body } =
-    approval.type === "REVIEWED" ? approval.feedbacks : input.draft;
+  const { subject, body } = approval.edited ? approval.feedbacks : input.draft;
 
   await sendEmail({ to: input.email, subject, body });
 }

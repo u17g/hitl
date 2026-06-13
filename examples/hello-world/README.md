@@ -1,9 +1,5 @@
 # hello-world
 
-Minimal [hitldev](https://github.com/hitldev/hitldev) example: a Workflow DevKit workflow suspends on `waitForApproval`, you approve through the programmatic `hitl.inbox` API, and the workflow resumes.
-
-No Slack, Discord, or Teams setup — only the built-in web inbox channel.
-
 ## Prerequisites
 
 - Node.js 22.13.0+ (`node:sqlite`)
@@ -48,34 +44,36 @@ curl -s -X POST http://localhost:3000/api/run \
   -d '{"name":"world"}'
 ```
 
-**2. List pending approvals**
+**2. List pending requests**
 
 ```bash
 curl -s 'http://localhost:3000/api/inbox?status=pending'
 ```
 
-Copy the `id` from the first approval in the response.
+Copy the `id` from the first request in the `requests` array.
 
-**3. Approve**
+**3. Submit**
 
 ```bash
 curl -s -X POST "http://localhost:3000/api/inbox" \
   -H 'content-type: application/json' \
-  -d '{"id":"<id>","decision":"approve","by":{"name":"you"}}'
+  -d '{"id":"<id>","actionId":"submit","by":{"name":"you"}}'
 ```
 
 **4. Check the dev server logs**
 
 You should see `Hello, world!` printed when the workflow resumes after approval.
 
-> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitl/approvals.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you approve. See [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md) for setup details.
+> **Note:** If you previously used `.hitl/approvals.db`, delete or rename that file — the example now uses `.hitl/human_requests.db`. Existing data in the legacy default table is migrated automatically when you open the DB with the new package version.
+
+> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitl/human_requests.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you submit. See [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md) for setup details.
 
 ## What this shows
 
 - [`lib/hitl.ts`](lib/hitl.ts) — the server: `new Hitl({ state, resolver: workflowResolver() })` — the web inbox is built in, no adapters needed
-- [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/approve/deny` (what the UI calls)
-- [`lib/hitl-state.ts`](lib/hitl-state.ts) — shared `SqliteState` backed by `.hitl/approvals.db`
-- [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForApproval`
-- [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForApproval` from the workflow client
+- [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/resolve` (what the UI calls)
+- [`lib/hitl-state.ts`](lib/hitl-state.ts) — shared `SqliteState` backed by `.hitl/human_requests.db`
+- [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForHuman`
+- [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForHuman` from the workflow client
 - [`app/.well-known/hitldev/v1/[[...path]]/route.ts`](app/.well-known/hitldev/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`
 - [`app/api/run/route.ts`](app/api/run/route.ts) — trigger the workflow with `start()` from Workflow DevKit
