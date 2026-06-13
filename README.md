@@ -76,7 +76,7 @@ Persistence backends: [`@hitl/state-pg`](packages/state-pg/README.md) (Postgres)
 
 | Adapter | Package |
 |---|---|
-| `chatHitl()` | `@hitl/adapter-chat-sdk` — Slack, Teams, Discord, and every [Chat SDK](https://chat-sdk.dev) platform |
+| `createChatSdkAdapter()` | `@hitl/adapter-chat-sdk` — Slack, Teams, Discord, and every [Chat SDK](https://chat-sdk.dev) platform |
 | Web inbox | built into `hitl` — resolve via `hitl.inbox` or your own UI |
 
 One `@hitl/adapter-chat-sdk` adapter covers every Chat SDK platform. Enable platforms by registering their adapters on a `Chat` instance, not by installing more Hitl packages.
