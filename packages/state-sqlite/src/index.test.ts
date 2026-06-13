@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { field, type NewApprovalRecord } from "hitl";
+import { field, humanActions, submitFields, type NewHumanRequestRecord } from "hitl";
 import { describeStateContract } from "hitl/state-contract";
 import { SqliteState, schemaSql } from "./index";
 
@@ -10,13 +10,15 @@ describeStateContract(
   () => new SqliteState(new DatabaseSync(":memory:")),
 );
 
-function newRecord(id: string): NewApprovalRecord {
+function newRecord(id: string): NewHumanRequestRecord {
   return {
     id,
     token: `tok_${id}`,
     channel: "lead-approvals",
     message: "Inbound lead",
-    fields: { subject: field.textField({ label: "Subject" }) },
+    actions: humanActions()
+      .submit({ fields: { subject: field.textField({ label: "Subject" }) } })
+      .build(),
   };
 }
 
@@ -54,14 +56,14 @@ describe("SqliteState specifics", () => {
       tier: field.select({ label: "Tier", options: ["gold", "silver"], default: "silver" }),
       confirmed: field.confirm({ label: "Confirm?" }),
     };
-    await state.create({ ...newRecord("a1"), fields });
+    await state.create({ ...newRecord("a1"), actions: humanActions().submit({ fields }).build() });
 
-    expect((await state.get("a1"))?.fields).toEqual(fields);
+    expect(submitFields((await state.get("a1"))!.actions)).toEqual(fields);
   });
 
   it("exports idempotent schemaSql", () => {
-    expect(schemaSql("hitl.approvals")).toContain(
-      'CREATE TABLE IF NOT EXISTS "hitl.approvals"',
+    expect(schemaSql("hitl.human_requests")).toContain(
+      'CREATE TABLE IF NOT EXISTS "hitl.human_requests"',
     );
     expect(schemaSql("custom_approvals")).toContain("CREATE TABLE IF NOT EXISTS custom_approvals");
   });

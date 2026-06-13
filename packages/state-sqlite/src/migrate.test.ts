@@ -12,11 +12,14 @@ describe("sqlite migrations", () => {
       "001_initial",
       "002_external_ids",
       "003_batches",
+      "004_human_actions",
+      "005_actions_array",
+      "006_rename_human_requests",
     ]);
   });
 
   it("prints user-facing DDL without the migration ledger", () => {
-    expect(schemaSql(DEFAULT_TABLE)).toContain('CREATE TABLE IF NOT EXISTS "hitl.approvals"');
+    expect(schemaSql(DEFAULT_TABLE)).toContain('CREATE TABLE IF NOT EXISTS "hitl.human_requests"');
     expect(schemaSql(DEFAULT_TABLE)).not.toContain("schema_migrations");
   });
 
@@ -32,7 +35,14 @@ describe("sqlite migrations", () => {
     const rows = db
       .prepare('SELECT id FROM "hitl.schema_migrations" ORDER BY id')
       .all() as Array<{ id: string }>;
-    expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids", "003_batches"]);
+    expect(rows.map((row) => row.id)).toEqual([
+      "001_initial",
+      "002_external_ids",
+      "003_batches",
+      "004_human_actions",
+      "005_actions_array",
+      "006_rename_human_requests",
+    ]);
   });
 
   it("upgrades a v2 database in place", () => {
@@ -47,7 +57,36 @@ describe("sqlite migrations", () => {
     applyMigrations(db, DEFAULT_TABLE);
 
     // batch columns and the batches table now exist
-    db.prepare('SELECT batch_id, batch_index FROM "hitl.approvals" LIMIT 0').get();
-    db.prepare('SELECT id, channel, title FROM "hitl.approvals_batches" LIMIT 0').get();
+    db.prepare('SELECT batch_id, batch_index FROM "hitl.human_requests" LIMIT 0').get();
+    db.prepare('SELECT id, channel, title FROM "hitl.human_requests_batches" LIMIT 0').get();
+  });
+
+  it("renames legacy default tables on upgrade", () => {
+    const legacyTable = "hitl.approvals";
+    const db = new DatabaseSync(":memory:");
+    for (const id of [
+      "001_initial",
+      "002_external_ids",
+      "003_batches",
+      "004_human_actions",
+      "005_actions_array",
+    ]) {
+      db.exec(migrationSql(id, legacyTable));
+    }
+    db.exec(`
+      CREATE TABLE "hitl.schema_migrations" (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL);
+      INSERT INTO "hitl.schema_migrations" VALUES
+        ('001_initial', 'x'),
+        ('002_external_ids', 'x'),
+        ('003_batches', 'x'),
+        ('004_human_actions', 'x'),
+        ('005_actions_array', 'x');
+    `);
+
+    applyMigrations(db, DEFAULT_TABLE);
+
+    db.prepare('SELECT 1 FROM "hitl.human_requests" LIMIT 0').get();
+    db.prepare('SELECT 1 FROM "hitl.human_requests_batches" LIMIT 0').get();
+    expect(() => db.prepare('SELECT 1 FROM "hitl.approvals" LIMIT 0').get()).toThrow();
   });
 });

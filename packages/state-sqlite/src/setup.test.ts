@@ -9,7 +9,7 @@ import { runSetup } from "./setup.js";
 describe("setup command", () => {
   it("creates the default approvals table in a database file", async () => {
     const dir = mkdtempSync(join(tmpdir(), "state-sqlite-setup-"));
-    const dbPath = join(dir, "approvals.db");
+    const dbPath = join(dir, "human_requests.db");
 
     try {
       runSetup(["--db", dbPath]);
@@ -22,7 +22,7 @@ describe("setup command", () => {
           token: "tok_a1",
           channel: "lead-approvals",
           message: "Approve?",
-          fields: {},
+          actions: { submit: {} },
         });
         expect(await state.get("a1")).toMatchObject({ id: "a1", status: "pending" });
       } finally {

@@ -3,7 +3,7 @@ import { renderSchemaSql, resolveSchemaTable } from "./schema-cli.js";
 
 describe("schema command", () => {
   it("prints postgres DDL", () => {
-    const sql = renderSchemaSql("hitl.approvals");
+    const sql = renderSchemaSql("hitl.human_requests");
     expect(sql).toContain("CREATE SCHEMA IF NOT EXISTS hitl");
     expect(sql).toContain("JSONB NOT NULL");
   });

@@ -5,8 +5,8 @@ function printHelp(): void {
   process.stdout.write(`@hitl/state-pg — database setup and schema export
 
 Usage:
-  state-pg setup [--table hitl.approvals]
-  state-pg schema [--table hitl.approvals]
+  state-pg setup [--table hitl.human_requests]
+  state-pg schema [--table hitl.human_requests]
 
 Environment:
   HITL_POSTGRES_URL                       Postgres connection string (setup, preferred)

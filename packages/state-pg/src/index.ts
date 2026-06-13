@@ -1,11 +1,14 @@
 import type {
-  ApprovalRecord,
-  ApprovalResult,
+  HumanRequestRecord,
+  HumanResult,
   BatchRecord,
-  NewApprovalRecord,
+  NewHumanRequestRecord,
   NewBatchRecord,
   State,
+  TimelineEntry,
 } from "hitl";
+import type { HumanActions } from "hitl";
+import { normalizeActions } from "hitl";
 import { applyMigrations, type PgQueryable } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";
@@ -16,25 +19,26 @@ export { SCHEMA_VERSION } from "./migrations/index.js";
 export { migrationSql } from "./schema-sql.js";
 
 export interface PostgresStateOptions {
-  /** Defaults to `hitl.approvals`. */
+  /** Defaults to `hitl.human_requests`. */
   tableName?: string;
 }
 
-/** Idempotent DDL for the approvals table; also used by `ensureSchema()`. */
 export function schemaSql(tableName = DEFAULT_TABLE): string {
   return buildSchemaSql(tableName);
 }
 
-interface ApprovalRow {
+interface HumanRequestRow {
   id: string;
   token: string;
   channel: string;
   message: string;
-  fields: ApprovalRecord["fields"];
+  fields: Record<string, unknown>;
+  actions: HumanActions | null;
+  context: Record<string, unknown> | null;
   status: string;
   external_id: string | null;
   external_ids: Record<string, string> | null;
-  result: ApprovalResult | null;
+  result: HumanResult | null;
   created_at: string;
   resolved_at: string | null;
   batch_id: string | null;
@@ -45,17 +49,21 @@ interface BatchRow {
   id: string;
   channel: string;
   title: string | null;
+  actions: HumanActions | null;
+  context: Record<string, unknown> | null;
   external_id: string | null;
   external_ids: Record<string, string> | null;
   created_at: string;
 }
 
-/**
- * `State` backed by Postgres. Call `await state.ensureSchema()` once at
- * startup (or apply `schemaSql()` through your own migrations) — unlike
- * `@hitl/state-sqlite`, the constructor cannot create the schema because
- * queries are async.
- */
+interface TimelineRow {
+  id: string;
+  thread_id: string;
+  message: string;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export class PostgresState implements State {
   private readonly pool: PgQueryable;
   private readonly table: ReturnType<typeof resolveTableName>;
@@ -71,17 +79,18 @@ export class PostgresState implements State {
     await applyMigrations(this.pool, this.tableName);
   }
 
-  async create(record: NewApprovalRecord): Promise<void> {
+  async create(record: NewHumanRequestRecord): Promise<void> {
     await this.pool.query(
       `INSERT INTO ${this.table.sql}
-         (id, token, channel, message, fields, status, created_at, batch_id, batch_index)
-       VALUES ($1, $2, $3, $4, $5::jsonb, 'pending', $6, $7, $8)`,
+         (id, token, channel, message, fields, actions, context, status, created_at, batch_id, batch_index)
+       VALUES ($1, $2, $3, $4, '{}'::jsonb, $5::jsonb, $6::jsonb, 'pending', $7, $8, $9)`,
       [
         record.id,
         record.token,
         record.channel,
         record.message,
-        JSON.stringify(record.fields),
+        JSON.stringify(record.actions),
+        record.context === undefined ? null : JSON.stringify(record.context),
         new Date().toISOString(),
         record.batchId ?? null,
         record.batchIndex ?? null,
@@ -89,12 +98,12 @@ export class PostgresState implements State {
     );
   }
 
-  async get(id: string): Promise<ApprovalRecord | null> {
+  async get(id: string): Promise<HumanRequestRecord | null> {
     const { rows } = await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE id = $1`, [id]);
     return rows[0] ? rowToRecord(rows[0]) : null;
   }
 
-  async findByExternalId(externalId: string): Promise<ApprovalRecord | null> {
+  async findByExternalId(externalId: string): Promise<HumanRequestRecord | null> {
     const { rows } = await this.pool.query(
       `SELECT * FROM ${this.table.sql} WHERE external_id = $1`,
       [externalId],
@@ -113,7 +122,7 @@ export class PostgresState implements State {
     return null;
   }
 
-  async findByToken(token: string): Promise<ApprovalRecord | null> {
+  async findByToken(token: string): Promise<HumanRequestRecord | null> {
     const { rows } = await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE token = $1`, [
       token,
     ]);
@@ -122,7 +131,7 @@ export class PostgresState implements State {
 
   async setExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
     const record = await this.get(id);
-    if (!record) throw new Error(`Unknown approval "${id}"`);
+    if (!record) throw new Error(`Unknown human request "${id}"`);
 
     const key = pluginId ?? record.channel;
     const externalIds = { ...record.externalIds, [key]: externalId };
@@ -134,10 +143,10 @@ export class PostgresState implements State {
        WHERE id = $1`,
       [id, primaryExternalId ?? null, JSON.stringify(externalIds)],
     );
-    if (!rowCount) throw new Error(`Unknown approval "${id}"`);
+    if (!rowCount) throw new Error(`Unknown human request "${id}"`);
   }
 
-  async resolve(id: string, result: ApprovalResult): Promise<void> {
+  async resolve(id: string, result: HumanResult): Promise<void> {
     const { rowCount } = await this.pool.query(
       `UPDATE ${this.table.sql} SET status = 'resolved', result = $2::jsonb, resolved_at = $3
        WHERE id = $1 AND status = 'pending'`,
@@ -145,12 +154,12 @@ export class PostgresState implements State {
     );
     if (!rowCount) {
       const record = await this.get(id);
-      if (record) throw new Error(`Approval "${id}" is already resolved`);
-      throw new Error(`Unknown approval "${id}"`);
+      if (record) throw new Error(`Human request "${id}" is already resolved`);
+      throw new Error(`Unknown human request "${id}"`);
     }
   }
 
-  async list(filter?: { status?: ApprovalRecord["status"] }): Promise<ApprovalRecord[]> {
+  async list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]> {
     const { rows } = filter?.status
       ? await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE status = $1`, [filter.status])
       : await this.pool.query(`SELECT * FROM ${this.table.sql}`);
@@ -159,9 +168,16 @@ export class PostgresState implements State {
 
   async createBatch(record: NewBatchRecord): Promise<void> {
     await this.pool.query(
-      `INSERT INTO ${this.table.batchesSql} (id, channel, title, created_at)
-       VALUES ($1, $2, $3, $4)`,
-      [record.id, record.channel, record.title ?? null, new Date().toISOString()],
+      `INSERT INTO ${this.table.batchesSql} (id, channel, title, actions, context, created_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)`,
+      [
+        record.id,
+        record.channel,
+        record.title ?? null,
+        record.actions === undefined ? null : JSON.stringify(record.actions),
+        record.context === undefined ? null : JSON.stringify(record.context),
+        new Date().toISOString(),
+      ],
     );
   }
 
@@ -189,23 +205,47 @@ export class PostgresState implements State {
     );
   }
 
-  async listByBatch(batchId: string): Promise<ApprovalRecord[]> {
+  async listByBatch(batchId: string): Promise<HumanRequestRecord[]> {
     const { rows } = await this.pool.query(
       `SELECT * FROM ${this.table.sql} WHERE batch_id = $1 ORDER BY batch_index`,
       [batchId],
     );
     return rows.map(rowToRecord);
   }
+
+  async appendTimeline(entry: TimelineEntry): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO ${this.table.timelineSql} (id, thread_id, message, detail, created_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5)`,
+      [
+        entry.id,
+        entry.threadId,
+        entry.message,
+        entry.detail === undefined ? null : JSON.stringify(entry.detail),
+        entry.createdAt,
+      ],
+    );
+  }
+
+  async listTimeline(threadId: string): Promise<TimelineEntry[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM ${this.table.timelineSql} WHERE thread_id = $1 ORDER BY created_at`,
+      [threadId],
+    );
+    return rows.map(timelineRowToEntry);
+  }
 }
 
-function rowToRecord(row: ApprovalRow): ApprovalRecord {
+function rowToRecord(row: HumanRequestRow): HumanRequestRecord {
+  const actions = normalizeActions(row.actions, row.fields);
   return {
     id: row.id,
     token: row.token,
     channel: row.channel,
     message: row.message,
-    fields: row.fields,
-    status: row.status as ApprovalRecord["status"],
+    actions,
+    context: row.context ?? undefined,
+    status: row.status as HumanRequestRecord["status"],
     externalId: row.external_id ?? undefined,
     externalIds:
       row.external_ids && Object.keys(row.external_ids).length > 0
@@ -224,11 +264,23 @@ function batchRowToRecord(row: BatchRow): BatchRecord {
     id: row.id,
     channel: row.channel,
     title: row.title ?? undefined,
+    actions: row.actions ? normalizeActions(row.actions) : undefined,
+    context: row.context ?? undefined,
     externalId: row.external_id ?? undefined,
     externalIds:
       row.external_ids && Object.keys(row.external_ids).length > 0
         ? row.external_ids
         : undefined,
+    createdAt: row.created_at,
+  };
+}
+
+function timelineRowToEntry(row: TimelineRow): TimelineEntry {
+  return {
+    id: row.id,
+    threadId: row.thread_id,
+    message: row.message,
+    detail: row.detail ?? undefined,
     createdAt: row.created_at,
   };
 }

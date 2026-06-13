@@ -17,6 +17,9 @@ describe("postgres migrations", () => {
       "001_initial",
       "002_external_ids",
       "003_batches",
+      "004_human_actions",
+      "005_actions_array",
+      "006_rename_human_requests",
     ]);
   });
 
@@ -35,7 +38,14 @@ describe("postgres migrations", () => {
     await applyMigrations(pool, DEFAULT_TABLE);
 
     const { rows } = await pool.query("SELECT id FROM hitl.schema_migrations ORDER BY id");
-    expect(rows.map((row) => row.id)).toEqual(["001_initial", "002_external_ids", "003_batches"]);
+    expect(rows.map((row) => row.id)).toEqual([
+      "001_initial",
+      "002_external_ids",
+      "003_batches",
+      "004_human_actions",
+      "005_actions_array",
+      "006_rename_human_requests",
+    ]);
   });
 
   it("upgrades a v2 database in place", async () => {
@@ -53,7 +63,7 @@ describe("postgres migrations", () => {
     await applyMigrations(pool, DEFAULT_TABLE);
 
     // batch columns and the batches table now exist
-    await pool.query("SELECT batch_id, batch_index FROM hitl.approvals LIMIT 0");
-    await pool.query("SELECT id, channel, title FROM hitl.approvals_batches LIMIT 0");
+    await pool.query("SELECT batch_id, batch_index FROM hitl.human_requests LIMIT 0");
+    await pool.query("SELECT id, channel, title FROM hitl.human_requests_batches LIMIT 0");
   });
 });

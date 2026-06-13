@@ -1,10 +1,9 @@
 import { MIGRATIONS } from "./migrations/index.js";
+import type { PgQueryable } from "./migrations/types.js";
 import { createMigrationContext } from "./schema-sql.js";
 import { metaTableSql, resolveTableName } from "./table.js";
 
-export interface PgQueryable {
-  query(text: string, values?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }>;
-}
+export type { PgQueryable } from "./migrations/types.js";
 
 function metaBootstrapSql(tableName: string): string {
   const table = resolveTableName(tableName);
@@ -39,7 +38,11 @@ export async function applyMigrations(pool: PgQueryable, tableName: string): Pro
 
   for (const migration of MIGRATIONS) {
     if (applied.has(migration.id)) continue;
-    await pool.query(migration.sql(ctx));
+    if (migration.runPg) {
+      await migration.runPg(pool, ctx);
+    } else {
+      await pool.query(migration.sql(ctx));
+    }
     await pool.query(`INSERT INTO ${meta} (id, applied_at) VALUES ($1, $2)`, [
       migration.id,
       new Date().toISOString(),

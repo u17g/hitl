@@ -1,12 +1,15 @@
 import type { DatabaseSync } from "node:sqlite";
 import type {
-  ApprovalRecord,
-  ApprovalResult,
+  HumanRequestRecord,
+  HumanResult,
   BatchRecord,
-  NewApprovalRecord,
+  NewHumanRequestRecord,
   NewBatchRecord,
   State,
+  TimelineEntry,
 } from "hitl";
+import type { HumanActions } from "hitl";
+import { normalizeActions } from "hitl";
 import { applyMigrations } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";
@@ -16,21 +19,23 @@ export { SCHEMA_VERSION } from "./migrations/index.js";
 export { migrationSql } from "./schema-sql.js";
 
 export interface SqliteStateOptions {
-  /** Defaults to `hitl.approvals`. */
+  /** Defaults to `hitl.human_requests`. */
   tableName?: string;
 }
 
-/** Idempotent DDL for the approvals table; also used by `ensureSchema()`. */
+/** Idempotent DDL for the human requests table; also used by `ensureSchema()`. */
 export function schemaSql(tableName = DEFAULT_TABLE): string {
   return buildSchemaSql(tableName);
 }
 
-interface ApprovalRow {
+interface HumanRequestRow {
   id: string;
   token: string;
   channel: string;
   message: string;
   fields: string;
+  actions: string | null;
+  context: string | null;
   status: string;
   external_id: string | null;
   external_ids: string;
@@ -45,16 +50,21 @@ interface BatchRow {
   id: string;
   channel: string;
   title: string | null;
+  actions: string | null;
+  context: string | null;
   external_id: string | null;
   external_ids: string;
   created_at: string;
 }
 
-/**
- * `State` backed by `node:sqlite`. The schema is created automatically in the
- * constructor (synchronous and idempotent) — unlike `@hitl/state-pg`,
- * no explicit `ensureSchema()` call is needed.
- */
+interface TimelineRow {
+  id: string;
+  thread_id: string;
+  message: string;
+  detail: string | null;
+  created_at: string;
+}
+
 export class SqliteState implements State {
   private readonly db: DatabaseSync;
   private readonly tableName: string;
@@ -67,44 +77,45 @@ export class SqliteState implements State {
     this.ensureSchema();
   }
 
-  /** Idempotent; already run by the constructor. */
   ensureSchema(): void {
     applyMigrations(this.db, this.tableName);
   }
 
-  async create(record: NewApprovalRecord): Promise<void> {
+  async create(record: NewHumanRequestRecord): Promise<void> {
     this.db
       .prepare(
         `INSERT INTO ${this.table.sql}
-           (id, token, channel, message, fields, status, created_at, batch_id, batch_index)
-         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+           (id, token, channel, message, fields, actions, context, status, created_at, batch_id, batch_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
       )
       .run(
         record.id,
         record.token,
         record.channel,
         record.message,
-        JSON.stringify(record.fields),
+        "{}",
+        JSON.stringify(record.actions),
+        record.context === undefined ? null : JSON.stringify(record.context),
         new Date().toISOString(),
         record.batchId ?? null,
         record.batchIndex ?? null,
       );
   }
 
-  async get(id: string): Promise<ApprovalRecord | null> {
+  async get(id: string): Promise<HumanRequestRecord | null> {
     const row = this.db.prepare(`SELECT * FROM ${this.table.sql} WHERE id = ?`).get(id) as
-      | ApprovalRow
+      | HumanRequestRow
       | undefined;
     return row ? rowToRecord(row) : null;
   }
 
-  async findByExternalId(externalId: string): Promise<ApprovalRecord | null> {
+  async findByExternalId(externalId: string): Promise<HumanRequestRecord | null> {
     const row = this.db
       .prepare(`SELECT * FROM ${this.table.sql} WHERE external_id = ?`)
-      .get(externalId) as ApprovalRow | undefined;
+      .get(externalId) as HumanRequestRow | undefined;
     if (row) return rowToRecord(row);
 
-    const rows = this.db.prepare(`SELECT * FROM ${this.table.sql}`).all() as unknown as ApprovalRow[];
+    const rows = this.db.prepare(`SELECT * FROM ${this.table.sql}`).all() as unknown as HumanRequestRow[];
     for (const candidate of rows) {
       const externalIds = parseExternalIds(candidate.external_ids);
       if (Object.values(externalIds).includes(externalId)) {
@@ -114,16 +125,16 @@ export class SqliteState implements State {
     return null;
   }
 
-  async findByToken(token: string): Promise<ApprovalRecord | null> {
+  async findByToken(token: string): Promise<HumanRequestRecord | null> {
     const row = this.db.prepare(`SELECT * FROM ${this.table.sql} WHERE token = ?`).get(token) as
-      | ApprovalRow
+      | HumanRequestRow
       | undefined;
     return row ? rowToRecord(row) : null;
   }
 
   async setExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
     const record = await this.get(id);
-    if (!record) throw new Error(`Unknown approval "${id}"`);
+    if (!record) throw new Error(`Unknown human request "${id}"`);
 
     const key = pluginId ?? record.channel;
     const externalIds = { ...record.externalIds, [key]: externalId };
@@ -132,10 +143,10 @@ export class SqliteState implements State {
     const { changes } = this.db
       .prepare(`UPDATE ${this.table.sql} SET external_id = ?, external_ids = ? WHERE id = ?`)
       .run(primaryExternalId ?? null, JSON.stringify(externalIds), id);
-    if (changes === 0) throw new Error(`Unknown approval "${id}"`);
+    if (changes === 0) throw new Error(`Unknown human request "${id}"`);
   }
 
-  async resolve(id: string, result: ApprovalResult): Promise<void> {
+  async resolve(id: string, result: HumanResult): Promise<void> {
     const { changes } = this.db
       .prepare(
         `UPDATE ${this.table.sql} SET status = 'resolved', result = ?, resolved_at = ?
@@ -144,27 +155,34 @@ export class SqliteState implements State {
       .run(JSON.stringify(result), new Date().toISOString(), id);
     if (changes === 0) {
       const record = await this.get(id);
-      if (record) throw new Error(`Approval "${id}" is already resolved`);
-      throw new Error(`Unknown approval "${id}"`);
+      if (record) throw new Error(`Human request "${id}" is already resolved`);
+      throw new Error(`Unknown human request "${id}"`);
     }
   }
 
-  async list(filter?: { status?: ApprovalRecord["status"] }): Promise<ApprovalRecord[]> {
+  async list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]> {
     const rows = (
       filter?.status
         ? this.db.prepare(`SELECT * FROM ${this.table.sql} WHERE status = ?`).all(filter.status)
         : this.db.prepare(`SELECT * FROM ${this.table.sql}`).all()
-    ) as unknown as ApprovalRow[];
+    ) as unknown as HumanRequestRow[];
     return rows.map(rowToRecord);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {
     this.db
       .prepare(
-        `INSERT INTO ${this.table.batchesSql} (id, channel, title, created_at)
-         VALUES (?, ?, ?, ?)`,
+        `INSERT INTO ${this.table.batchesSql} (id, channel, title, actions, context, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(record.id, record.channel, record.title ?? null, new Date().toISOString());
+      .run(
+        record.id,
+        record.channel,
+        record.title ?? null,
+        record.actions === undefined ? null : JSON.stringify(record.actions),
+        record.context === undefined ? null : JSON.stringify(record.context),
+        new Date().toISOString(),
+      );
   }
 
   async getBatch(id: string): Promise<BatchRecord | null> {
@@ -187,11 +205,35 @@ export class SqliteState implements State {
       .run(primaryExternalId ?? null, JSON.stringify(externalIds), id);
   }
 
-  async listByBatch(batchId: string): Promise<ApprovalRecord[]> {
+  async listByBatch(batchId: string): Promise<HumanRequestRecord[]> {
     const rows = this.db
       .prepare(`SELECT * FROM ${this.table.sql} WHERE batch_id = ? ORDER BY batch_index`)
-      .all(batchId) as unknown as ApprovalRow[];
+      .all(batchId) as unknown as HumanRequestRow[];
     return rows.map(rowToRecord);
+  }
+
+  async appendTimeline(entry: TimelineEntry): Promise<void> {
+    this.db
+      .prepare(
+        `INSERT INTO ${this.table.timelineSql} (id, thread_id, message, detail, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        entry.id,
+        entry.threadId,
+        entry.message,
+        entry.detail === undefined ? null : JSON.stringify(entry.detail),
+        entry.createdAt,
+      );
+  }
+
+  async listTimeline(threadId: string): Promise<TimelineEntry[]> {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM ${this.table.timelineSql} WHERE thread_id = ? ORDER BY created_at`,
+      )
+      .all(threadId) as unknown as TimelineRow[];
+    return rows.map(timelineRowToEntry);
   }
 }
 
@@ -205,14 +247,23 @@ function parseExternalIds(raw: string | undefined): Record<string, string> {
   }
 }
 
-function rowToRecord(row: ApprovalRow): ApprovalRecord {
+function parseActions(row: HumanRequestRow): HumanActions {
+  if (row.actions) {
+    return normalizeActions(JSON.parse(row.actions));
+  }
+  const fields = JSON.parse(row.fields) as Record<string, unknown>;
+  return normalizeActions(undefined, fields);
+}
+
+function rowToRecord(row: HumanRequestRow): HumanRequestRecord {
   return {
     id: row.id,
     token: row.token,
     channel: row.channel,
     message: row.message,
-    fields: JSON.parse(row.fields),
-    status: row.status as ApprovalRecord["status"],
+    actions: parseActions(row),
+    context: row.context === null ? undefined : JSON.parse(row.context),
+    status: row.status as HumanRequestRecord["status"],
     externalId: row.external_id ?? undefined,
     externalIds: (() => {
       const ids = parseExternalIds(row.external_ids);
@@ -231,11 +282,23 @@ function batchRowToRecord(row: BatchRow): BatchRecord {
     id: row.id,
     channel: row.channel,
     title: row.title ?? undefined,
+    actions: row.actions === null ? undefined : normalizeActions(JSON.parse(row.actions)),
+    context: row.context === null ? undefined : JSON.parse(row.context),
     externalId: row.external_id ?? undefined,
     externalIds: (() => {
       const ids = parseExternalIds(row.external_ids);
       return Object.keys(ids).length > 0 ? ids : undefined;
     })(),
+    createdAt: row.created_at,
+  };
+}
+
+function timelineRowToEntry(row: TimelineRow): TimelineEntry {
+  return {
+    id: row.id,
+    threadId: row.thread_id,
+    message: row.message,
+    detail: row.detail === null ? undefined : JSON.parse(row.detail),
     createdAt: row.created_at,
   };
 }

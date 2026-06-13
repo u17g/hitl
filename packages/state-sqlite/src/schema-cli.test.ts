@@ -3,8 +3,8 @@ import { renderSchemaSql, resolveSchemaTable } from "./schema-cli.js";
 
 describe("schema command", () => {
   it("prints sqlite DDL", () => {
-    const sql = renderSchemaSql("hitl.approvals");
-    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "hitl.approvals"');
+    const sql = renderSchemaSql("hitl.human_requests");
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "hitl.human_requests"');
     expect(sql).toContain("fields      TEXT NOT NULL");
   });
 

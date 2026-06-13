@@ -36,7 +36,11 @@ export function applyMigrations(db: DatabaseSync, tableName: string): void {
 
   for (const migration of MIGRATIONS) {
     if (applied.has(migration.id)) continue;
-    db.exec(migration.sql(ctx));
+    if (migration.runSqlite) {
+      migration.runSqlite(db, ctx);
+    } else {
+      db.exec(migration.sql(ctx));
+    }
     insert.run(migration.id, new Date().toISOString());
   }
 }

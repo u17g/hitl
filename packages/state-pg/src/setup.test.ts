@@ -19,7 +19,7 @@ describe("setup command", () => {
       token: "tok_a1",
       channel: "lead-approvals",
       message: "Approve?",
-      fields: {},
+      actions: { submit: {} },
     });
     expect(await state.get("a1")).toMatchObject({ id: "a1", status: "pending" });
   });
@@ -34,7 +34,7 @@ describe("setup command", () => {
       token: "tok_a1",
       channel: "lead-approvals",
       message: "Approve?",
-      fields: {},
+      actions: { submit: {} },
     });
     expect(await state.get("a1")).not.toBeNull();
   });

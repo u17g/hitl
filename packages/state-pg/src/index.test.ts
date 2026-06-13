@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { humanActions } from "hitl";
 import { newDb } from "pg-mem";
 import { describeStateContract } from "hitl/state-contract";
 import { PostgresState, type PgQueryable } from "./index";
@@ -20,7 +21,7 @@ function newRecord(id: string) {
     token: `tok_${id}`,
     channel: "lead-approvals",
     message: "Inbound lead",
-    fields: {},
+    actions: humanActions().submit().build(),
   };
 }
 
@@ -58,8 +59,8 @@ describe("PostgresState specifics", () => {
     await state.create(newRecord("a1"));
 
     const outcomes = await Promise.allSettled([
-      state.resolve("a1", { type: "APPROVED", id: "a1" }),
-      state.resolve("a1", { type: "DENIED", id: "a1" }),
+      state.resolve("a1", { type: "RESOLVED", actionId: "submit", id: "a1", feedbacks: {} }),
+      state.resolve("a1", { type: "RESOLVED", actionId: "deny", id: "a1", feedbacks: {} }),
     ]);
 
     const fulfilled = outcomes.filter((o) => o.status === "fulfilled");
