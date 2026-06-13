@@ -28,8 +28,8 @@ export default function Page() {
         </h2>
         <p className="text-muted-foreground">
           {t({
-            en: "The @hitl/adapter-chat-sdk adapter renders native cards and routes interactivity to hitl.inbox across every Chat SDK platform.",
-            ja: "@hitl/adapter-chat-sdk はネイティブカードを描画し、全 Chat SDK プラットフォームのインタラクティブ操作を hitl.inbox にルーティングします。",
+            en: "The @hitl-sdk/adapter-chat-sdk adapter renders native cards and routes interactivity to hitl.inbox across every Chat SDK platform.",
+            ja: "@hitl-sdk/adapter-chat-sdk はネイティブカードを描画し、全 Chat SDK プラットフォームのインタラクティブ操作を hitl.inbox にルーティングします。",
           })}
         </p>
         <CodeBlock code={snippets.chatAdapter} filename="lib/chat.ts" />

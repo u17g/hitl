@@ -2,7 +2,7 @@ import { runSchema } from "./schema-cli.js";
 import { runSetup } from "./setup.js";
 
 function printHelp(): void {
-  process.stdout.write(`@hitl/state-sqlite — database setup and schema export
+  process.stdout.write(`@hitl-sdk/state-sqlite — database setup and schema export
 
 Usage:
   state-sqlite setup --db <path> [--table hitl.human_requests]

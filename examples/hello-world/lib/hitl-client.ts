@@ -1,5 +1,5 @@
 import type { HitlRequest } from "hitl/core";
-import { createWorkflowSdkHitlClient } from "@hitl/resolver-workflow-sdk";
+import { createWorkflowSdkHitlClient } from "@hitl-sdk/resolver-workflow-sdk";
 
 async function hitlRequest(req: HitlRequest) {
   "use step";

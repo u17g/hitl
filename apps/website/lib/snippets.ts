@@ -16,7 +16,7 @@ export function docHref(locale: Locale, slug: DocSlug) {
 
 export const snippets = {
   install: `npm install hitl`,
-  installAdapters: `npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams`,
+  installAdapters: `npm install @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams`,
   workflowUsage: `import { field, actions, isResolved } from "hitl";
 import { waitForHuman } from "../lib/hitl-workflow";
 
@@ -68,8 +68,8 @@ if (isResolved(approval, "approve") && approval.edited) {
   await sendEmail({ ...approval.feedbacks });
 }`,
   serverSetup: `import { Hitl } from "hitl";
-import { workflowResolver } from "@hitl/resolver-workflow-sdk";
-import { SqliteState } from "@hitl/state-sqlite";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+import { SqliteState } from "@hitl-sdk/state-sqlite";
 
 export const hitl = new Hitl({
   state: new SqliteState({ path: ".hitl/human_requests.db" }),
@@ -78,7 +78,7 @@ export const hitl = new Hitl({
   routeHandlers: `import { hitl } from "@/lib/hitl";
 
 export const { POST } = hitl.routeHandlers;`,
-  workflowClient: `import { createWorkflowSdkHitlClient } from "@hitl/resolver-workflow-sdk";
+  workflowClient: `import { createWorkflowSdkHitlClient } from "@hitl-sdk/resolver-workflow-sdk";
 
 export const { waitForHuman } = createWorkflowSdkHitlClient({
   request: async (url, init) => {
@@ -87,7 +87,7 @@ export const { waitForHuman } = createWorkflowSdkHitlClient({
   },
 });`,
   chatAdapter: `import { Chat } from "chat";
-import { createChatSdkAdapter } from "@hitl/adapter-chat-sdk";
+import { createChatSdkAdapter } from "@hitl-sdk/adapter-chat-sdk";
 import { slack } from "@chat-adapter/slack";
 
 const chat = new Chat({
@@ -105,5 +105,5 @@ await hitl.inbox.resolve(id, {
   feedbacks: { subject: "Updated subject" },
 });`,
   helloWorldRun: `pnpm install
-pnpm --filter @hitl/example-hello-world dev`,
+pnpm --filter example-hello-world dev`,
 } as const;

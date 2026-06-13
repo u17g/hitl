@@ -8,13 +8,13 @@ A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable
 ## Installation
 
 ```bash
-npm install hitl @hitl/resolver-workflow-sdk
+npm install hitl @hitl-sdk/resolver-workflow-sdk
 ```
 
 Install channel adapters for the platforms you want:
 
 ```bash
-npm install @hitl/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams
+npm install @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack @chat-adapter/teams
 ```
 
 ## Usage
@@ -68,14 +68,14 @@ See [`examples/hello-world`](examples/hello-world) for a full walkthrough — se
 
 Actions with `fields` open a modal on Slack and other Chat SDK platforms. The card button uses `label`; the modal title and submit button default to the same `label` (override with `submitLabel` / `closeLabel`).
 
-Persistence backends: [`@hitl/state-pg`](packages/state-pg/README.md) (Postgres), [`@hitl/state-sqlite`](packages/state-sqlite/README.md) (SQLite), and [`@hitl/state-ioredis`](packages/state-ioredis/README.md) (Redis).
+Persistence backends: [`@hitl-sdk/state-pg`](packages/state-pg/README.md) (Postgres), [`@hitl-sdk/state-sqlite`](packages/state-sqlite/README.md) (SQLite), and [`@hitl-sdk/state-ioredis`](packages/state-ioredis/README.md) (Redis).
 
 ## Channels
 
 | Adapter | Package |
 |---|---|
-| `createChatSdkAdapter()` | `@hitl/adapter-chat-sdk` — Slack, Teams, Discord, and every [Chat SDK](https://chat-sdk.dev) platform |
+| `createChatSdkAdapter()` | `@hitl-sdk/adapter-chat-sdk` — Slack, Teams, Discord, and every [Chat SDK](https://chat-sdk.dev) platform |
 | Web inbox | built into `hitl` — resolve via `hitl.inbox` or your own UI |
 
-One `@hitl/adapter-chat-sdk` adapter covers every Chat SDK platform. Enable platforms by registering their adapters on a `Chat` instance, not by installing more Hitl packages.
+One `@hitl-sdk/adapter-chat-sdk` adapter covers every Chat SDK platform. Enable platforms by registering their adapters on a `Chat` instance, not by installing more Hitl packages.
 

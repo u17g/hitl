@@ -1,5 +1,5 @@
 {
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @hitl/website build",
+  "buildCommand": "cd ../.. && pnpm --filter website build",
   "framework": "nextjs"
 }

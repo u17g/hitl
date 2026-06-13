@@ -1,5 +1,5 @@
 {
-  "name": "@hitl/website",
+  "name": "website",
   "private": true,
   "type": "module",
   "scripts": {

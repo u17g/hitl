@@ -5,7 +5,7 @@
   "fixed": [
     [
       "hitl",
-      "@hitl/*"
+      "@hitl-sdk/*"
     ]
   ],
   "linked": [],
@@ -14,9 +14,5 @@
   "updateInternalDependencies": "patch",
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true
-  },
-  "ignore": [
-    "@hitl/example-hello-world",
-    "@hitl/website"
-  ]
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@hitl/state-ioredis",
+  "name": "@hitl-sdk/state-ioredis",
   "version": "0.0.0",
   "description": "Redis store for hitl, built on ioredis. Bring your own Redis client.",
   "license": "MIT",

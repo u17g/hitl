@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: [
     "hitl",
-    "@hitl/resolver-workflow-sdk",
+    "@hitl-sdk/resolver-workflow-sdk",
     "workflow",
   ],
   webpack: (config, { isServer }) => {

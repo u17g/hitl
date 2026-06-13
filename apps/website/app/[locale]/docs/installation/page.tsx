@@ -28,8 +28,8 @@ export default function Page() {
         </h2>
         <p className="text-muted-foreground">
           {t({
-            en: "hitl provides the server, inbox API, and field builders. @hitl/resolver-workflow-sdk binds to Workflow DevKit.",
-            ja: "hitl はサーバー・inbox API・フィールドビルダーを提供。@hitl/resolver-workflow-sdk は Workflow DevKit にバインドします。",
+            en: "hitl provides the server, inbox API, and field builders. @hitl-sdk/resolver-workflow-sdk binds to Workflow DevKit.",
+            ja: "hitl はサーバー・inbox API・フィールドビルダーを提供。@hitl-sdk/resolver-workflow-sdk は Workflow DevKit にバインドします。",
           })}
         </p>
         <CodeBlock code={snippets.install} filename="terminal" />
@@ -41,8 +41,8 @@ export default function Page() {
         </h2>
         <p className="text-muted-foreground">
           {t({
-            en: "Install @hitl/adapter-chat-sdk and the Chat SDK platforms you need. One adapter covers Slack, Teams, Discord, and every Chat SDK platform.",
-            ja: "@hitl/adapter-chat-sdk と必要な Chat SDK プラットフォームをインストール。1つのアダプターで Slack・Teams・Discord など全プラットフォームに対応。",
+            en: "Install @hitl-sdk/adapter-chat-sdk and the Chat SDK platforms you need. One adapter covers Slack, Teams, Discord, and every Chat SDK platform.",
+            ja: "@hitl-sdk/adapter-chat-sdk と必要な Chat SDK プラットフォームをインストール。1つのアダプターで Slack・Teams・Discord など全プラットフォームに対応。",
           })}
         </p>
         <CodeBlock code={snippets.installAdapters} filename="terminal" />
@@ -54,12 +54,12 @@ export default function Page() {
         </h2>
         <p className="text-muted-foreground">
           {t({
-            en: "In-memory by default. Use @hitl/state-sqlite for local dev or @hitl/state-pg for production Postgres.",
-            ja: "デフォルトはインメモリ。ローカル開発は @hitl/state-sqlite、本番 Postgres は @hitl/state-pg。",
+            en: "In-memory by default. Use @hitl-sdk/state-sqlite for local dev or @hitl-sdk/state-pg for production Postgres.",
+            ja: "デフォルトはインメモリ。ローカル開発は @hitl-sdk/state-sqlite、本番 Postgres は @hitl-sdk/state-pg。",
           })}
         </p>
         <CodeBlock
-          code={`npm install @hitl/state-sqlite\n# or\nnpm install @hitl/state-pg`}
+          code={`npm install @hitl-sdk/state-sqlite\n# or\nnpm install @hitl-sdk/state-pg`}
           filename="terminal"
         />
       </section>

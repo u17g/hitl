@@ -1,11 +1,11 @@
-# @hitl/adapter-chat-sdk
+# @hitl-sdk/adapter-chat-sdk
 
 A hitl channel adapter backed by the [Vercel Chat SDK](https://chat-sdk.dev). One adapter delivers approvals to Slack, Teams, Discord, and every other Chat SDK platform — the SDK owns webhook verification, payload parsing, and native card rendering (Block Kit, Adaptive Cards, embeds + modal).
 
 ## Install
 
 ```bash
-pnpm add @hitl/adapter-chat-sdk chat @chat-adapter/slack
+pnpm add @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
 ```
 
 `chat` and the `@chat-adapter/*` packages are peer dependencies — install the adapters for the platforms you use.
@@ -14,8 +14,8 @@ pnpm add @hitl/adapter-chat-sdk chat @chat-adapter/slack
 
 ```ts
 import { Hitl } from "hitl";
-import { createChatSdkAdapter } from "@hitl/adapter-chat-sdk";
-import { workflowResolver } from "@hitl/resolver-workflow-sdk";
+import { createChatSdkAdapter } from "@hitl-sdk/adapter-chat-sdk";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
 import { Chat } from "chat";
 import { createSlackAdapter } from "@chat-adapter/slack";
 

@@ -99,7 +99,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm turbo build --filter='!@hitl/example-hello-world' --filter='!@hitl/website'
+        run: pnpm turbo build --filter='!example-hello-world' --filter='!website'
 
       - name: Test
         run: pnpm test

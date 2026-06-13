@@ -11,7 +11,7 @@ From the repository root:
 
 ```bash
 pnpm install
-pnpm --filter @hitl/example-hello-world dev
+pnpm --filter example-hello-world dev
 ```
 
 ## Smoke test (recommended)
@@ -19,7 +19,7 @@ pnpm --filter @hitl/example-hello-world dev
 The approve/resume loop is verified without Next.js or Workflow DevKit:
 
 ```bash
-pnpm --filter @hitl/example-hello-world test
+pnpm --filter example-hello-world test
 ```
 
 ## Try the UI
@@ -64,7 +64,7 @@ curl -s -X POST "http://localhost:3000/api/inbox" \
 
 You should see `Hello, world!` printed when the workflow resumes after approval.
 
-> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitl/v1` API over a `"use step"` `fetch`. This example keeps pending requests in an in-memory `InMemoryState` (resets on server restart). For production, swap in a persistent backend such as [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md).
+> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitl/v1` API over a `"use step"` `fetch`. This example keeps pending requests in an in-memory `InMemoryState` (resets on server restart). For production, swap in a persistent backend such as [`@hitl-sdk/state-sqlite`](../../packages/state-sqlite/README.md).
 
 ## What this shows
 

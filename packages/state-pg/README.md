@@ -1,11 +1,11 @@
-# @hitl/state-pg
+# @hitl-sdk/state-pg
 
 Postgres-backed `State` for Hitl. Bring your own `pg` pool — the package implements approval persistence and ships a setup CLI (same idea as [Workflow DevKit's `workflow-postgres-setup`](https://workflow-sdk.dev/worlds/postgres)).
 
 ## Install
 
 ```bash
-npm install hitl @hitl/state-pg pg
+npm install hitl @hitl-sdk/state-pg pg
 ```
 
 `hitl` and `pg` are peer dependencies in practice: you need a Postgres client to construct `PostgresState`.
@@ -16,7 +16,7 @@ Run migrations **before** deploying or on first boot in production. The default 
 
 ```bash
 export HITL_POSTGRES_URL=postgres://user:password@host:5432/database
-npx @hitl/state-pg setup
+npx @hitl-sdk/state-pg setup
 ```
 
 `DATABASE_URL` and `WORKFLOW_POSTGRES_URL` are also accepted as fallbacks (same precedence as other `HITL_*` env vars in this SDK). Prefer `HITL_POSTGRES_URL` so Hitl persistence is explicit and separate from WDK's Postgres world.
@@ -24,7 +24,7 @@ npx @hitl/state-pg setup
 Custom table name:
 
 ```bash
-npx @hitl/state-pg setup --table custom_approvals
+npx @hitl-sdk/state-pg setup --table custom_approvals
 ```
 
 ### Export DDL (no database connection)
@@ -32,14 +32,14 @@ npx @hitl/state-pg setup --table custom_approvals
 Print idempotent SQL to stdout — useful for hand-managed migration pipelines:
 
 ```bash
-npx @hitl/state-pg schema
-npx @hitl/state-pg schema --table custom_approvals
+npx @hitl-sdk/state-pg schema
+npx @hitl-sdk/state-pg schema --table custom_approvals
 ```
 
 Programmatically:
 
 ```ts
-import { schemaSql, migrationSql, SCHEMA_VERSION } from "@hitl/state-pg";
+import { schemaSql, migrationSql, SCHEMA_VERSION } from "@hitl-sdk/state-pg";
 
 schemaSql(); // all migrations concatenated
 migrationSql("001_initial", "hitl.human_requests"); // single migration
@@ -58,14 +58,14 @@ npx workflow-postgres-setup
 ```ts
 import pg from "pg";
 import { Hitl } from "hitl";
-import { PostgresState } from "@hitl/state-pg";
+import { PostgresState } from "@hitl-sdk/state-pg";
 
 const pool = new pg.Pool({
   connectionString: process.env.HITL_POSTGRES_URL ?? process.env.DATABASE_URL,
 });
 
 const state = new PostgresState(pool);
-await state.ensureSchema(); // idempotent; or rely on `npx @hitl/state-pg setup` at deploy time
+await state.ensureSchema(); // idempotent; or rely on `npx @hitl-sdk/state-pg setup` at deploy time
 
 export const hitl = new Hitl({ state, /* resolver, adapters, … */ });
 ```
@@ -74,6 +74,6 @@ export const hitl = new Hitl({ state, /* resolver, adapters, … */ });
 
 ## Migrations
 
-Schema changes are versioned inside this package (`SCHEMA_VERSION`). Re-run `setup` or `ensureSchema()` after upgrading `@hitl/state-pg` to apply new migrations idempotently.
+Schema changes are versioned inside this package (`SCHEMA_VERSION`). Re-run `setup` or `ensureSchema()` after upgrading `@hitl-sdk/state-pg` to apply new migrations idempotently.
 
 Upgrading from the legacy default table `hitl.approvals` is handled automatically by migration `006_rename_human_requests` when you use the new default `hitl.human_requests`. Custom `--table` names are not renamed automatically.

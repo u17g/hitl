@@ -84,7 +84,7 @@ importers:
 
   examples/hello-world:
     dependencies:
-      '@hitl/resolver-workflow-sdk':
+      '@hitl-sdk/resolver-workflow-sdk':
         specifier: workspace:*
         version: link:../../packages/resolver-workflow-sdk
       hitl:

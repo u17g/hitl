@@ -1,11 +1,11 @@
-# @hitl/state-ioredis
+# @hitl-sdk/state-ioredis
 
 Redis-backed `State` for Hitl. Bring your own [ioredis](https://github.com/redis/ioredis) client — the package implements approval persistence and applies key-layout migrations on connect.
 
 ## Install
 
 ```bash
-npm install hitl @hitl/state-ioredis ioredis
+npm install hitl @hitl-sdk/state-ioredis ioredis
 ```
 
 `hitl` is a peer dependency. You construct and own the Redis connection.
@@ -17,7 +17,7 @@ For most apps, migrations run automatically on the first operation (or call `ens
 ```ts
 import Redis from "ioredis";
 import { Hitl } from "hitl";
-import { IoredisState } from "@hitl/state-ioredis";
+import { IoredisState } from "@hitl-sdk/state-ioredis";
 
 const redis = new Redis(process.env.REDIS_URL);
 const state = new IoredisState(redis);
@@ -55,10 +55,10 @@ Default prefix: `hitl:human_requests` (from table name `hitl.human_requests`).
 
 ## Schema migrations
 
-Key-layout changes are versioned inside this package (`SCHEMA_VERSION`). Opening a connection with `IoredisState` (or calling `ensureSchema()`) applies pending migrations idempotently after you upgrade `@hitl/state-ioredis`.
+Key-layout changes are versioned inside this package (`SCHEMA_VERSION`). Opening a connection with `IoredisState` (or calling `ensureSchema()`) applies pending migrations idempotently after you upgrade `@hitl-sdk/state-ioredis`.
 
 ```ts
-import { SCHEMA_VERSION } from "@hitl/state-ioredis";
+import { SCHEMA_VERSION } from "@hitl-sdk/state-ioredis";
 ```
 
 No setup CLI is required — migrations run in-process against your Redis instance.
