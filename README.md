@@ -47,7 +47,6 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
 ```
 
 See [`examples/hello-world`](examples/hello-world) for a full walkthrough — server setup, workflow client, and web inbox.
-
 ## Channels
 
 | Adapter | Package |
