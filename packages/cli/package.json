@@ -16,8 +16,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hitldev/store-postgres": "workspace:*",
-    "@hitldev/store-sqlite": "workspace:*",
+    "@hitl/state-pg": "workspace:*",
+    "@hitl/state-sqlite": "workspace:*",
     "pg": "^8.16.3"
   },
   "optionalDependencies": {

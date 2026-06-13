@@ -68,7 +68,7 @@ curl -s -X POST "http://localhost:3000/api/inbox" \
 
 You should see `Hello, world!` printed when the workflow resumes after approval.
 
-> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no store — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitldev/approvals.db` (SQLite via `@hitldev/store-sqlite`) and resumes the workflow when you approve.
+> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no store — it suspends and POSTs to the server's `.well-known/hitldev/v1` API over a `"use step"` `fetch`. The server persists to `.hitldev/approvals.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you approve.
 
 ## What this shows
 

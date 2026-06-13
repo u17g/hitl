@@ -25,9 +25,9 @@ export interface CreateHitlOptions {
    * works with no plugins configured. The first entry is the default channel.
    */
   plugins?: HitlPlugin[];
-  /** Defaults to one in-memory store per process. Pass `@hitldev/store-postgres` or `@hitldev/store-sqlite` for persistence. */
+  /** Defaults to one in-memory store per process. Pass `@hitl/state-pg` or `@hitl/state-sqlite` for persistence. */
   store?: Store;
-  /** Engine resolver from an engine package, e.g. `workflowResolver()` from `@hitldev/vercel-workflow`. */
+  /** Engine resolver from an engine package, e.g. `workflowResolver()` from `@hitl/resolver-workflow-sdk`. */
   resolver: HitlResolver;
   /**
    * Bearer secret of the internal workflow → server API.

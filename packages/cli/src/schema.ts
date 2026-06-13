@@ -1,5 +1,5 @@
-import { schemaSql as postgresSchemaSql } from "@hitldev/store-postgres";
-import { schemaSql as sqliteSchemaSql } from "@hitldev/store-sqlite";
+import { schemaSql as postgresSchemaSql } from "@hitl/state-pg";
+import { schemaSql as sqliteSchemaSql } from "@hitl/state-sqlite";
 import { parseFlagValue } from "./args.js";
 
 const DEFAULT_TABLE = "hitldev.approvals";

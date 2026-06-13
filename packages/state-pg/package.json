@@ -1,12 +1,9 @@
 {
-  "name": "@hitldev/store-sqlite",
+  "name": "@hitl/state-pg",
   "version": "0.0.0",
-  "description": "SQLite store for hitldev, built on node:sqlite with zero dependencies.",
+  "description": "Postgres store for hitldev. Bring your own pg-compatible pool.",
   "license": "MIT",
   "type": "module",
-  "engines": {
-    "node": ">=22.13.0"
-  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -23,6 +20,7 @@
   "devDependencies": {
     "hitl": "workspace:*",
     "@types/node": "^25.9.3",
+    "pg-mem": "^3.0.5",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }

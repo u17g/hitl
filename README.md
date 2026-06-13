@@ -89,8 +89,8 @@ Wire the server once:
 ```ts
 // lib/hitl.ts — the server: store + channel plugin, mounted as route handlers.
 import { createHitl } from "hitl";
-import { chatHitl } from "@hitldev/chat-sdk";
-import { workflowResolver } from "@hitldev/vercel-workflow";
+import { chatHitl } from "@hitl/adapter-chat-sdk";
+import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { Chat } from "chat";
 import { createSlackAdapter } from "@chat-adapter/slack";
 import { createTeamsAdapter } from "@chat-adapter/teams";
@@ -126,7 +126,7 @@ Build the workflow client once too. It needs one durable step — a plain `"use 
 ```ts
 // lib/hitl-workflow.ts — the workflow side: a thin HTTP client. No store, no plugins.
 import type { HitlRequest } from "hitl";
-import { workflowHitl } from "@hitldev/vercel-workflow";
+import { workflowHitl } from "@hitl/resolver-workflow-sdk";
 
 async function hitlRequest(req: HitlRequest) {
   "use step";
@@ -145,7 +145,7 @@ import { waitForApproval } from "../lib/hitl-workflow";
 const approval = await waitForApproval({ message: "..." });
 ```
 
-The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the Chat SDK bot receives the interactivity (it owns webhook verification and payload parsing for every platform) and resolves via `hitl.inbox` — which resumes the suspended run. The base URL defaults to the deployment's own URL (set `HITLDEV_URL` to override); the two sides share `HITLDEV_SECRET` to authenticate the internal API. The server's store can stay the default in-memory one for a single process, or be a shared `@hitldev/store-sqlite` / `@hitldev/store-postgres` for production.
+The workflow suspends on an engine hook, POSTs the request to the server, and the server delivers it to the channel. When the reviewer responds, the Chat SDK bot receives the interactivity (it owns webhook verification and payload parsing for every platform) and resolves via `hitl.inbox` — which resumes the suspended run. The base URL defaults to the deployment's own URL (set `HITLDEV_URL` to override); the two sides share `HITLDEV_SECRET` to authenticate the internal API. The server's store can stay the default in-memory one for a single process, or be a shared `@hitl/state-sqlite` / `@hitl/state-pg` for production.
 
 ## API
 
@@ -212,7 +212,7 @@ const results = await waitForBatchApprovals({
 - **All-items completion.** The workflow suspends until every item is resolved and returns results in input order. On `timeout`, items already resolved keep their result; the rest become `TIMED_OUT`.
 - **Fallback delivery.** Channels that can't render the batch as one message (no `sendBatch`, or `canSendBatch` returns `false` — e.g. over the channel's size limits) receive one regular approval message per item; the batch still waits for all of them.
 
-With the `@hitldev/chat-sdk` plugin, batches are always delivered per item — each item is its own approval card, reviewed and resolved independently (the batch still waits for all of them). A single-message batch UI isn't used because Chat SDK cards can't read multi-select state on submit.
+With the `@hitl/adapter-chat-sdk` plugin, batches are always delivered per item — each item is its own approval card, reviewed and resolved independently (the batch still waits for all of them). A single-message batch UI isn't used because Chat SDK cards can't read multi-select state on submit.
 
 ### Field builders
 
@@ -259,10 +259,10 @@ Official plugin:
 
 | Plugin | Package | Renders as |
 |---|---|---|
-| `chatHitl()` | `@hitldev/chat-sdk` | Native cards on every [Chat SDK](https://chat-sdk.dev) platform — Block Kit (Slack), Adaptive Cards (Teams), embeds + modal (Discord), and more. Approve/Deny buttons; feedback fields open in a modal |
+| `chatHitl()` | `@hitl/adapter-chat-sdk` | Native cards on every [Chat SDK](https://chat-sdk.dev) platform — Block Kit (Slack), Adaptive Cards (Teams), embeds + modal (Discord), and more. Approve/Deny buttons; feedback fields open in a modal |
 | Web inbox | built into `hitldev` (always on) | No external service; read and resolve via `hitl.inbox` (React components from `@hitldev/ui`) |
 
-`@hitldev/chat-sdk` wraps the Vercel Chat SDK, so one plugin covers every platform its adapters support — you enable platforms by registering their adapters on the `Chat` instance, not by installing more hitldev packages. The web inbox is always present. Writing your own plugin is implementing the interface above.
+`@hitl/adapter-chat-sdk` wraps the Vercel Chat SDK, so one plugin covers every platform its adapters support — you enable platforms by registering their adapters on the `Chat` instance, not by installing more hitldev packages. The web inbox is always present. Writing your own plugin is implementing the interface above.
 
 <a id="receiving-interactivity-existing-bots"></a>
 **Receiving interactivity (the Chat SDK bot).** Each platform exposes a single interactivity endpoint; the Chat SDK `bot` owns it through `bot.webhooks.<adapter>`, handling signature verification (Slack HMAC, Teams JWT, Discord Ed25519) and payload parsing for every platform. `chatHitl` registers approve/deny and modal handlers on that bot which resolve through the framework-agnostic `hitl.inbox` (`approve` / `deny` / `submitBatch`). hitldev's own handler is just the internal workflow API, so it co-hosts inside your existing server alongside your inbox and webhook routes — one process, one port.
@@ -335,10 +335,10 @@ What hitldev **owns** (all thin, bounded pieces):
 |---|---|
 | Server (`createHitl`) | The `.well-known/hitldev/v1` internal API: request creation, timeout/remind. Owns the store and plugins; inbox via `hitl.inbox` |
 | Workflow client (`createHitlClient` / `workflowHitl`) | `waitForApproval` / `waitForBatchApprovals` / `notify` — suspends, calls the server, drives the timeout/reminder loop |
-| Engine bindings | One small package per engine (`@hitldev/vercel-workflow`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
-| Channels | `@hitldev/chat-sdk` — one Chat SDK-backed plugin that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
+| Engine bindings | One small package per engine (`@hitl/resolver-workflow-sdk`, ...) implementing `WorkflowPrimitives` + `HitlResolver` |
+| Channels | `@hitl/adapter-chat-sdk` — one Chat SDK-backed plugin that renders native cards and routes interactivity to `hitl.inbox` across every platform; plus the built-in `inboxChannel` (no-op delivery; resolved via `hitl.inbox`) |
 | Inbox UI | React components: pending approvals, request detail, audit trail |
-| Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitldev/store-postgres` and `@hitldev/store-sqlite` for persistence |
+| Approval store | The `Store` interface for pending/resolved requests (powers the inbox and audit). In-memory by default; `@hitl/state-pg` and `@hitl/state-sqlite` for persistence |
 
 What it **deliberately does not own**:
 
@@ -367,23 +367,23 @@ All store and plugin IO lives on the server, so the workflow side never runs arb
 The architecture is split along that contract:
 
 - **Core (engine-agnostic):** the approval store, field builders, `ApprovalResult` typing and validation, the plugin interface, the server services (`createApprovalRequest`, `resolveApproval`, `timeoutApproval`, …) and HTTP layer (`createHitl`), and the workflow-side client (`createHitlClient`) that drives the reminder/timeout loop and talks to the server. The bulk of the code; knows nothing about engines.
-- **Binding (per engine, thin):** two small interfaces. `WorkflowPrimitives` (`suspend` / `sleep` / `request`) is injected into `createHitlClient` on the workflow side; `HitlResolver` (`resolve`) is passed to `createHitl` on the server side. For WDK: a hook for `suspend`, `sleep` for the timer, your `"use step"` `fetch` for `request`, and `resumeHook` for `resolve`. `@hitldev/vercel-workflow` packages this as `workflowHitl()` + `workflowResolver()`.
+- **Binding (per engine, thin):** two small interfaces. `WorkflowPrimitives` (`suspend` / `sleep` / `request`) is injected into `createHitlClient` on the workflow side; `HitlResolver` (`resolve`) is passed to `createHitl` on the server side. For WDK: a hook for `suspend`, `sleep` for the timer, your `"use step"` `fetch` for `request`, and `resumeHook` for `resolve`. `@hitl/resolver-workflow-sdk` packages this as `workflowHitl()` + `workflowResolver()`.
 
 The resume token is **opaque to the core**: for Temporal it encodes `{ workflowId, signalId }`, for Inngest a correlation key. The core just stores it and hands it back.
 
-Switching engines means switching one import (`@hitldev/vercel-workflow` → `@hitldev/temporal`) and the `resolver` entry in `createHitl`. Plugins, the approval store, the inbox, the workflow client — all shared. Today ships the Workflow DevKit binding (`@hitldev/vercel-workflow`) only; the interfaces exist from day one so the others stay an honest estimate of 50–100 lines each.
+Switching engines means switching one import (`@hitl/resolver-workflow-sdk` → `@hitl/resolver-temporal-sdk`) and the `resolver` entry in `createHitl`. Plugins, the approval store, the inbox, the workflow client — all shared. Today ships the Workflow DevKit binding (`@hitl/resolver-workflow-sdk`) only; the interfaces exist from day one so the others stay an honest estimate of 50–100 lines each.
 
 ## Requirements and setup
 
 - Your code runs inside Workflow DevKit workflows — on Vercel (Vercel world, zero config) or self-hosted (`@workflow/world-postgres`).
 - **Environment:** set `HITLDEV_SECRET` to the same value for the server and the workflow client — it authenticates the internal `.well-known/hitldev/v1` API. Without it the API is open (and logs a warning), which is fine for local dev. Set `HITLDEV_URL` if the server's base URL isn't the deployment's own URL (`workflowHitl` reads it from the run metadata by default).
-- hitldev needs a store for approvals, held by the **server** (`createHitl`). It defaults to one in-memory store per process; pass a `@hitldev/store-postgres` or `@hitldev/store-sqlite` store for persistence and to share state across server instances.
+- hitldev needs a store for approvals, held by the **server** (`createHitl`). It defaults to one in-memory store per process; pass a `@hitl/state-pg` or `@hitl/state-sqlite` store for persistence and to share state across server instances.
 - **Custom `Store` implementations:** beyond the single-approval methods, a store implements `findByToken` (idempotent request creation keys on the resume token) and the batch methods (`createBatch`, `getBatch`, `setBatchExternalId`, `listByBatch`) — two extra columns plus a companion `<table>_batches` table in the SQL schema, applied automatically by the bundled stores. `describeStoreContract` from `hitl/store-contract` covers the expected behavior.
 - **SQLite** — schema is created automatically in the constructor; no extra step:
 
 ```ts
 import { DatabaseSync } from "node:sqlite";
-import { SqliteStore } from "@hitldev/store-sqlite";
+import { SqliteStore } from "@hitl/state-sqlite";
 
 const store = new SqliteStore(new DatabaseSync("hitldev.db"));
 ```
@@ -392,7 +392,7 @@ const store = new SqliteStore(new DatabaseSync("hitldev.db"));
 
 ```ts
 import pg from "pg";
-import { PostgresStore } from "@hitldev/store-postgres";
+import { PostgresStore } from "@hitl/state-pg";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const store = new PostgresStore(pool);
@@ -411,7 +411,7 @@ DATABASE_URL=postgres://... npx hitldev setup
 
 ### Channel setup (Chat SDK)
 
-`@hitldev/chat-sdk` delivers through the [Vercel Chat SDK](https://chat-sdk.dev). Install `chat` and the adapters for the platforms you want (`@chat-adapter/slack`, `@chat-adapter/teams`, `@chat-adapter/discord`, …), create one `Chat` instance, and mount its webhook per adapter:
+`@hitl/adapter-chat-sdk` delivers through the [Vercel Chat SDK](https://chat-sdk.dev). Install `chat` and the adapters for the platforms you want (`@chat-adapter/slack`, `@chat-adapter/teams`, `@chat-adapter/discord`, …), create one `Chat` instance, and mount its webhook per adapter:
 
 ```ts
 export const POST = bot.webhooks.slack;   // app/api/webhooks/slack/route.ts
@@ -428,17 +428,17 @@ Batches (`waitForBatchApprovals`) are delivered per item (one approval card each
 | Package | Contents |
 |---|---|
 | `hitl` | Core: `createHitl` (server) + `createHitlClient` (workflow), `field.*` field builders, always-on web inbox + `hitl.inbox`, inbox + internal API, `Store` interface + `InMemoryStore`, `hitl/testing` |
-| `@hitldev/vercel-workflow` | `workflowHitl()` (workflow client) + `workflowResolver()` (server) — Workflow DevKit engine binding |
-| `@hitldev/store-postgres` | `PostgresStore` — bring your own pg-compatible pool |
-| `@hitldev/store-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
+| `@hitl/resolver-workflow-sdk` | `workflowHitl()` (workflow client) + `workflowResolver()` (server) — Workflow DevKit engine binding |
+| `@hitl/state-pg` | `PostgresStore` — bring your own pg-compatible pool |
+| `@hitl/state-sqlite` | `SqliteStore` — `node:sqlite`, zero dependencies |
 | `@hitldev/cli` | `hitldev setup` / `hitldev schema` — Postgres setup and DDL export |
-| `@hitldev/chat-sdk` | `chatHitl()` — one [Chat SDK](https://chat-sdk.dev)-backed plugin for Slack, Teams, Discord, and every other adapter |
+| `@hitl/adapter-chat-sdk` | `chatHitl()` — one [Chat SDK](https://chat-sdk.dev)-backed plugin for Slack, Teams, Discord, and every other adapter |
 | `@hitldev/ui` | Inbox React components |
 
 ## Roadmap
 
 - **More channels** — email (approve via magic link)
-- **Engine bindings** — `@hitldev/temporal`, `@hitldev/inngest`, `@hitldev/restate`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
+- **Engine bindings** — `@hitl/resolver-temporal-sdk`, `@hitl/resolver-inngest-sdk`, `@hitl/resolver-restate-sdk`, Cloudflare Workflows (see [Engine bindings](#engine-bindings) for the contract)
 - **Approval policies** — multi-approver, quorum, role routing, auto-approve rules (batched lists ship today as `waitForBatchApprovals`)
 - **Escalation** — SLA timers, reminder nudges (`waitForApproval({ reminder })`), fallback channels
 - **Audit export** — approval history as structured logs
@@ -451,10 +451,10 @@ examples/
   hello-world/      # Next.js + Workflow DevKit + web inbox minimal example
 packages/
   hitl/             # hitl (core: createHitl, createHitlClient, field builders, web inbox + hitl.inbox)
-  vercel-workflow/  # @hitldev/vercel-workflow (Workflow DevKit binding: workflowHitl + workflowResolver)
-  store-postgres/   # @hitldev/store-postgres (PostgresStore)
-  store-sqlite/     # @hitldev/store-sqlite (SqliteStore on node:sqlite)
-  cli/              # @hitldev/cli (hitldev setup / schema)
-  chat-sdk/         # @hitldev/chat-sdk (Chat SDK-backed plugin: Slack/Teams/Discord/…)
+  resolver-workflow-sdk/  # @hitl/resolver-workflow-sdk (Workflow DevKit binding: workflowHitl + workflowResolver)
+  state-pg/               # @hitl/state-pg (PostgresStore)
+  state-sqlite/           # @hitl/state-sqlite (SqliteStore on node:sqlite)
+  cli/                    # @hitldev/cli (hitldev setup / schema)
+  adapter-chat-sdk/       # @hitl/adapter-chat-sdk (Chat SDK-backed plugin: Slack/Teams/Discord/…)
   ...               # @hitldev/ui follows as it is implemented
 ```

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import pg from "pg";
-import { PostgresStore, type PgQueryable } from "@hitldev/store-postgres";
+import { PostgresStore, type PgQueryable } from "@hitl/state-pg";
 import { hasFlag, parseFlagValue } from "./args.js";
 import { getDatabaseUrl } from "./db-url.js";
 

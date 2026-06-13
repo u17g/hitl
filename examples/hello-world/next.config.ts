@@ -2,10 +2,10 @@ import { withWorkflow } from "workflow/next";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@hitldev/store-sqlite"],
+  transpilePackages: ["@hitl/state-sqlite"],
   serverExternalPackages: [
     "hitl",
-    "@hitldev/vercel-workflow",
+    "@hitl/resolver-workflow-sdk",
     "workflow",
   ],
   webpack: (config, { isServer }) => {

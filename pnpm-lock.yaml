@@ -17,12 +17,12 @@ importers:
 
   examples/hello-world:
     dependencies:
-      '@hitldev/store-sqlite':
+      '@hitl/resolver-workflow-sdk':
         specifier: workspace:*
-        version: link:../../packages/store-sqlite
-      '@hitldev/vercel-workflow':
+        version: link:../../packages/resolver-workflow-sdk
+      '@hitl/state-sqlite':
         specifier: workspace:*
-        version: link:../../packages/vercel-workflow
+        version: link:../../packages/state-sqlite
       hitl:
         specifier: workspace:*
         version: link:../../packages/hitl
@@ -55,7 +55,7 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
 
-  packages/chat-sdk:
+  packages/adapter-chat-sdk:
     dependencies:
       hitl:
         specifier: workspace:*
@@ -79,12 +79,12 @@ importers:
 
   packages/cli:
     dependencies:
-      '@hitldev/store-postgres':
+      '@hitl/state-pg':
         specifier: workspace:*
-        version: link:../store-postgres
-      '@hitldev/store-sqlite':
+        version: link:../state-pg
+      '@hitl/state-sqlite':
         specifier: workspace:*
-        version: link:../store-sqlite
+        version: link:../state-sqlite
       pg:
         specifier: ^8.16.3
         version: 8.21.0
@@ -124,7 +124,22 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
 
-  packages/store-postgres:
+  packages/resolver-workflow-sdk:
+    devDependencies:
+      hitl:
+        specifier: workspace:*
+        version: link:../hitl
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
+      workflow:
+        specifier: latest
+        version: 4.4.0(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.26(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@15.5.19(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@5.9.3)
+
+  packages/state-pg:
     devDependencies:
       '@types/node':
         specifier: ^25.9.3
@@ -142,7 +157,7 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
 
-  packages/store-sqlite:
+  packages/state-sqlite:
     devDependencies:
       '@types/node':
         specifier: ^25.9.3
@@ -156,21 +171,6 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
-
-  packages/vercel-workflow:
-    devDependencies:
-      hitl:
-        specifier: workspace:*
-        version: link:../hitl
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.9.3)(jiti@2.7.0)
-      workflow:
-        specifier: latest
-        version: 4.4.0(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.26(@nestjs/common@11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@opentelemetry/api@1.9.1)(@swc/cli@0.8.1(@swc/core@1.15.3)(chokidar@5.0.0))(@swc/core@1.15.3)(next@15.5.19(@opentelemetry/api@1.9.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@5.9.3)
 
 packages:
 

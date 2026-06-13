@@ -1,5 +1,5 @@
 import { createHitl } from "hitl";
-import { workflowResolver } from "@hitldev/vercel-workflow";
+import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { getStore } from "./hitl-store";
 
 // Server half only: store + the WDK resolver. The web inbox channel is built in,

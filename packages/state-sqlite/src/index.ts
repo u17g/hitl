@@ -52,7 +52,7 @@ interface BatchRow {
 
 /**
  * `Store` backed by `node:sqlite`. The schema is created automatically in the
- * constructor (synchronous and idempotent) — unlike `@hitldev/store-postgres`,
+ * constructor (synchronous and idempotent) — unlike `@hitl/state-pg`,
  * no explicit `ensureSchema()` call is needed.
  */
 export class SqliteStore implements Store {

@@ -53,7 +53,7 @@ interface BatchRow {
 /**
  * `Store` backed by Postgres. Call `await store.ensureSchema()` once at
  * startup (or apply `schemaSql()` through your own migrations) — unlike
- * `@hitldev/store-sqlite`, the constructor cannot create the schema because
+ * `@hitl/state-sqlite`, the constructor cannot create the schema because
  * queries are async.
  */
 export class PostgresStore implements Store {

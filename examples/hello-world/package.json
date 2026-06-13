@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "hitl": "workspace:*",
-    "@hitldev/store-sqlite": "workspace:*",
-    "@hitldev/vercel-workflow": "workspace:*",
+    "@hitl/state-sqlite": "workspace:*",
+    "@hitl/resolver-workflow-sdk": "workspace:*",
     "next": "^15.3.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

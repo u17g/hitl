@@ -1,9 +1,12 @@
 {
-  "name": "@hitldev/chat-sdk",
+  "name": "@hitl/state-sqlite",
   "version": "0.0.0",
-  "description": "Chat SDK channel plugin for hitldev: deliver approvals to Slack, Teams, Discord and more from one adapter.",
+  "description": "SQLite store for hitldev, built on node:sqlite with zero dependencies.",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -14,17 +17,13 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
+  "peerDependencies": {
     "hitl": "workspace:*"
   },
-  "peerDependencies": {
-    "chat": "^4.30.0"
-  },
   "devDependencies": {
-    "ai": "^6.0.182",
-    "chat": "^4.30.0",
+    "hitl": "workspace:*",
+    "@types/node": "^25.9.3",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4",
-    "zod": "^4.0.0"
+    "vitest": "^3.2.4"
   }
 }

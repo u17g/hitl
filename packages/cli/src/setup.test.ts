@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { newDb } from "pg-mem";
-import { PostgresStore, type PgQueryable } from "@hitldev/store-postgres";
+import { PostgresStore, type PgQueryable } from "@hitl/state-pg";
 import { ensureHitldevSchema } from "./setup";
 
 function newPool(): PgQueryable {

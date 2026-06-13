@@ -1,5 +1,5 @@
 import type { HitlRequest } from "hitl";
-import { workflowHitl } from "@hitldev/vercel-workflow";
+import { workflowHitl } from "@hitl/resolver-workflow-sdk";
 
 // The one durable step the workflow client needs: a plain "use step" function
 // that calls the hitldev server. Defined here in the app so the Workflow DevKit
