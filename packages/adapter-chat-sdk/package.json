@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "description": "Vercel's Chat SDK channel plugin for hitl: deliver approvals to Slack, Teams, Discord and more from one adapter.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
   "publishConfig": {
     "access": "public"
   },

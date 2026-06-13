@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "description": "SQLite store for hitl, built on node:sqlite with zero dependencies.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
   "publishConfig": {
     "access": "public"
   },

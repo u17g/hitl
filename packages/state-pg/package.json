@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "description": "Postgres store for hitl. Bring your own pg-compatible pool.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
   "publishConfig": {
     "access": "public"
   },

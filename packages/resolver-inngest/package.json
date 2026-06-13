@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "description": "Inngest binding for hitl.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
   "publishConfig": {
     "access": "public"
   },
