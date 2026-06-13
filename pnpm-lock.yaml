@@ -87,9 +87,6 @@ importers:
       '@hitl/resolver-workflow-sdk':
         specifier: workspace:*
         version: link:../../packages/resolver-workflow-sdk
-      '@hitl/state-sqlite':
-        specifier: workspace:*
-        version: link:../../packages/state-sqlite
       hitl:
         specifier: workspace:*
         version: link:../../packages/hitl

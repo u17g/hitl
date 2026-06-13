@@ -1,19 +1,10 @@
 import { Hitl } from "hitl";
+import { InMemoryState } from "hitl/state";
 import { workflowResolver } from "@hitl/resolver-workflow-sdk";
-import { getState } from "./hitl-state";
 
-const globalForHitl = globalThis as typeof globalThis & { __hitl?: Hitl };
-
-function createHitl(): Hitl {
-  return new Hitl({
-    state: getState(),
-    resolver: workflowResolver(),
-  });
-}
-
-// Server half only: state + the WDK resolver. The web inbox channel is built in,
-// so no `adapters` are needed — add Slack/Teams/Discord here to deliver elsewhere.
-// Workflows talk to this server through the .well-known/hitl/v1 API and import
-// nothing from this file; the UI drives approvals through `hitl.inbox`.
-export const hitl = globalForHitl.__hitl ?? createHitl();
-globalForHitl.__hitl = hitl;
+// Server half: state + WDK resolver. Workflows POST to `.well-known/hitl/v1`;
+// the UI drives approvals through `hitl.inbox`.
+export const hitl = new Hitl({
+  state: new InMemoryState(),
+  resolver: workflowResolver(),
+});

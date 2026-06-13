@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 22.13.0+ (`node:sqlite`)
+- Node.js 22+
 - pnpm (from the repo root)
 
 ## Run
@@ -64,15 +64,12 @@ curl -s -X POST "http://localhost:3000/api/inbox" \
 
 You should see `Hello, world!` printed when the workflow resumes after approval.
 
-> **Note:** If you previously used `.hitl/approvals.db`, delete or rename that file — the example now uses `.hitl/human_requests.db`. Existing data in the legacy default table is migrated automatically when you open the DB with the new package version.
-
-> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitl/v1` API over a `"use step"` `fetch`. The server persists to `.hitl/human_requests.db` (SQLite via `@hitl/state-sqlite`) and resumes the workflow when you submit. See [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md) for setup details.
+> **Note:** Workflow DevKit runs workflows in a separate sandbox from Next.js API routes. The workflow holds no state backend — it suspends and POSTs to the server's `.well-known/hitl/v1` API over a `"use step"` `fetch`. This example keeps pending requests in an in-memory `InMemoryState` (resets on server restart). For production, swap in a persistent backend such as [`@hitl/state-sqlite`](../../packages/state-sqlite/README.md).
 
 ## What this shows
 
-- [`lib/hitl.ts`](lib/hitl.ts) — the server: `new Hitl({ state, resolver: workflowResolver() })` — the web inbox is built in, no adapters needed
+- [`lib/hitl.ts`](lib/hitl.ts) — the server: `new Hitl({ state: new InMemoryState(), resolver: workflowResolver() })` — the web inbox is built in, no adapters needed
 - [`app/api/inbox/route.ts`](app/api/inbox/route.ts) — your own inbox endpoint built on `hitl.inbox.list/resolve` (what the UI calls)
-- [`lib/hitl-state.ts`](lib/hitl-state.ts) — shared `SqliteState` backed by `.hitl/human_requests.db`
 - [`lib/hitl-workflow.ts`](lib/hitl-workflow.ts) — the workflow client: a `"use step"` `fetch` passed to `workflowHitl({ request })`, exposing `waitForHuman`
 - [`workflows/hello.ts`](workflows/hello.ts) — `"use workflow"` + `waitForHuman` from the workflow client
 - [`app/.well-known/hitl/v1/[[...path]]/route.ts`](app/.well-known/hitl/v1/%5B%5B...path%5D%5D/route.ts) — `export const { POST } = hitl.routeHandlers`
