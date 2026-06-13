@@ -47,6 +47,9 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
 ```
 
 See [`examples/hello-world`](examples/hello-world) for a full walkthrough — server setup, workflow client, and web inbox.
+
+Persistence backends: [`@hitl/state-pg`](packages/state-pg/README.md) (Postgres) and [`@hitl/state-sqlite`](packages/state-sqlite/README.md) (SQLite).
+
 ## Channels
 
 | Adapter | Package |

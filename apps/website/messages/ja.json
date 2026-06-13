@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "title": "Hitl SDK — 耐久ワークフロー向け Human-in-the-loop",
+    "description": "耐久ワークフローに人間の承認を組み込む TypeScript SDK。1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で承認されたら再開します。"
+  },
+  "nav": {
+    "docs": "ドキュメント",
+    "github": "GitHub",
+    "npm": "npm"
+  },
+  "hero": {
+    "badge": "Human-in-the-loop",
+    "title": "あらゆるワークフローを人間対応に",
+    "subtitle": "エージェントや自動化に型付きレビューステップを挿入 — 1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で人間が承認したら再開します。",
+    "ctaDocs": "はじめる",
+    "ctaGithub": "GitHub を見る",
+    "notFramework": "エージェントフレームワークではありません — AI SDK や Workflow DevKit をそのまま使えます。Hitl SDK が担当するのは「人間の部分」だけです。"
+  },
+  "compare": {
+    "title": "信頼性をコードで",
+    "subtitle": "手作りのキューやリトライから、1つの await で実現する耐久・再開可能な人間承認へ。",
+    "withHitl": "Hitl SDK あり",
+    "withoutHitl": "Hitl SDK なし"
+  },
+  "setup": {
+    "title": "かんたんセットアップ",
+    "subtitle": "シンプルな宣言的 API で、ワークフローに人間承認を組み込めます。",
+    "step1Title": "インストール",
+    "step1Desc": "コア SDK と Workflow DevKit バインディングを追加します。",
+    "step2Title": "ワークフローを定義",
+    "step2Desc": "耐久ワークフロー内で waitForApproval と型付きフィールドを使います。",
+    "step3Title": "サーバーをマウント",
+    "step3Desc": "内部 API を公開し、ステートバックエンドを接続します。"
+  },
+  "channels": {
+    "title": "どこでも承認を届ける",
+    "subtitle": "1つのアダプターで Chat SDK の全プラットフォームに対応。Web inbox も内蔵。",
+    "slack": "Slack",
+    "slackDesc": "Block Kit カードと Approve/Deny、編集可能なモーダル。",
+    "teams": "Microsoft Teams",
+    "teamsDesc": "Adaptive Cards とネイティブなインタラクティブ操作。",
+    "discord": "Discord",
+    "discordDesc": "Chat SDK 経由の Embed とモーダル。",
+    "inbox": "Web inbox",
+    "inboxDesc": "hitl に内蔵 — hitl.inbox または独自 UI で解決。"
+  },
+  "stack": {
+    "title": "既存スタックをそのまま使う",
+    "subtitle": "Hitl SDK は既存ツールに差し込むだけ。エージェントフレームワークやワークフローエンジンを置き換えません。",
+    "aiSdk": "AI SDK",
+    "aiSdkDesc": "おなじみの AI SDK パターンに、耐久な人間レビューステップを追加。",
+    "wdk": "Workflow DevKit",
+    "wdkDesc": "Vercel 上でインフラ設定なしにサスペンド・スリープ・再開。"
+  },
+  "architecture": {
+    "title": "仕組み",
+    "subtitle": "ワークフローとサーバーは別プロセス。.well-known/hitldev/v1 API だけが両者をつなぎます。",
+    "point1": "ワークフローが耐久フックでサスペンドし、メモ化されたステップでリクエストを POST。",
+    "point2": "サーバーがリクエストを記録し、チャネルアダプターへ配信。",
+    "point3": "レビュアーが承認 — サーバーがフックを解決し、ワークフローが再開。"
+  },
+  "cta": {
+    "title": "最初の承認フローを作りましょう。",
+    "subtitle": "hello-world サンプルで Hitl SDK を試せます。",
+    "docs": "ドキュメントを読む",
+    "example": "hello-world を実行"
+  },
+  "footer": {
+    "tagline": "耐久ワークフロー向け Human-in-the-loop。",
+    "license": "MIT License"
+  },
+  "docs": {
+    "title": "ドキュメント",
+    "gettingStarted": {
+      "title": "はじめに",
+      "intro": "Hitl SDK は耐久ワークフローに人間の承認を組み込む TypeScript ライブラリです。エージェントフレームワークではありません — AI SDK や Workflow DevKit をそのまま使ってください。",
+      "prereqTitle": "前提条件",
+      "prereq1": "Node.js 22.13.0+（node:sqlite による SQLite ステート用）",
+      "prereq2": "pnpm（モノレポルートから）",
+      "runTitle": "hello-world サンプルを実行",
+      "runDesc": "Workflow DevKit ワークフローが waitForApproval でサスペンドし、Web inbox で承認すると再開するデモです。",
+      "tryTitle": "UI を試す",
+      "try1": "名前を入力して Run helloWorkflow をクリック。",
+      "try2": "一覧の保留リクエストを承認。",
+      "try3": "開発サーバーのターミナルで Hello, …! を確認。"
+    },
+    "installation": {
+      "title": "インストール",
+      "intro": "コア SDK と、耐久実行プラットフォーム用のエンジンバインディングをインストールします。",
+      "coreTitle": "コアパッケージ",
+      "coreDesc": "hitl はサーバー・inbox API・フィールドビルダーを提供。@hitl/resolver-workflow-sdk は Workflow DevKit にバインドします。",
+      "adaptersTitle": "チャネルアダプター",
+      "adaptersDesc": "@hitl/adapter-chat-sdk と必要な Chat SDK プラットフォームをインストール。1つのアダプターで Slack・Teams・Discord など全プラットフォームに対応。",
+      "stateTitle": "ステートバックエンド",
+      "stateDesc": "デフォルトはインメモリ。ローカル開発は @hitl/state-sqlite、本番 Postgres は @hitl/state-pg。"
+    },
+    "channels": {
+      "title": "チャネル",
+      "intro": "レビュアーが普段使うプラットフォームに承認を届けます。",
+      "chatTitle": "Chat SDK アダプター",
+      "chatDesc": "@hitl/adapter-chat-sdk はネイティブカードを描画し、全 Chat SDK プラットフォームのインタラクティブ操作を hitl.inbox にルーティングします。",
+      "inboxTitle": "Web inbox",
+      "inboxDesc": "hitl に内蔵。hitl.inbox で一覧・承認・拒否、または独自エンドポイントを公開 — hello-world が両方を示します。"
+    },
+    "workflowDevkit": {
+      "title": "Workflow DevKit",
+      "intro": "Workflow DevKit はアプリサーバーとは別サンドボックスでワークフローを実行します。ワークフロークライアントはステートを持たず、耐久ステップ経由でサーバーに POST します。",
+      "clientTitle": "ワークフロークライアント",
+      "clientDesc": "workflowHitl がサスペンド・スリープ・リクエストのプリミティブをラップ。アプリで waitForApproval を定義し、use workflow 関数から呼び出します。",
+      "serverTitle": "サーバーセットアップ",
+      "serverDesc": "new Hitl({ state, resolver: workflowResolver() }) が永続化とチャネル配信を担当。内部 API 用に hitl.routeHandlers をエクスポート。",
+      "flowTitle": "承認フロー",
+      "flow1": "ワークフローが waitForApproval を呼び出し — サスペンドしてリクエストを作成。",
+      "flow2": "サーバーがアダプターへ配信し、決定を待機。",
+      "flow3": "レビュアーが承認 — リゾルバーが結果付きでワークフローを再開。"
+    },
+    "prev": "前へ",
+    "next": "次へ"
+  },
+  "theme": {
+    "light": "ライト",
+    "dark": "ダーク",
+    "toggle": "テーマを切り替え"
+  },
+  "locale": {
+    "en": "English",
+    "ja": "日本語"
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "title": "Hitl SDK — Human-in-the-loop for durable workflows",
+    "description": "A unified TypeScript SDK for human-in-the-loop approval in durable workflows. One await, suspend for hours or days, resume when a human approves."
+  },
+  "nav": {
+    "docs": "Docs",
+    "github": "GitHub",
+    "npm": "npm"
+  },
+  "hero": {
+    "badge": "Human-in-the-loop",
+    "title": "Make any workflow human-aware",
+    "subtitle": "Insert typed review steps into agents and automations — one await, suspend for hours or days, resume when a human approves in Slack, Teams, Discord, or a web inbox.",
+    "ctaDocs": "Get started",
+    "ctaGithub": "View on GitHub",
+    "notFramework": "Not an agent framework — bring your own AI SDK or Workflow DevKit. Hitl SDK does one thing: the human part."
+  },
+  "compare": {
+    "title": "Reliability-as-code",
+    "subtitle": "Move from hand-rolled queues and custom retries to durable, resumable human approval with a single await.",
+    "withHitl": "With Hitl SDK",
+    "withoutHitl": "Without Hitl SDK"
+  },
+  "setup": {
+    "title": "Effortless setup",
+    "subtitle": "A simple declarative API to define and use human approval in your workflows.",
+    "step1Title": "Install",
+    "step1Desc": "Add the core SDK and the Workflow DevKit binding.",
+    "step2Title": "Define a workflow",
+    "step2Desc": "Use waitForApproval with typed fields inside a durable workflow.",
+    "step3Title": "Mount the server",
+    "step3Desc": "Expose the internal API and wire up your state backend."
+  },
+  "channels": {
+    "title": "Deliver approvals anywhere",
+    "subtitle": "One adapter covers every Chat SDK platform. Or use the built-in web inbox.",
+    "slack": "Slack",
+    "slackDesc": "Block Kit cards with Approve/Deny and editable modals.",
+    "teams": "Microsoft Teams",
+    "teamsDesc": "Adaptive Cards with native interactivity.",
+    "discord": "Discord",
+    "discordDesc": "Embeds and modals via Chat SDK.",
+    "inbox": "Web inbox",
+    "inboxDesc": "Built into hitl — resolve via hitl.inbox or your own UI."
+  },
+  "stack": {
+    "title": "Bring your own stack",
+    "subtitle": "Hitl SDK plugs into the tools you already use. It does not replace your agent framework or workflow engine.",
+    "aiSdk": "AI SDK",
+    "aiSdkDesc": "Use familiar AI SDK patterns with durable human review steps.",
+    "wdk": "Workflow DevKit",
+    "wdkDesc": "Suspend, sleep, and resume with zero infrastructure setup on Vercel."
+  },
+  "architecture": {
+    "title": "How it works",
+    "subtitle": "The workflow and the server are separate processes. The .well-known/hitldev/v1 API is the only thing between them.",
+    "point1": "Workflow suspends on a durable hook and POSTs a request via a memoized step.",
+    "point2": "Server records the request and delivers to your channel adapter.",
+    "point3": "Reviewer approves — server resolves the hook and the workflow resumes."
+  },
+  "cta": {
+    "title": "Create your first approval flow today.",
+    "subtitle": "See Hitl SDK in action with the hello-world example.",
+    "docs": "Read the docs",
+    "example": "Run hello-world"
+  },
+  "footer": {
+    "tagline": "Human-in-the-loop for durable workflows.",
+    "license": "MIT License"
+  },
+  "docs": {
+    "title": "Documentation",
+    "gettingStarted": {
+      "title": "Getting Started",
+      "intro": "Hitl SDK is a TypeScript library for human-in-the-loop approval in durable workflows. It is not an agent framework — bring your own AI SDK or Workflow DevKit.",
+      "prereqTitle": "Prerequisites",
+      "prereq1": "Node.js 22.13.0+ (for SQLite state via node:sqlite)",
+      "prereq2": "pnpm (from the monorepo root)",
+      "runTitle": "Run the hello-world example",
+      "runDesc": "The example demonstrates a Workflow DevKit workflow that suspends on waitForApproval, you approve through the web inbox, and the workflow resumes.",
+      "tryTitle": "Try the UI",
+      "try1": "Enter a name and click Run helloWorkflow.",
+      "try2": "Approve the pending request in the list.",
+      "try3": "Check the dev server terminal for Hello, …!"
+    },
+    "installation": {
+      "title": "Installation",
+      "intro": "Install the core SDK and the engine binding for your durable execution platform.",
+      "coreTitle": "Core packages",
+      "coreDesc": "hitl provides the server, inbox API, and field builders. @hitl/resolver-workflow-sdk binds to Workflow DevKit.",
+      "adaptersTitle": "Channel adapters",
+      "adaptersDesc": "Install @hitl/adapter-chat-sdk and the Chat SDK platforms you need. One adapter covers Slack, Teams, Discord, and every Chat SDK platform.",
+      "stateTitle": "State backends",
+      "stateDesc": "In-memory by default. Use @hitl/state-sqlite for local dev or @hitl/state-pg for production Postgres."
+    },
+    "channels": {
+      "title": "Channels",
+      "intro": "Deliver approvals to reviewers on the platforms they already use.",
+      "chatTitle": "Chat SDK adapter",
+      "chatDesc": "The @hitl/adapter-chat-sdk adapter renders native cards and routes interactivity to hitl.inbox across every Chat SDK platform.",
+      "inboxTitle": "Web inbox",
+      "inboxDesc": "Built into hitl. List, approve, and deny via hitl.inbox or expose your own endpoint — the hello-world example shows both."
+    },
+    "workflowDevkit": {
+      "title": "Workflow DevKit",
+      "intro": "Workflow DevKit runs workflows in a separate sandbox from your app server. The workflow client carries no state backend — it suspends and POSTs to the server over a durable step.",
+      "clientTitle": "Workflow client",
+      "clientDesc": "workflowHitl wraps suspend, sleep, and request primitives. Define waitForApproval in your app and call it from use workflow functions.",
+      "serverTitle": "Server setup",
+      "serverDesc": "new Hitl({ state, resolver: workflowResolver() }) owns persistence and channel delivery. Export hitl.routeHandlers for the internal API.",
+      "flowTitle": "Approval flow",
+      "flow1": "Workflow calls waitForApproval — suspends and creates a request.",
+      "flow2": "Server delivers to adapters and waits for a decision.",
+      "flow3": "Reviewer approves — resolver resumes the workflow with the result."
+    },
+    "prev": "Previous",
+    "next": "Next"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "toggle": "Toggle theme"
+  },
+  "locale": {
+    "en": "English",
+    "ja": "日本語"
+  }
+}
