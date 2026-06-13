@@ -2,7 +2,7 @@ import { field, actions, type HumanRequest } from "hitl/adapter";
 import type { HitlInbox } from "hitl/state";
 import { toCardElement } from "chat";
 import { describe, expect, it, vi } from "vitest";
-import { chatHitl } from "./index";
+import { createChatSdkAdapter } from "./index";
 
 // Test list:
 // - send posts the approval card to the channel and returns "<channel>#<id>"
@@ -43,10 +43,10 @@ function fakeBot() {
 const inbox = {} as HitlInbox;
 
 function makePlugin(bot: ReturnType<typeof fakeBot>["bot"]) {
-  return chatHitl({ id: "approvals", bot: bot as never, channel: "slack:C123", inbox: () => inbox });
+  return createChatSdkAdapter({ id: "approvals", bot: bot as never, channel: "slack:C123", inbox: () => inbox });
 }
 
-describe("chatHitl send", () => {
+describe("createChatSdkAdapter send", () => {
   it("posts the approval card and returns channel#id as externalId", async () => {
     const { bot, posted } = fakeBot();
     const { externalId } = await makePlugin(bot).send(request);
@@ -74,7 +74,7 @@ describe("chatHitl send", () => {
   });
 });
 
-describe("chatHitl update", () => {
+describe("createChatSdkAdapter update", () => {
   it("edits the stored message handle with the result card", async () => {
     const { bot, handles } = fakeBot();
     const plugin = makePlugin(bot);
@@ -104,7 +104,7 @@ describe("chatHitl update", () => {
   });
 });
 
-describe("chatHitl notify", () => {
+describe("createChatSdkAdapter notify", () => {
   it("posts to the channel root when there is no parent", async () => {
     const { bot, posted } = fakeBot();
     const result = await makePlugin(bot).notify({ message: "Still waiting" });
@@ -124,7 +124,7 @@ describe("chatHitl notify", () => {
   });
 });
 
-describe("chatHitl wiring", () => {
+describe("createChatSdkAdapter wiring", () => {
   it("registers approve/deny and modal handlers on the bot", () => {
     const { bot } = fakeBot();
     makePlugin(bot);

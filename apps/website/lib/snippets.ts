@@ -86,11 +86,11 @@ export const { waitForHuman } = workflowHitl({
   },
 });`,
   chatAdapter: `import { Chat } from "chat";
-import { chatHitl } from "@hitl/adapter-chat-sdk";
+import { createChatSdkAdapter } from "@hitl/adapter-chat-sdk";
 import { slack } from "@chat-adapter/slack";
 
 const chat = new Chat({
-  adapters: [chatHitl({ hitl })],
+  adapters: [createChatSdkAdapter({ hitl })],
 });
 
 chat.register(slack({ ... }));`,

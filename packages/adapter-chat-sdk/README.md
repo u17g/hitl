@@ -14,7 +14,7 @@ pnpm add @hitl/adapter-chat-sdk chat @chat-adapter/slack
 
 ```ts
 import { Hitl } from "hitl";
-import { chatHitl } from "@hitl/adapter-chat-sdk";
+import { createChatSdkAdapter } from "@hitl/adapter-chat-sdk";
 import { workflowResolver } from "@hitl/resolver-workflow-sdk";
 import { Chat } from "chat";
 import { createSlackAdapter } from "@chat-adapter/slack";
@@ -28,7 +28,7 @@ export const hitl = new Hitl({
   resolver: workflowResolver(),
   adapters: [ // hitl channel adapters
     // `inbox` is lazy: `new Hitl()` needs the adapters before hitl.inbox exists.
-    chatHitl({ id: "approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
+    createChatSdkAdapter({ id: "approvals", bot, channel: "slack:C123", inbox: () => hitl.inbox }),
   ],
 });
 
@@ -36,7 +36,7 @@ export const hitl = new Hitl({
 export const POST = bot.webhooks.slack; // app/api/webhooks/slack/route.ts
 ```
 
-`chatHitl` registers approve/deny and modal handlers on the `bot`, so the Chat SDK webhook resolves approvals through `hitl.inbox`. Multiple `chatHitl` adapters sharing one `bot` register the handlers only once.
+`createChatSdkAdapter` registers approve/deny and modal handlers on the `bot`, so the Chat SDK webhook resolves approvals through `hitl.inbox`. Multiple `createChatSdkAdapter` adapters sharing one `bot` register the handlers only once.
 
 ## How it maps to `HitlAdapter`
 

@@ -5,7 +5,7 @@ import { registerHitlHandlers } from "./actions";
 import { encodeExternalId, toChatThreadRef } from "./external-id";
 import { humanRequestCard, resultCard } from "./render";
 
-export interface ChatHitlOptions {
+export interface ChatSdkAdapterOptions {
   /** Adapter id, the routing key used by `waitForHuman({ channel })`. */
   id: string;
   /** The shared Chat SDK instance that owns the webhooks and handler registry. */
@@ -19,7 +19,7 @@ export interface ChatHitlOptions {
   inbox: () => HitlInbox;
 }
 
-export function chatHitl(options: ChatHitlOptions): HitlAdapter {
+export function createChatSdkAdapter(options: ChatSdkAdapterOptions): HitlAdapter {
   const { bot, channel } = options;
   const sent = new Map<string, { handle: SentMessage; message: string }>();
 
