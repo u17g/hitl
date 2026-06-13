@@ -227,7 +227,7 @@ export class SqliteState implements State {
       );
   }
 
-  async listTimeline(threadId: string): Promise<TimelineEntry[]> {
+  async timeline(threadId: string): Promise<TimelineEntry[]> {
     const rows = this.db
       .prepare(
         `SELECT * FROM ${this.table.timelineSql} WHERE thread_id = ? ORDER BY created_at`,

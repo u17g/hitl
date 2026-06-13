@@ -100,7 +100,8 @@ export class PostgresState implements State {
 
   async get(id: string): Promise<HumanRequestRecord | null> {
     const { rows } = await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE id = $1`, [id]);
-    return rows[0] ? rowToRecord(rows[0]) : null;
+    const row = rows[0] as HumanRequestRow | undefined;
+    return row ? rowToRecord(row) : null;
   }
 
   async findByExternalId(externalId: string): Promise<HumanRequestRecord | null> {
@@ -108,12 +109,12 @@ export class PostgresState implements State {
       `SELECT * FROM ${this.table.sql} WHERE external_id = $1`,
       [externalId],
     );
-    if (rows[0]) return rowToRecord(rows[0]);
+    if (rows[0]) return rowToRecord(rows[0] as HumanRequestRow);
 
     const { rows: withExtras } = await this.pool.query(
       `SELECT * FROM ${this.table.sql} WHERE external_ids != '{}'::jsonb`,
     );
-    for (const row of withExtras) {
+    for (const row of withExtras as HumanRequestRow[]) {
       const record = rowToRecord(row);
       if (record.externalIds && Object.values(record.externalIds).includes(externalId)) {
         return record;
@@ -126,7 +127,7 @@ export class PostgresState implements State {
     const { rows } = await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE token = $1`, [
       token,
     ]);
-    return rows[0] ? rowToRecord(rows[0]) : null;
+    return rows[0] ? rowToRecord(rows[0] as HumanRequestRow) : null;
   }
 
   async setExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
@@ -163,7 +164,7 @@ export class PostgresState implements State {
     const { rows } = filter?.status
       ? await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE status = $1`, [filter.status])
       : await this.pool.query(`SELECT * FROM ${this.table.sql}`);
-    return rows.map(rowToRecord);
+    return (rows as HumanRequestRow[]).map(rowToRecord);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {
@@ -186,7 +187,7 @@ export class PostgresState implements State {
       `SELECT * FROM ${this.table.batchesSql} WHERE id = $1`,
       [id],
     );
-    return rows[0] ? batchRowToRecord(rows[0]) : null;
+    return rows[0] ? batchRowToRecord(rows[0] as BatchRow) : null;
   }
 
   async setBatchExternalId(id: string, externalId: string, pluginId?: string): Promise<void> {
@@ -210,7 +211,7 @@ export class PostgresState implements State {
       `SELECT * FROM ${this.table.sql} WHERE batch_id = $1 ORDER BY batch_index`,
       [batchId],
     );
-    return rows.map(rowToRecord);
+    return (rows as HumanRequestRow[]).map(rowToRecord);
   }
 
   async appendTimeline(entry: TimelineEntry): Promise<void> {
@@ -227,12 +228,12 @@ export class PostgresState implements State {
     );
   }
 
-  async listTimeline(threadId: string): Promise<TimelineEntry[]> {
+  async timeline(threadId: string): Promise<TimelineEntry[]> {
     const { rows } = await this.pool.query(
       `SELECT * FROM ${this.table.timelineSql} WHERE thread_id = $1 ORDER BY created_at`,
       [threadId],
     );
-    return rows.map(timelineRowToEntry);
+    return (rows as TimelineRow[]).map(timelineRowToEntry);
   }
 }
 

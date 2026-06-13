@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
+import { humanActions } from "hitl";
 import { DatabaseSync } from "node:sqlite";
 import { SqliteState } from "./index.js";
 import { runSetup } from "./setup.js";
@@ -22,7 +23,7 @@ describe("setup command", () => {
           token: "tok_a1",
           channel: "lead-approvals",
           message: "Approve?",
-          actions: { submit: {} },
+          actions: humanActions().submit().build(),
         });
         expect(await state.get("a1")).toMatchObject({ id: "a1", status: "pending" });
       } finally {

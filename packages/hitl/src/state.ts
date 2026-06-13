@@ -61,13 +61,13 @@ export interface State {
   /** Items of a batch, ordered by `batchIndex`. */
   listByBatch(batchId: string): Promise<HumanRequestRecord[]>;
   appendTimeline(entry: TimelineEntry): Promise<void>;
-  listTimeline(threadId: string): Promise<TimelineEntry[]>;
+  timeline(threadId: string): Promise<TimelineEntry[]>;
 }
 
 export class InMemoryState implements State {
   private records = new Map<string, HumanRequestRecord>();
   private batches = new Map<string, BatchRecord>();
-  private timeline = new Map<string, TimelineEntry[]>();
+  private timelines = new Map<string, TimelineEntry[]>();
 
   async create(record: NewHumanRequestRecord): Promise<void> {
     this.records.set(record.id, {
@@ -153,13 +153,13 @@ export class InMemoryState implements State {
   }
 
   async appendTimeline(entry: TimelineEntry): Promise<void> {
-    const list = this.timeline.get(entry.threadId) ?? [];
+    const list = this.timelines.get(entry.threadId) ?? [];
     list.push(entry);
-    this.timeline.set(entry.threadId, list);
+    this.timelines.set(entry.threadId, list);
   }
 
-  async listTimeline(threadId: string): Promise<TimelineEntry[]> {
-    return this.timeline.get(threadId) ?? [];
+  async timeline(threadId: string): Promise<TimelineEntry[]> {
+    return this.timelines.get(threadId) ?? [];
   }
 
   private mustGet(id: string): HumanRequestRecord {

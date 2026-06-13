@@ -289,7 +289,7 @@ export function describeStateContract(
         createdAt: "2026-01-01T00:01:00.000Z",
       });
 
-      expect(await state.listTimeline("step-1")).toEqual([
+      expect(await state.timeline("step-1")).toEqual([
         {
           id: "t1",
           threadId: "step-1",
@@ -304,7 +304,7 @@ export function describeStateContract(
           createdAt: "2026-01-01T00:01:00.000Z",
         },
       ]);
-      expect(await state.listTimeline("missing")).toEqual([]);
+      expect(await state.timeline("missing")).toEqual([]);
     });
   });
 }

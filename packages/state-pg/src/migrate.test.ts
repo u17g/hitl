@@ -38,7 +38,7 @@ describe("postgres migrations", () => {
     await applyMigrations(pool, DEFAULT_TABLE);
 
     const { rows } = await pool.query("SELECT id FROM hitl.schema_migrations ORDER BY id");
-    expect(rows.map((row) => row.id)).toEqual([
+    expect(rows.map((row) => (row as { id: string }).id)).toEqual([
       "001_initial",
       "002_external_ids",
       "003_batches",

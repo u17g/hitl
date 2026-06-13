@@ -22,7 +22,7 @@ async function getAppliedMigrationIds(pool: PgQueryable, tableName: string): Pro
   const meta = metaTableSql(table);
   try {
     const { rows } = await pool.query(`SELECT id FROM ${meta}`);
-    return new Set(rows.map((row) => String(row.id)));
+    return new Set(rows.map((row) => String((row as { id: string }).id)));
   } catch {
     return new Set();
   }
