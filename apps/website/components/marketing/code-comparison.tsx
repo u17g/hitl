@@ -258,17 +258,21 @@ export function CodeComparison() {
         </>
       ),
       desc: t({
-        en: "Nudge approvers while a request is pending — on the same thread or a fallback channel.",
-        ja: "承認待ちの間、同じスレッドまたはフォールバックチャネルで催促できます。",
+        en: "Keep following up in-thread or on another channel — on your schedule.",
+        ja: "同じスレッドでリマインド、別チャネルにも届けられる。承認待ちのまま放置しない。",
       }),
       bullets: [
         t({
-          en: "Thread reminders with remind.after()",
-          ja: "remind.after() でスレッド内リマインド",
+          en: "Remind after an hour",
+          ja: "1時間後にリマインド",
         }),
         t({
-          en: "Escalate to another channel with escalate.to()",
-          ja: "escalate.to() で別チャネルへエスカレーション",
+          en: "Every weekday morning",
+          ja: "平日の朝にリマインド",
+        }),
+        t({
+          en: "Escalate when it's time",
+          ja: "適切なタイミングでエスカレーション",
         }),
       ],
       code: snippets.remindersExample,
