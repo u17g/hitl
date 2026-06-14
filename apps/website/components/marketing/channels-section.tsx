@@ -67,8 +67,20 @@ export function ChannelsSection() {
           </SectionTitle>
           <SectionDescription>
             {t({
-              en: "AI handles the work. Humans make the calls. Keep that loop running in Slack, Teams, Discord, or your own web app.",
-              ja: "AIが処理し、人が判断する。そのループを Slack・Teams・Discord・ウェブアプリ内で完結。",
+              en: "AI handles the work. Humans make the calls. Integrates with ",
+              ja: "AIが処理し、人が判断する。",
+            })}
+            <a
+              href="https://chat-sdk.dev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+            >
+              {t({ en: "Vercel's Chat SDK", ja: "Vercel Chat SDK" })}
+            </a>
+            {t({
+              en: " — all within Slack, Microsoft Teams, and Discord.",
+              ja: " と統合し、Slack、Microsoft Teams、Discord 内で完結。",
             })}
           </SectionDescription>
         </SectionHeader>
