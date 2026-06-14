@@ -55,11 +55,8 @@ export function SetupSection() {
     <Section variant="muted">
       <SectionContainer size="6xl">
         <SectionHeader>
-          <SectionLabel>
-            {t({ en: "Setup", ja: "セットアップ" })}
-          </SectionLabel>
           <SectionTitle>
-            {t({ en: "Effortless setup", ja: "かんたんセットアップ" })}
+            {t({ en: "Quick setup", ja: "クイックにセットアップ" })}
           </SectionTitle>
           <SectionDescription>
             {t({
@@ -68,41 +65,16 @@ export function SetupSection() {
             })}
           </SectionDescription>
         </SectionHeader>
-
-        <div className="mt-16 space-y-20">
-          {steps.map((step, i) => (
-            <div
-              key={step.title}
-              className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16"
-            >
-              <div className={i % 2 === 1 ? "lg:order-2" : ""}>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="kbd-hint">{step.shortcut}</span>
-                </div>
-                <h3 className="mt-4 font-display text-2xl md:text-3xl">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-muted-foreground">{step.desc}</p>
-                <Button
-                  variant="link"
-                  className="mt-4 h-auto p-0 font-mono text-xs text-muted-foreground"
-                  asChild
-                >
-                  <Link href="/docs/getting-started">
-                    {t({ en: "Learn more", ja: "詳しく見る" })}
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </Button>
-              </div>
-              <div className={i % 2 === 1 ? "lg:order-1" : ""}>
-                <CodeBlock code={step.code} filename={step.filename} />
-              </div>
-            </div>
-          ))}
-        </div>
+        <Button
+          variant="link"
+          className="mt-4 h-auto p-0 font-mono text-xs text-muted-foreground"
+          asChild
+        >
+          <Link href="/docs/getting-started">
+            {t({ en: "Learn more", ja: "詳しく見る" })}
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </Button>
       </SectionContainer>
     </Section>
   );

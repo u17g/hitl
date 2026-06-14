@@ -72,7 +72,7 @@ export function SiteFooter() {
         </div>
         <div className="mt-12 flex flex-col gap-2 border-t border-border pt-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>{t({ en: "MIT License", ja: "MIT License" })}</p>
-          <p className="font-mono text-xs">hitl-sdk · 2026</p>
+          <p className="font-mono text-xs">Unbounded Pioneering Inc. · 2026</p>
         </div>
       </div>
     </footer>

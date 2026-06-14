@@ -126,7 +126,7 @@ export function SectionDescription({
 }: ComponentProps<"p">) {
   return (
     <p
-      className={cn("max-w-4xl mt-4 text-base text-muted-foreground md:text-lg", className)}
+      className={cn("mt-4 text-base text-muted-foreground md:text-lg", className)}
       {...props}
     />
   );

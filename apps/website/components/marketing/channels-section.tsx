@@ -72,13 +72,11 @@ export function ChannelsSection() {
     <Section>
       <SectionContainer size="6xl">
         <SectionHeader>
-          <SectionLabel>
-            {t({ en: "Channels", ja: "チャネル" })}
-          </SectionLabel>
           <SectionTitle>
             {t({ en: "Deliver approvals anywhere", ja: "どこでも承認を届ける" })}
           </SectionTitle>
           <SectionDescription>
+            {/* Vercel's chat sdk handle rest of the work. */}
             {t({
               en: "One adapter covers every Chat SDK platform. Or use the built-in web inbox.",
               ja: "1つのアダプターで Chat SDK の全プラットフォームに対応。Web inbox も内蔵。",

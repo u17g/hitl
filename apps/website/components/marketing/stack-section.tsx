@@ -52,16 +52,13 @@ export function StackSection() {
     <Section variant="muted">
       <SectionContainer size="6xl">
         <SectionHeader>
-          <SectionLabel>
-            {t({ en: "Integrations", ja: "連携" })}
-          </SectionLabel>
           <SectionTitle>
             {t({ en: "Bring your own stack", ja: "既存スタックをそのまま使う" })}
           </SectionTitle>
           <SectionDescription>
             {t({
-              en: "Hitl SDK plugs into the tools you already use. It does not replace your agent framework or workflow engine.",
-              ja: "Hitl SDK は既存ツールに差し込むだけ。エージェントフレームワークやワークフローエンジンを置き換えません。",
+              en: "HITL SDK plugs into the tools you already use. It does not replace your agent framework or workflow engine.",
+              ja: "HITL SDK は既存ツールに差し込むだけ。エージェントフレームワークやワークフローエンジンを置き換えません。",
             })}
           </SectionDescription>
         </SectionHeader>
