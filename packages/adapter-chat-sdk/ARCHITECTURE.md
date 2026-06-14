@@ -26,11 +26,11 @@ sequenceDiagram
 
 | Method | Behaviour | Implemented in |
 |---|---|---|
-| `send` | Posts an approval card (message + Approve/Deny buttons carrying the request id) to the resolved destination, or inside an existing thread when `threadRef` is set; keeps the `SentMessage` handle in memory for `update`. | `index.ts` |
+| `send` | Posts an approval card to the resolved destination, or inside an existing thread when the destination includes a thread ts (e.g. `slack:C123:1710000000.123456`); keeps the `SentMessage` handle in memory for `update`. | `index.ts`, `destination.ts` |
 | `update` | Edits the card in place to show the outcome once resolved. | `index.ts`, `render.tsx` |
-| `notify` | Posts to the resolved destination (or threads under a parent when `threadRef` is set) and returns an encoded `externalId` so later `waitForHuman({ after: await notify(...) })` can chain in the same thread. | `index.ts`, `external-id.ts` |
+| `notify` | Posts to the resolved destination (or threads when the destination includes a thread ts) and returns an encoded `externalId`. The hitl core chains later steps via `after` and state lookup. Workflow authors read `TimelineAnchor.externalRef` for the opaque delivery ref. | `index.ts`, `external-id.ts` |
 
-The hitl core passes an opaque `destination` string; this adapter resolves it to `bot.channel(destination ?? defaultChannel)`.
+The hitl core passes an opaque `destination` string; this adapter resolves it to `bot.channel(destination)` or `bot.thread(destination)` when the destination is a thread ref.
 
 ### Batches
 
@@ -50,7 +50,8 @@ A `WeakSet` ensures multiple `createChatSdkAdapter` instances sharing one `bot` 
 | Routing key | Resolved destination |
 |---|---|
 | `approvals` (adapter id only) | `defaultChannel` on the adapter |
-| `approvals:slack:C456` | `slack:C456` (opaque string passed through to `bot.channel`) |
+| `approvals:slack:C456` | `slack:C456` (channel root) |
+| `approvals:slack:C456:1710000000.123456` | `slack:C456:1710000000.123456` (thread) |
 
 `resolveDestination` throws when neither `request.destination` nor `defaultChannel` is set.
 
@@ -71,7 +72,7 @@ The hitl core hands adapters only an opaque `externalId` string on `update` / th
 slack:C123#msg_abc
 ```
 
-Channel refs contain `:` (e.g. `slack:C123`), so the separator is `#`, which channel and message ids do not use. `toChatThreadRef` accepts either the encoded form or a native Chat SDK thread ref (`channel:messageId`).
+Channel refs contain `:` (e.g. `slack:C123`), so the separator is `#`, which channel and message ids do not use. `toChatThreadRef` accepts either the encoded form or a native Chat SDK thread ref (`channel:messageId`). Workflow-facing `TimelineAnchor.externalRef` uses the encoded form; pass it through `toChatThreadRef` when posting from a Chat SDK bot.
 
 ## JSX
 
@@ -82,10 +83,11 @@ Cards and modals are authored as JSX compiled by the Chat SDK runtime. This pack
 ```
 src/
   index.ts       createChatSdkAdapter
+  destination.ts parse channel vs thread destinations
   actions.ts     registerHitlHandlers, action/modal event handlers
   render.tsx     humanRequestCard, actionModal, resultCard
   fields.tsx     needsModal, fieldInputs, parseModalValues
-  external-id.ts encode/decode externalId, threadRef helpers
+  external-id.ts encode/decode externalId, toChatThreadRef helpers
   constants.ts   hitl: action/callback id prefixes
 ```
 

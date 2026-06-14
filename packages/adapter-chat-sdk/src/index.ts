@@ -2,7 +2,8 @@ import type { HumanRequest, HumanResult, HitlAdapter, Notification } from "@hitl
 import type { HitlInbox } from "@hitl-sdk/hitl/state";
 import type { Chat, SentMessage } from "chat";
 import { registerHitlHandlers } from "./actions";
-import { encodeExternalId, toChatThreadRef } from "./external-id";
+import { channelFromDestination, isThreadDestination, threadDestination } from "./destination";
+import { encodeExternalId } from "./external-id";
 import { humanRequestCard, resultCard } from "./render";
 
 export interface ChatSdkAdapterOptions {
@@ -32,6 +33,13 @@ function resolveDestination(
   return dest;
 }
 
+function postTarget(bot: Chat, dest: string) {
+  if (isThreadDestination(dest)) {
+    return bot.thread(threadDestination(dest));
+  }
+  return bot.channel(dest);
+}
+
 export function createChatSdkAdapter(options: ChatSdkAdapterOptions): HitlAdapter {
   const { bot, defaultChannel } = options;
   const sent = new Map<string, { handle: SentMessage; message: string }>();
@@ -44,11 +52,8 @@ export function createChatSdkAdapter(options: ChatSdkAdapterOptions): HitlAdapte
 
     async send(request: HumanRequest): Promise<{ externalId: string }> {
       const dest = resolveDestination(request, defaultChannel);
-      const target = request.threadRef
-        ? bot.thread(toChatThreadRef(request.threadRef))
-        : bot.channel(dest);
-      const handle = await target.post(humanRequestCard(request));
-      const externalId = encodeExternalId(dest, handle.id);
+      const handle = await postTarget(bot, dest).post(humanRequestCard(request));
+      const externalId = encodeExternalId(channelFromDestination(dest), handle.id);
       sent.set(externalId, { handle, message: request.message });
       return { externalId };
     },
@@ -62,14 +67,8 @@ export function createChatSdkAdapter(options: ChatSdkAdapterOptions): HitlAdapte
 
     async notify(notification: Notification): Promise<{ externalId?: string }> {
       const dest = resolveDestination(notification, defaultChannel);
-      if (notification.threadRef) {
-        const handle = await bot
-          .thread(toChatThreadRef(notification.threadRef))
-          .post(notification.message);
-        return { externalId: encodeExternalId(dest, handle.id) };
-      }
-      const handle = await bot.channel(dest).post(notification.message);
-      return { externalId: encodeExternalId(dest, handle.id) };
+      const handle = await postTarget(bot, dest).post(notification.message);
+      return { externalId: encodeExternalId(channelFromDestination(dest), handle.id) };
     },
   };
 }

@@ -1,6 +1,3 @@
-import { field, actions, type HumanRequest } from "@hitl-sdk/hitl/adapter";
-import type { HitlInbox } from "@hitl-sdk/hitl/state";
-import { toCardElement } from "chat";
 import { describe, expect, it, vi } from "vitest";
 import { createChatSdkAdapter } from "./index";
 
@@ -8,8 +5,12 @@ import { createChatSdkAdapter } from "./index";
 // - send posts the approval card to the channel and returns "<channel>#<id>"
 // - update edits the stored handle with the result card (outcome shown)
 // - update on an unknown externalId is a no-op (handle lost after restart)
-// - notify posts to the channel root, or threads under threadRef
+// - notify posts to the channel root, or threads when destination includes thread ts
 // - constructing the plugin registers the bot handlers
+
+import { field, actions, type HumanRequest } from "@hitl-sdk/hitl/adapter";
+import type { HitlInbox } from "@hitl-sdk/hitl/state";
+import { toCardElement } from "chat";
 
 const request: HumanRequest = {
   id: "req-1",
@@ -62,17 +63,17 @@ describe("createChatSdkAdapter send", () => {
     expect(toCardElement(posted[0]?.msg)?.type).toBe("card");
   });
 
-  it("posts in thread when threadRef is set", async () => {
+  it("posts in thread when destination includes thread ts", async () => {
     const { bot, posted } = fakeBot();
-    await makePlugin(bot).send({ ...request, threadRef: "slack:C123#ts-1" });
+    await makePlugin(bot).send({ ...request, destination: "slack:C123:ts-1" });
 
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]?.kind).toBe("thread");
   });
 
-  it("accepts a Chat SDK thread ref directly", async () => {
+  it("posts in thread when destination is an encoded externalId", async () => {
     const { bot, posted } = fakeBot();
-    await makePlugin(bot).send({ ...request, threadRef: "slack:C123:ts-1" });
+    await makePlugin(bot).send({ ...request, destination: "slack:C123#ts-1" });
 
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]?.kind).toBe("thread");
@@ -144,9 +145,12 @@ describe("createChatSdkAdapter notify", () => {
     expect(result.externalId).toBe("slack:C123#msg-1");
   });
 
-  it("threads under the parent message when threadRef is set", async () => {
+  it("threads when destination includes thread ts", async () => {
     const { bot, posted } = fakeBot();
-    const result = await makePlugin(bot).notify({ message: "Reminder", threadRef: "slack:C123#ts-1" });
+    const result = await makePlugin(bot).notify({
+      message: "Reminder",
+      destination: "slack:C123#ts-1",
+    });
 
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]).toMatchObject({ kind: "thread", msg: "Reminder" });
