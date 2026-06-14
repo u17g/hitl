@@ -178,13 +178,13 @@ export function CodeComparison() {
         </>
       ),
       desc: t({
-        en: "Suspend on a durable hook and resume when a human decides.",
-        ja: "耐久フックでサスペンドし、人間が判断したら再開します。",
+        en: "Replace polling, queues, and resume logic with a single await.",
+        ja: "ポーリング・キュー・再開ロジックを、一行で完結。",
       }),
       bullets: [
         t({ en: "No polling", ja: "ポーリング不要" }),
         t({ en: "No queues", ja: "キュー不要" }),
-        t({ en: "No custom retry logic", ja: "独自リトライ不要" }),
+        t({ en: "No custom retry logic", ja: "独自リトライロジック不要" }),
       ],
       comparison: {
         before: snippets.withoutHitl,
@@ -291,7 +291,7 @@ export function CodeComparison() {
             <InlineCode>await</InlineCode>
             {t({
               en: ".",
-              ja: " だけで実現する耐久・再開可能な人間承認へ。",
+              ja: " だけで実現する耐久・再開可能な人の承認へ。",
             })}
           </SectionDescription>
         </SectionHeader>
