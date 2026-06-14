@@ -79,6 +79,9 @@ const PHASE_ORDER: Phase[] = [
   "pause",
 ];
 
+const DEMO_USER_EMAIL = "user@acme.com";
+const APPROVAL_MESSAGE = `Draft email to ${DEMO_USER_EMAIL} ready for your review.`;
+
 const EMAIL_SUBJECT_DRAFT = "Quick follow-up";
 const EMAIL_SUBJECT = "Welcome — let's connect";
 const EMAIL_BODY_DRAFT = "Hi there, thanks for reaching out.";
@@ -117,7 +120,10 @@ const CODE_LINES: CodeLine[] = [
     indent: 1,
     parts: [
       { text: "message", className: "text-sky-300" },
-      { text: ': "Send email? Review and send.",' },
+      { text: ": `" },
+      { text: "Draft email to " },
+      { text: "${user.email}", className: "text-amber-300" },
+      { text: " ready for your review.`," },
     ],
   },
   {
@@ -534,7 +540,7 @@ function ChannelPanel({
                 hitl-bot
               </div>
               <div className="py-1 text-sm text-zinc-200">
-                Send email? Review and send.
+                {APPROVAL_MESSAGE}
               </div>
               {showButtons && (
                 <div className="mt-2 flex flex-wrap gap-2">
