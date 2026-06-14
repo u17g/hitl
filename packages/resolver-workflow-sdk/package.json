@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/resolver-workflow-sdk",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Vercel's Workflow SDK binding for hitl.",
   "license": "MIT",
   "repository": {

@@ -1,5 +1,13 @@
 # @hitl-sdk/state-ioredis
 
+## 0.0.4
+
+### Patch Changes
+
+- 9361c0b: support for flexible channel id
+- Updated dependencies [9361c0b]
+  - @hitl-sdk/hitl@0.0.4
+
 ## 0.0.3
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @hitl-dev/hitl
 
+## 0.0.4
+
+### Patch Changes
+
+- 9361c0b: support for flexible channel id
+
 ## 0.0.3
 
 ### Patch Changes
