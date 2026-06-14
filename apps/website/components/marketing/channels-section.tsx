@@ -77,7 +77,7 @@ export function ChannelsSection() {
           {channels.map(({ title, description, Preview }) => (
             <div
               key={title}
-              className="parallel-card group overflow-hidden transition-colors hover:border-foreground/20"
+              className="group overflow-hidden transition-colors hover:border-foreground/20"
             >
               <div className="overflow-hidden border-b border-border">
                 <Preview />
