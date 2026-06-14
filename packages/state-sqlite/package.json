@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/state-sqlite",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "SQLite store for hitl, built on node:sqlite with zero dependencies.",
   "license": "MIT",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/state-ioredis",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Redis store for hitl, built on ioredis. Bring your own Redis client.",
   "license": "MIT",
   "repository": {

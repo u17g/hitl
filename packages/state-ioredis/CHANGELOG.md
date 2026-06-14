@@ -1,5 +1,13 @@
 # @hitl-sdk/state-ioredis
 
+## 0.0.5
+
+### Patch Changes
+
+- c87c9f5: refactor and support externalRef
+- Updated dependencies [c87c9f5]
+  - @hitl-sdk/hitl@0.0.5
+
 ## 0.0.4
 
 ### Patch Changes
