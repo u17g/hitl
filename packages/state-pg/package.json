@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/state-pg",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Postgres store for hitl. Bring your own pg-compatible pool.",
   "license": "MIT",
   "repository": {
