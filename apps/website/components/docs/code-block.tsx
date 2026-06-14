@@ -2,7 +2,9 @@
 
 import { Check, Copy } from "lucide-react";
 import * as React from "react";
+import { SyntaxHighlight } from "@/components/syntax-highlight";
 import { Button } from "@/components/ui/button";
+import { inferLang } from "@/lib/shiki";
 import { cn } from "@/lib/utils";
 
 export function CodeBlock({
@@ -25,7 +27,7 @@ export function CodeBlock({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-lg border border-border bg-zinc-950 text-zinc-300 dark:bg-black/50",
+        "group relative overflow-hidden border border-border bg-zinc-950 text-zinc-300 dark:bg-black/50",
         className,
       )}
     >
@@ -61,9 +63,13 @@ export function CodeBlock({
           )}
         </Button>
       )}
-      <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
-        <code>{code}</code>
-      </pre>
+      <div className="overflow-x-auto p-4 text-sm leading-relaxed">
+        <SyntaxHighlight
+          code={code}
+          lang={inferLang(filename)}
+          className="leading-relaxed"
+        />
+      </div>
     </div>
   );
 }
