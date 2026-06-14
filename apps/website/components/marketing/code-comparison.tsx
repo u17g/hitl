@@ -184,7 +184,7 @@ export function CodeComparison() {
       bullets: [
         t({ en: "No polling", ja: "ポーリング不要" }),
         t({ en: "No queues", ja: "キュー不要" }),
-        t({ en: "No custom retry logic", ja: "独自リトライロジック不要" }),
+        t({ en: "No custom retry logic", ja: "カスタムリトライロジック不要" }),
       ],
       comparison: {
         before: snippets.withoutHitl,
