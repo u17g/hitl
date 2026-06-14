@@ -6,12 +6,12 @@ import { encodeExternalId, toChatThreadRef } from "./external-id";
 import { humanRequestCard, resultCard } from "./render";
 
 export interface ChatSdkAdapterOptions {
-  /** Adapter id, the routing key used by `waitForHuman({ channel })`. */
+  /** Adapter id, the routing key prefix used by `waitForHuman({ channel })`. */
   id: string;
   /** The shared Chat SDK instance that owns the webhooks and handler registry. */
   bot: Chat;
-  /** Chat SDK channel ref to post approvals into, e.g. "slack:C123". */
-  channel: string;
+  /** Default Chat SDK channel ref when the routing key is adapter id only, e.g. "slack:C123". */
+  defaultChannel?: string;
   /**
    * The hitl inbox, resolved lazily. `new Hitl()` needs the adapters before
    * the inbox exists, so pass `() => hitl.inbox`; the handlers call it per event.
@@ -19,21 +19,36 @@ export interface ChatSdkAdapterOptions {
   inbox: () => HitlInbox;
 }
 
+function resolveDestination(
+  request: { destination?: string },
+  defaultChannel: string | undefined,
+): string {
+  const dest = request.destination ?? defaultChannel;
+  if (dest === undefined) {
+    throw new Error(
+      "Chat SDK adapter has no defaultChannel; pass channel as adapter_id:destination (e.g. approvals:slack:C123).",
+    );
+  }
+  return dest;
+}
+
 export function createChatSdkAdapter(options: ChatSdkAdapterOptions): HitlAdapter {
-  const { bot, channel } = options;
+  const { bot, defaultChannel } = options;
   const sent = new Map<string, { handle: SentMessage; message: string }>();
 
   registerHitlHandlers(bot, options.inbox);
 
   return {
     id: options.id,
+    ...(defaultChannel !== undefined ? { defaultChannel } : {}),
 
     async send(request: HumanRequest): Promise<{ externalId: string }> {
+      const dest = resolveDestination(request, defaultChannel);
       const target = request.threadRef
         ? bot.thread(toChatThreadRef(request.threadRef))
-        : bot.channel(channel);
+        : bot.channel(dest);
       const handle = await target.post(humanRequestCard(request));
-      const externalId = encodeExternalId(channel, handle.id);
+      const externalId = encodeExternalId(dest, handle.id);
       sent.set(externalId, { handle, message: request.message });
       return { externalId };
     },
@@ -46,14 +61,15 @@ export function createChatSdkAdapter(options: ChatSdkAdapterOptions): HitlAdapte
     },
 
     async notify(notification: Notification): Promise<{ externalId?: string }> {
+      const dest = resolveDestination(notification, defaultChannel);
       if (notification.threadRef) {
         const handle = await bot
           .thread(toChatThreadRef(notification.threadRef))
           .post(notification.message);
-        return { externalId: encodeExternalId(channel, handle.id) };
+        return { externalId: encodeExternalId(dest, handle.id) };
       }
-      const handle = await bot.channel(channel).post(notification.message);
-      return { externalId: encodeExternalId(channel, handle.id) };
+      const handle = await bot.channel(dest).post(notification.message);
+      return { externalId: encodeExternalId(dest, handle.id) };
     },
   };
 }

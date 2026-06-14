@@ -26,7 +26,7 @@ function fakeBot() {
   const target = (kind: string, ref: string) => ({
     post: vi.fn(async (msg: unknown) => {
       posted.push({ kind, ref, msg });
-      const handle = { id: "msg-1", edit: vi.fn(async () => {}) };
+      const handle = { id: "msg-1", edit: vi.fn(async () => { }) };
       handles.push(handle);
       return handle;
     }),
@@ -43,7 +43,12 @@ function fakeBot() {
 const inbox = {} as HitlInbox;
 
 function makePlugin(bot: ReturnType<typeof fakeBot>["bot"]) {
-  return createChatSdkAdapter({ id: "approvals", bot: bot as never, channel: "slack:C123", inbox: () => inbox });
+  return createChatSdkAdapter({
+    id: "approvals",
+    bot: bot as never,
+    defaultChannel: "slack:C123",
+    inbox: () => inbox,
+  });
 }
 
 describe("createChatSdkAdapter send", () => {
@@ -71,6 +76,31 @@ describe("createChatSdkAdapter send", () => {
 
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]?.kind).toBe("thread");
+  });
+
+  it("posts to a per-request destination when destination is set", async () => {
+    const { bot, posted } = fakeBot();
+    const { externalId } = await makePlugin(bot).send({
+      ...request,
+      destination: "slack:C999",
+    });
+
+    expect(bot.channel).toHaveBeenCalledWith("slack:C999");
+    expect(externalId).toBe("slack:C999#msg-1");
+    expect(posted[0]?.ref).toBe("slack:C999");
+  });
+
+  it("works without defaultChannel when destination is set", async () => {
+    const { bot } = fakeBot();
+    const plugin = createChatSdkAdapter({ id: "approvals", bot: bot as never, inbox: () => inbox });
+    await plugin.send({ ...request, destination: "slack:C999" });
+    expect(bot.channel).toHaveBeenCalledWith("slack:C999");
+  });
+
+  it("throws when neither defaultChannel nor destination is set", async () => {
+    const { bot } = fakeBot();
+    const plugin = createChatSdkAdapter({ id: "approvals", bot: bot as never, inbox: () => inbox });
+    await expect(plugin.send(request)).rejects.toThrow(/defaultChannel/);
   });
 });
 
@@ -121,6 +151,18 @@ describe("createChatSdkAdapter notify", () => {
     expect(bot.thread).toHaveBeenCalledWith("slack:C123:ts-1");
     expect(posted[0]).toMatchObject({ kind: "thread", msg: "Reminder" });
     expect(result.externalId).toBe("slack:C123#msg-1");
+  });
+
+  it("posts to a per-request destination when destination is set", async () => {
+    const { bot, posted } = fakeBot();
+    const result = await makePlugin(bot).notify({
+      message: "Escalation ping",
+      destination: "slack:C999",
+    });
+
+    expect(bot.channel).toHaveBeenCalledWith("slack:C999");
+    expect(posted[0]).toMatchObject({ kind: "channel", msg: "Escalation ping" });
+    expect(result.externalId).toBe("slack:C999#msg-1");
   });
 });
 
