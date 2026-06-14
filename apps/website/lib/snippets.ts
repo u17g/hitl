@@ -179,7 +179,8 @@ const approval = await waitForHuman({
   timeout: "72h",
   reminders: [
     remind.after("1h", { message: "Still waiting for approval" }),
-    escalate.to("oncall").after("4h", { mode: "redeliver" }),
+    remind.weekdaysAt("07:00", { tz: "UTC", message: "Morning reminder" }),
+    escalate.to("oncall").after("2d"),
   ],
 });`,
   serverSetup: `import { Hitl } from "@hitl-sdk/hitl";

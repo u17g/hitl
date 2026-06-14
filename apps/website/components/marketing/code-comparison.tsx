@@ -13,15 +13,19 @@ import { SyntaxHighlight } from "@/components/syntax-highlight";
 import { cn } from "@/lib/utils";
 import { snippets } from "@/lib/snippets";
 
-function Snippet({ code, className }: { code: string; className?: string }) {
+function Snippet({ code }: { code: string }) {
+  const codeClassName =
+    "p-4 font-mono text-sm leading-relaxed text-zinc-300 sm:leading-relaxed";
+
   return (
-    <div
-      className={cn(
-        "overflow-x-auto rounded-lg border border-border bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-300 dark:bg-black/50 sm:text-sm",
-        className,
-      )}
-    >
-      <SyntaxHighlight code={code} lang="typescript" />
+    <div className="min-w-0 w-full overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
+      <div className="h-62 min-w-0 overflow-x-auto overflow-y-auto sm:h-82">
+        <SyntaxHighlight
+          code={code}
+          lang="typescript"
+          className={codeClassName}
+        />
+      </div>
     </div>
   );
 }
@@ -244,7 +248,15 @@ export function CodeComparison() {
     },
     {
       id: "reminders",
-      title: t({ en: "Reminders", ja: "リマインダー" }),
+      title: (
+        <>
+          <InlineCode>remind</InlineCode>
+          {t({ en: " or ", ja: " または " })}
+          <InlineCode>escalate</InlineCode>
+          <br />
+          {t({ en: "at any time", ja: "任意のタイミングで" })}
+        </>
+      ),
       desc: t({
         en: "Nudge approvers while a request is pending — on the same thread or a fallback channel.",
         ja: "承認待ちの間、同じスレッドまたはフォールバックチャネルで催促できます。",
