@@ -59,7 +59,7 @@ export function SlackPreview() {
       <div className="flex min-h-0 flex-1 flex-col bg-[#1a1d21]">
         <ChannelHeader
           logo={<SlackLogo className="h-4 w-4" />}
-          label="#general"
+          label="#marketing"
         />
         <div className="flex flex-1 gap-2.5 overflow-hidden p-4">
           <BotAvatar />
@@ -68,17 +68,17 @@ export function SlackPreview() {
               hitl-bot
             </div>
             <div className="py-1 text-sm text-zinc-200">
-              Expense approval — $1,200 · Marketing Q2
+              Should I research competitor pricing for the Q3 launch?
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="rounded bg-[#007a5a] px-3 py-1 text-xs font-medium text-white">
-                Approve
+                Research
               </span>
               <span className="rounded border border-white/20 px-3 py-1 text-xs text-zinc-300">
-                Edit
+                Replan
               </span>
               <span className="rounded border border-white/20 px-3 py-1 text-xs text-zinc-300">
-                Deny
+                Cancel
               </span>
             </div>
           </div>
@@ -99,17 +99,17 @@ export function TeamsPreview() {
         <div className="flex flex-1 items-start overflow-hidden p-4">
           <div className="w-full rounded-lg bg-white p-3 shadow-md">
             <div className="text-sm font-semibold text-zinc-900">
-              Deploy v2.4 to production?
+              Approve this AI-drafted campaign brief?
             </div>
             <div className="mt-1 text-xs text-zinc-500">
-              Release includes bug fixes and performance improvements.
+              Q3 launch — positioning, channels, and KPI targets included
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="rounded bg-[#6264A7] px-3 py-1 text-xs font-medium text-white">
                 Approve
               </span>
               <span className="rounded border border-zinc-300 px-3 py-1 text-xs text-zinc-700">
-                Request info
+                Edit draft
               </span>
             </div>
           </div>
@@ -125,7 +125,7 @@ export function DiscordPreview() {
       <div className="flex min-h-0 flex-1 flex-col bg-[#313338]">
         <ChannelHeader
           logo={<DiscordLogo className="h-4 w-4" />}
-          label="#general"
+          label="#announcements"
         />
         <div className="flex flex-1 gap-2.5 overflow-hidden p-4">
           <BotAvatar />
@@ -135,18 +135,18 @@ export function DiscordPreview() {
             </div>
             <div className="mt-1 border-l-4 border-[#5865F2] bg-[#2b2d31] px-3 py-2">
               <div className="text-xs font-semibold text-zinc-100">
-                Refund request #4821
+                Launch post draft — Product Hunt
               </div>
               <div className="mt-0.5 text-xs text-zinc-400">
-                Customer requested a full refund for order #4821.
+                AI wrote announcement copy from v2.4 release notes
               </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="rounded bg-[#5865F2] px-3 py-1 text-xs font-medium text-white">
                 Approve
               </span>
-              <span className="rounded bg-[#da373c] px-3 py-1 text-xs font-medium text-white">
-                Deny
+              <span className="rounded border border-white/20 px-3 py-1 text-xs text-zinc-300">
+                Edit
               </span>
             </div>
           </div>
@@ -157,9 +157,9 @@ export function DiscordPreview() {
 }
 
 const PENDING_ITEMS = [
-  "Expense $1,200",
-  "Deploy v2.4",
-  "Refund #4821",
+  "Competitor research",
+  "Campaign brief Q3",
+  "Launch post draft",
 ] as const;
 
 export function CustomWebUiPreview() {
