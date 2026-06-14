@@ -9,7 +9,7 @@ import { StackSection } from "@/components/marketing/stack-section";
 
 export default function HomePage() {
   return (
-    <div className="space-y-12">
+    <div className="mx-auto max-w-6xl border-x border-border">
       <Hero />
       <LogoStrip />
       <CodeComparison />

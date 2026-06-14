@@ -91,8 +91,8 @@ export function LogoStrip() {
   ] as const;
 
   return (
-    <section className="border-y border-border py-12">
-      <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4">
+    <section className="border-b border-border py-12 md:py-16">
+      <div className="flex flex-col gap-12 px-6 md:px-8">
         <LogoRow
           label={t({
             en: "The Chat Platform Agnostic",

@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 const sectionVariants = cva("", {
   variants: {
     variant: {
-      default: "py-24 md:py-32",
-      muted: "border-y border-border bg-muted/20 py-24 md:py-32",
-      hero: "relative overflow-hidden",
+      default: "border-b border-border py-12 md:py-16",
+      muted: "border-b border-border bg-muted/20 py-12 md:py-16",
+      hero: "relative overflow-hidden border-b border-border",
     },
   },
   defaultVariants: {
@@ -25,14 +25,42 @@ export function Section({
   );
 }
 
-const containerSizeVariants = cva("mx-auto px-4", {
+const sectionSpacerVariants = cva("border-b border-border", {
   variants: {
     size: {
-      "6xl": "max-w-6xl",
-      "4xl": "max-w-4xl",
-      "3xl": "max-w-3xl",
-      "2xl": "max-w-2xl",
-      xl: "max-w-xl",
+      sm: "h-8 md:h-12",
+      default: "h-12 md:h-16",
+      lg: "h-16 md:h-24",
+      xl: "h-24 md:h-32",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+});
+
+export function SectionSpacer({
+  className,
+  size,
+  ...props
+}: ComponentProps<"section"> & VariantProps<typeof sectionSpacerVariants>) {
+  return (
+    <section
+      aria-hidden
+      className={cn(sectionSpacerVariants({ size }), className)}
+      {...props}
+    />
+  );
+}
+
+const containerSizeVariants = cva("w-full px-6 md:px-8", {
+  variants: {
+    size: {
+      "6xl": "",
+      "4xl": "max-w-4xl mx-auto px-0",
+      "3xl": "max-w-3xl mx-auto px-0",
+      "2xl": "max-w-2xl mx-auto px-0",
+      xl: "max-w-xl mx-auto px-0",
     },
   },
   defaultVariants: {

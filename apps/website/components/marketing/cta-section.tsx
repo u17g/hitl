@@ -16,7 +16,7 @@ export function CtaSection() {
   const t = useInlineTranslation();
 
   return (
-    <Section variant="muted" className="border-b-0">
+    <Section variant="muted">
       <SectionContainer size="6xl">
         <div className="parallel-card overflow-hidden">
           <div className="grid lg:grid-cols-2">

@@ -2,17 +2,30 @@
 
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { GitHubIcon } from "@/components/ui/icons/github";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
   const t = useInlineTranslation();
+  const pathname = usePathname();
+  const isHome = pathname === "/";
 
   return (
-    <header className="sticky top-0 z-50 bg-background">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+    <header
+      className={cn(
+        "sticky top-0 z-50 bg-background",
+        isHome && "border-b border-border",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-8",
+          isHome && "border-x border-border",
+        )}
+      >
         <div className="flex items-center gap-6">
           <Link
             href="/"
