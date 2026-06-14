@@ -103,11 +103,6 @@ export function resolveChannel(adapters: HitlAdapter[], channel?: string): Resol
   throw new Error(`Unknown channel "${channel}". Configured adapters: ${known}`);
 }
 
-/** @deprecated Prefer {@link resolveChannel}. */
-export function pickAdapter(adapters: HitlAdapter[], channel?: string): HitlAdapter {
-  return resolveChannel(adapters, channel).adapter;
-}
-
 function resolveChannelKey(runtime: HitlRuntime, channelKey: string): ResolvedChannel {
   try {
     return resolveChannel(runtime.adapters, channelKey);

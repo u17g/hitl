@@ -4,7 +4,6 @@ export {
   createHumanRequest,
   NotFoundError,
   notifyVia,
-  pickAdapter,
   remindBatch,
   remindHumanRequest,
   resolveBatchHumanRequest,
