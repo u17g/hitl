@@ -9,7 +9,7 @@ import { StackSection } from "@/components/marketing/stack-section";
 
 export default function HomePage() {
   return (
-    <>
+    <div className="space-y-12">
       <Hero />
       <LogoStrip />
       <CodeComparison />
@@ -18,6 +18,6 @@ export default function HomePage() {
       <StackSection />
       <ArchitectureSection />
       <CtaSection />
-    </>
+    </div>
   );
 }
