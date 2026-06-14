@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/resolver-temporal",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Temporal binding for hitl.",
   "license": "MIT",
   "repository": {
