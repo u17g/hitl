@@ -289,13 +289,8 @@ export function CodeComparison() {
           </SectionTitle>
           <SectionDescription>
             {t({
-              en: "Move from hand-rolled queues and custom retries to durable, resumable human approval with a single ",
-              ja: "手作りのキューやリトライから、",
-            })}
-            <InlineCode>await</InlineCode>
-            {t({
-              en: ".",
-              ja: " だけで実現する耐久・再開可能な人の承認へ。",
+              en: "Human oversight as code — easy to integrate into any workflow, easy to build automation people can trust.",
+              ja: "人が判断すべき箇所をコードで定義するだけ。信頼できるワークフローを、手軽に作る。",
             })}
           </SectionDescription>
         </SectionHeader>
