@@ -43,8 +43,8 @@ export function ChannelsSection() {
       {
         title: t({ en: "Discord", ja: "Discord" }),
         description: t({
-          en: "Drop requests into the server channels your ops crew already keeps on screen.",
-          ja: "運用チームが監視しているサーバー・チャンネルに届け、その場で対応。",
+          en: "Drop AI drafts into your server channels and let your team review in place.",
+          ja: "サーバーのチャンネルに AI 下書きを届け、その場でチームがレビュー。",
         }),
         Preview: DiscordPreview,
       },
