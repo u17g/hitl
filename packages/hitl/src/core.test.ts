@@ -4,6 +4,7 @@ import {
   createHumanRequest,
   notifyVia,
   remindHumanRequest,
+  resolveChannel,
   resolveHumanRequest,
   resolveThreadAnchor,
   timeoutHumanRequest,
@@ -39,7 +40,10 @@ class FakeResolver implements HitlResolver {
   }
 }
 
-function fakeAdapter(id: string): HitlAdapter & {
+function fakeAdapter(
+  id: string,
+  options?: { defaultChannel?: string },
+): HitlAdapter & {
   sent: HumanRequest[];
   updates: unknown[][];
   notifications: Notification[];
@@ -49,6 +53,7 @@ function fakeAdapter(id: string): HitlAdapter & {
   const notifications: Notification[] = [];
   return {
     id,
+    defaultChannel: options?.defaultChannel,
     sent,
     updates,
     notifications,
@@ -515,5 +520,86 @@ describe("notifyVia", () => {
     expect(adapters[0]!.sent.at(-1)).toMatchObject({
       threadRef: "slack:C123:ts-99",
     });
+  });
+});
+
+describe("resolveChannel", () => {
+  it("defaults to the first adapter when channel is omitted", () => {
+    const adapters = [fakeAdapter("a"), fakeAdapter("b")];
+    const resolved = resolveChannel(adapters, undefined);
+    expect(resolved.adapter.id).toBe("a");
+    expect(resolved.channelRef).toBe("a");
+    expect(resolved.destination).toBeUndefined();
+  });
+
+  it("matches adapter id exactly and uses defaultChannel in channelRef", () => {
+    const adapters = [fakeAdapter("slack", { defaultChannel: "slack:C123" })];
+    const resolved = resolveChannel(adapters, "slack");
+    expect(resolved.destination).toBeUndefined();
+    expect(resolved.channelRef).toBe("slack:slack:C123");
+  });
+
+  it("parses adapter_id:destination with longest prefix match", () => {
+    const adapters = [
+      fakeAdapter("internal", { defaultChannel: "slack:C000" }),
+      fakeAdapter("internal_slack", { defaultChannel: "slack:C123" }),
+    ];
+    const resolved = resolveChannel(adapters, "internal_slack:slack:C999");
+    expect(resolved.adapter.id).toBe("internal_slack");
+    expect(resolved.destination).toBe("slack:C999");
+    expect(resolved.channelRef).toBe("internal_slack:slack:C999");
+  });
+});
+
+describe("createHumanRequest with destination", () => {
+  it("passes destination to the adapter and stores normalized channelRef", async () => {
+    const { runtime, state, adapters } = makeRuntime(["slack"]);
+    adapters[0]!.defaultChannel = "slack:C123";
+
+    const { id } = await createHumanRequest(runtime, {
+      token: "tok_1",
+      message: "Approve?",
+      actions: approveOnly,
+      channel: "slack:slack:C999",
+    });
+
+    expect(adapters[0]!.sent[0]).toMatchObject({
+      id,
+      channel: "slack",
+      destination: "slack:C999",
+    });
+    expect((await state.get(id))?.channel).toBe("slack:slack:C999");
+  });
+
+  it("escalates redeliver to the same adapter on a different destination", async () => {
+    const adapter = fakeAdapter("slack", { defaultChannel: "slack:C123" });
+    const runtime: HitlRuntime = {
+      resolver: new FakeResolver(),
+      state: new InMemoryState(),
+      adapters: [adapter],
+    };
+    const { id } = await createHumanRequest(runtime, {
+      token: "tok_1",
+      message: "Escalate me",
+      actions: approvalActions,
+      channel: "slack:slack:C123",
+    });
+
+    await remindHumanRequest(runtime, id, {
+      kind: "escalate",
+      channel: "slack:slack:C999",
+      mode: "redeliver",
+    });
+
+    expect(adapter.sent).toHaveLength(2);
+    expect(adapter.sent[1]).toMatchObject({
+      id,
+      channel: "slack",
+      destination: "slack:C999",
+    });
+    expect((await runtime.state.get(id))?.externalIds?.["slack:slack:C999"]).toBe(`ext_${id}`);
+
+    await resolveHumanRequest(runtime, { requestId: id, actionId: "approve" });
+    expect(adapter.updates).toHaveLength(2);
   });
 });

@@ -22,7 +22,10 @@ export interface ThreadAnchor {
  */
 export interface HumanRequest {
   id: string;
+  /** Adapter id (routing key prefix). */
   channel: string;
+  /** Opaque destination within the adapter; undefined = adapter defaultChannel. */
+  destination?: string;
   message: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
@@ -36,7 +39,10 @@ export interface HumanRequest {
  */
 export interface BatchHumanRequest {
   batchId: string;
+  /** Adapter id (routing key prefix). */
   channel: string;
+  /** Opaque destination within the adapter; undefined = adapter defaultChannel. */
+  destination?: string;
   message?: string;
   actions: HumanActions;
   /** Input order. `defaults` are submit field defaults overridden per item. */
@@ -60,7 +66,10 @@ export interface Notification {
   /** Chat SDK thread ref; skip resolution when already known. */
   threadRef?: string;
   detail?: Record<string, unknown>;
+  /** Adapter id or `adapter_id:destination` routing key. */
   channel?: string;
+  /** Opaque destination within the adapter; set by the core from the routing key. */
+  destination?: string;
 }
 
 /**
@@ -100,6 +109,8 @@ export interface HitlBatchCallback {
 export interface HitlAdapter {
   /** Routing key used by `waitForHuman({ channel })` / `notify({ channel })`. */
   id: string;
+  /** Default destination when the routing key is adapter id only. Adapter-specific format. */
+  defaultChannel?: string;
   /** Render and deliver a human step request. */
   send(request: HumanRequest): Promise<{ externalId: string }>;
   /** Reflect resolution back into the channel (e.g. replace buttons with "Approved by @ryosuke"). */

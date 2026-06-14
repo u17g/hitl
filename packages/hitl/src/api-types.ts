@@ -13,7 +13,7 @@ export interface CreateRequestBody {
   message: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
-  /** Adapter id; defaults to the first configured adapter. */
+  /** Adapter id or `adapter_id:destination`; defaults to the first configured adapter. */
   channel?: string;
   /** Post under the same chat thread as a prior human step or notify. */
   after?: { id: string };
@@ -35,7 +35,7 @@ export interface CreateBatchItemBody {
 
 export interface CreateBatchBody {
   message?: string;
-  /** Adapter id; defaults to the first configured adapter. */
+  /** Adapter id or `adapter_id:destination`; defaults to the first configured adapter. */
   channel?: string;
   actions: HumanActions;
   context?: Record<string, unknown>;

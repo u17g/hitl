@@ -4,16 +4,18 @@ export {
   createHumanRequest,
   NotFoundError,
   notifyVia,
+  pickAdapter,
   remindBatch,
   remindHumanRequest,
   resolveBatchHumanRequest,
+  resolveChannel,
   resolveHumanRequest,
   resolveNotifyThread,
   resolveThreadAnchor,
   timeoutBatch,
   timeoutHumanRequest,
 } from "../core";
-export type { HitlRuntime, NotifyThreadContext, ThreadContext } from "../core";
+export type { HitlRuntime, NotifyThreadContext, ResolvedChannel, ThreadContext } from "../core";
 export type {
   BatchTimeoutResponse,
   CreateBatchBody,

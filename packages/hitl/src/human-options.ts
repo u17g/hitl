@@ -24,6 +24,7 @@ export interface RequestHumanOptions<Actions extends readonly HumanActionDef[]> 
   /** Batch defaults target when no approve action exists. */
   defaultsActionId?: string;
   context?: Record<string, unknown>;
+  /** Adapter id or `adapter_id:destination`; defaults to the first configured adapter. */
   channel?: string;
   /** Post under the same chat thread as a prior human step or notify. */
   after?: HumanResult<Actions> | ThreadAnchor;

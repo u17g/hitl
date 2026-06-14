@@ -45,17 +45,83 @@ export class NotFoundError extends Error {
   override name = "NotFoundError";
 }
 
-export function pickAdapter(adapters: HitlAdapter[], channel?: string): HitlAdapter {
+export interface ResolvedChannel {
+  adapter: HitlAdapter;
+  /** Normalized routing key stored in state / externalIds. */
+  channelRef: string;
+  /** Opaque destination; undefined when the caller omitted it (adapter uses defaultChannel). */
+  destination?: string;
+}
+
+function normalizeChannelRef(adapter: HitlAdapter, destination?: string): string {
+  if (destination !== undefined) {
+    return `${adapter.id}:${destination}`;
+  }
+  if (adapter.defaultChannel !== undefined) {
+    return `${adapter.id}:${adapter.defaultChannel}`;
+  }
+  return adapter.id;
+}
+
+export function resolveChannel(adapters: HitlAdapter[], channel?: string): ResolvedChannel {
   if (adapters.length === 0) {
     throw new Error("No hitl adapters configured. Pass at least one to new Hitl().");
   }
-  if (channel === undefined) return adapters[0]!;
-  const adapter = adapters.find((p) => p.id === channel);
-  if (!adapter) {
-    const known = adapters.map((p) => p.id).join(", ");
-    throw new Error(`Unknown channel "${channel}". Configured adapters: ${known}`);
+
+  if (channel === undefined) {
+    const adapter = adapters[0]!;
+    return {
+      adapter,
+      channelRef: normalizeChannelRef(adapter, undefined),
+      destination: undefined,
+    };
   }
-  return adapter;
+
+  const exact = adapters.find((p) => p.id === channel);
+  if (exact) {
+    return {
+      adapter: exact,
+      channelRef: normalizeChannelRef(exact, undefined),
+      destination: undefined,
+    };
+  }
+
+  const sorted = [...adapters].sort((a, b) => b.id.length - a.id.length);
+  for (const adapter of sorted) {
+    const prefix = `${adapter.id}:`;
+    if (channel.startsWith(prefix)) {
+      const destination = channel.slice(prefix.length);
+      return {
+        adapter,
+        channelRef: normalizeChannelRef(adapter, destination),
+        destination,
+      };
+    }
+  }
+
+  const known = adapters.map((p) => p.id).join(", ");
+  throw new Error(`Unknown channel "${channel}". Configured adapters: ${known}`);
+}
+
+/** @deprecated Prefer {@link resolveChannel}. */
+export function pickAdapter(adapters: HitlAdapter[], channel?: string): HitlAdapter {
+  return resolveChannel(adapters, channel).adapter;
+}
+
+function resolveChannelKey(runtime: HitlRuntime, channelKey: string): ResolvedChannel {
+  try {
+    return resolveChannel(runtime.adapters, channelKey);
+  } catch {
+    const adapter = runtime.adapters.find((p) => p.id === channelKey);
+    if (adapter) {
+      return {
+        adapter,
+        channelRef: channelKey,
+        destination: undefined,
+      };
+    }
+    throw new Error(`Unknown channel "${channelKey}".`);
+  }
 }
 
 async function resolveRequestThreadRef(
@@ -99,12 +165,12 @@ export async function createHumanRequest(
   runtime: HitlRuntime,
   body: CreateRequestBody,
 ): Promise<CreateRequestResponse> {
-  const adapter = pickAdapter(runtime.adapters, body.channel);
+  const resolved = resolveChannel(runtime.adapters, body.channel);
 
   const existing = await runtime.state.findByToken(body.token);
   if (existing) {
     if (!existing.externalId) {
-      await deliverHumanRequest(runtime, pickAdapter(runtime.adapters, existing.channel), existing);
+      await deliverHumanRequest(runtime, resolveChannelKey(runtime, existing.channel), existing);
     }
     return { id: existing.id };
   }
@@ -114,37 +180,37 @@ export async function createHumanRequest(
   const record = {
     id,
     token: body.token,
-    channel: adapter.id,
+    channel: resolved.channelRef,
     message: body.message,
     actions: body.actions,
     context: body.context,
   };
   await runtime.state.create(record);
-  await deliverHumanRequest(runtime, adapter, { ...record, threadRef });
+  await deliverHumanRequest(runtime, resolved, { ...record, threadRef });
   return { id };
 }
 
 async function deliverHumanRequest(
   runtime: HitlRuntime,
-  adapter: HitlAdapter,
+  resolved: ResolvedChannel,
   record: {
     id: string;
-    channel: string;
     message: string;
     actions: HumanActions;
     context?: Record<string, unknown>;
     threadRef?: string;
   },
 ): Promise<void> {
-  const { externalId } = await adapter.send({
+  const { externalId } = await resolved.adapter.send({
     id: record.id,
-    channel: record.channel,
+    channel: resolved.adapter.id,
+    destination: resolved.destination,
     message: record.message,
     actions: record.actions,
     context: record.context,
     threadRef: record.threadRef,
   });
-  await runtime.state.setExternalId(record.id, externalId);
+  await runtime.state.setExternalId(record.id, externalId, resolved.channelRef);
 }
 
 function resolvedDefaults(actions: HumanActions): Record<string, unknown> {
@@ -157,14 +223,16 @@ function resolvedDefaults(actions: HumanActions): Record<string, unknown> {
 }
 
 function toBatchRequest(
-  batch: { id: string; channel: string; message?: string; context?: Record<string, unknown> },
+  batch: { id: string; message?: string; context?: Record<string, unknown> },
   actions: HumanActions,
   items: ReadonlyArray<{ id: string; message: string; actions: HumanActions }>,
+  resolved: ResolvedChannel,
   threadRef?: string,
 ): BatchHumanRequest {
   return {
     batchId: batch.id,
-    channel: batch.channel,
+    channel: resolved.adapter.id,
+    destination: resolved.destination,
     message: batch.message,
     actions,
     context: batch.context,
@@ -193,7 +261,7 @@ export async function createBatchRequest(
   if (body.items.length === 0) {
     throw new Error("waitForHuman needs at least one item.");
   }
-  const adapter = pickAdapter(runtime.adapters, body.channel);
+  const resolved = resolveChannel(runtime.adapters, body.channel);
 
   const existing = await runtime.state.findByToken(body.items[0]!.token);
   if (existing?.batchId) {
@@ -211,7 +279,7 @@ export async function createBatchRequest(
 
   await runtime.state.createBatch({
     id: batchId,
-    channel: adapter.id,
+    channel: resolved.channelRef,
     message: body.message,
     actions: body.actions,
     context: body.context,
@@ -220,7 +288,7 @@ export async function createBatchRequest(
     await runtime.state.create({
       id: item.id,
       token: body.items[index]!.token,
-      channel: adapter.id,
+      channel: resolved.channelRef,
       message: item.message,
       actions: item.actions,
       context: body.context,
@@ -230,19 +298,19 @@ export async function createBatchRequest(
   }
 
   const request = toBatchRequest(
-    { id: batchId, channel: adapter.id, message: body.message, context: body.context },
+    { id: batchId, message: body.message, context: body.context },
     body.actions,
     items,
+    resolved,
     threadRef,
   );
-  if (canDeliverBatch(adapter, request)) {
-    const { externalId } = await adapter.sendBatch!(request);
-    await runtime.state.setBatchExternalId(batchId, externalId);
+  if (canDeliverBatch(resolved.adapter, request)) {
+    const { externalId } = await resolved.adapter.sendBatch!(request);
+    await runtime.state.setBatchExternalId(batchId, externalId, resolved.channelRef);
   } else {
     for (const item of items) {
-      await deliverHumanRequest(runtime, adapter, {
+      await deliverHumanRequest(runtime, resolved, {
         ...item,
-        channel: adapter.id,
         context: body.context,
         threadRef,
       });
@@ -304,15 +372,16 @@ export async function remindHumanRequest(
   if (record.status === "resolved") return { pending: false };
 
   if (body.kind === "escalate" && (body.mode ?? "notify") === "redeliver") {
-    const escalateAdapter = pickAdapter(runtime.adapters, body.channel);
-    const { externalId } = await escalateAdapter.send({
+    const resolved = resolveChannel(runtime.adapters, body.channel);
+    const { externalId } = await resolved.adapter.send({
       id: record.id,
-      channel: body.channel,
+      channel: resolved.adapter.id,
+      destination: resolved.destination,
       message: record.message,
       actions: record.actions,
       context: record.context,
     });
-    await runtime.state.setExternalId(record.id, externalId, body.channel);
+    await runtime.state.setExternalId(record.id, externalId, resolved.channelRef);
     return { pending: true };
   }
 
@@ -351,10 +420,11 @@ async function sendReminderNotification(
   ctx: { on: string; primaryChannel: string },
 ): Promise<void> {
   const escalate = body.kind === "escalate";
-  const adapter = pickAdapter(runtime.adapters, escalate ? body.channel : ctx.primaryChannel);
+  const channelInput = escalate ? body.channel : ctx.primaryChannel;
+  const resolved = resolveChannelKey(runtime, channelInput);
   await notifyVia(runtime, {
     message: body.message ?? (escalate ? DEFAULT_ESCALATE_MESSAGE : DEFAULT_REMIND_MESSAGE),
-    channel: adapter.id,
+    channel: resolved.channelRef,
     on: ctx.on,
   });
 }
@@ -365,27 +435,29 @@ async function redeliverBatch(
   items: HumanRequestRecord[],
   channel: string,
 ): Promise<void> {
-  const escalateAdapter = pickAdapter(runtime.adapters, channel);
+  const resolved = resolveChannel(runtime.adapters, channel);
   const actions = batch.actions ?? items[0]?.actions ?? [{ id: "approve" }];
   const request = toBatchRequest(
-    { id: batch.id, channel, message: batch.message, context: batch.context },
+    { id: batch.id, message: batch.message, context: batch.context },
     actions,
     items.map((item) => ({ id: item.id, message: item.message, actions: item.actions })),
+    resolved,
   );
-  if (canDeliverBatch(escalateAdapter, request)) {
-    const { externalId } = await escalateAdapter.sendBatch!(request);
-    await runtime.state.setBatchExternalId(batch.id, externalId, channel);
+  if (canDeliverBatch(resolved.adapter, request)) {
+    const { externalId } = await resolved.adapter.sendBatch!(request);
+    await runtime.state.setBatchExternalId(batch.id, externalId, resolved.channelRef);
     return;
   }
   for (const item of items) {
-    const { externalId } = await escalateAdapter.send({
+    const { externalId } = await resolved.adapter.send({
       id: item.id,
-      channel,
+      channel: resolved.adapter.id,
+      destination: resolved.destination,
       message: item.message,
       actions: item.actions,
       context: item.context,
     });
-    await runtime.state.setExternalId(item.id, externalId, channel);
+    await runtime.state.setExternalId(item.id, externalId, resolved.channelRef);
   }
 }
 
@@ -394,21 +466,21 @@ async function updateChannels(
   record: HumanRequestRecord,
   result: HumanResult,
 ): Promise<void> {
-  const adapterIds = new Set<string>();
-  if (record.externalId) adapterIds.add(record.channel);
+  const channelKeys = new Set<string>();
+  if (record.externalId) channelKeys.add(record.channel);
   if (record.externalIds) {
-    for (const adapterId of Object.keys(record.externalIds)) {
-      adapterIds.add(adapterId);
+    for (const key of Object.keys(record.externalIds)) {
+      channelKeys.add(key);
     }
   }
 
-  for (const adapterId of adapterIds) {
-    const channelAdapter = runtime.adapters.find((p) => p.id === adapterId);
+  for (const channelKey of channelKeys) {
+    const resolved = resolveChannelKey(runtime, channelKey);
     const externalId =
-      record.externalIds?.[adapterId] ??
-      (adapterId === record.channel ? record.externalId : undefined);
-    if (channelAdapter?.update && externalId) {
-      await channelAdapter.update(externalId, result);
+      record.externalIds?.[channelKey] ??
+      (channelKey === record.channel ? record.externalId : undefined);
+    if (resolved.adapter.update && externalId) {
+      await resolved.adapter.update(externalId, result);
     }
   }
 }
@@ -474,18 +546,18 @@ async function updateBatchChannels(
   items: HumanRequestRecord[],
   results: HumanResult[],
 ): Promise<void> {
-  const adapterIds = new Set<string>();
-  if (batch.externalId) adapterIds.add(batch.channel);
-  for (const adapterId of Object.keys(batch.externalIds ?? {})) {
-    adapterIds.add(adapterId);
+  const channelKeys = new Set<string>();
+  if (batch.externalId) channelKeys.add(batch.channel);
+  for (const key of Object.keys(batch.externalIds ?? {})) {
+    channelKeys.add(key);
   }
-  for (const adapterId of adapterIds) {
-    const adapter = runtime.adapters.find((p) => p.id === adapterId);
+  for (const channelKey of channelKeys) {
+    const resolved = resolveChannelKey(runtime, channelKey);
     const externalId =
-      batch.externalIds?.[adapterId] ??
-      (adapterId === batch.channel ? batch.externalId : undefined);
-    if (adapter?.updateBatch && externalId) {
-      await adapter.updateBatch(externalId, results);
+      batch.externalIds?.[channelKey] ??
+      (channelKey === batch.channel ? batch.externalId : undefined);
+    if (resolved.adapter.updateBatch && externalId) {
+      await resolved.adapter.updateBatch(externalId, results);
     }
   }
 
@@ -591,7 +663,7 @@ export async function notifyVia(
   runtime: HitlRuntime,
   notification: Notification,
 ): Promise<ThreadAnchor> {
-  const adapter = pickAdapter(runtime.adapters, notification.channel);
+  const resolved = resolveChannel(runtime.adapters, notification.channel);
   const deliveryId = crypto.randomUUID();
 
   const anchorId = notification.after?.id ?? notification.on ?? notification.threadId;
@@ -606,7 +678,7 @@ export async function notifyVia(
 
   await runtime.state.createNotifyDelivery({
     id: deliveryId,
-    channel: adapter.id,
+    channel: resolved.channelRef,
     message: notification.message,
     groupId,
   });
@@ -622,9 +694,10 @@ export async function notifyVia(
     await runtime.state.appendTimeline(entry);
   }
 
-  const { externalId } = await adapter.notify({
+  const { externalId } = await resolved.adapter.notify({
     message: notification.message,
-    channel: adapter.id,
+    channel: resolved.adapter.id,
+    destination: resolved.destination,
     threadId: groupId,
     threadRef,
     detail: notification.detail,
