@@ -71,18 +71,26 @@ function ComparisonBlock({
   );
 }
 
+function InlineCode({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="-translate-y-[0.08em] inline-flex items-center bg-sky-400/20 px-1.5 py-1 align-middle font-mono text-[0.75em] font-semibold leading-none text-sky-700 dark:bg-sky-400/25 dark:text-sky-300">
+      {children}
+    </span>
+  );
+}
+
 function RowText({
   title,
   desc,
   bullets,
 }: {
-  title: string;
+  title: React.ReactNode;
   desc: string;
   bullets: string[];
 }) {
   return (
     <>
-      <h3 className="font-display text-2xl md:text-3xl">{title}</h3>
+      <h3 className="font-display text-2xl leading-snug md:text-3xl">{title}</h3>
       <p className="mt-3 text-muted-foreground">{desc}</p>
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
         {bullets.map((bullet) => (
@@ -101,7 +109,14 @@ export function CodeComparison() {
 
   const rows = [
     {
-      title: t({ en: "One await", ja: "1つの await" }),
+      id: "one-await",
+      title: (
+        <>
+          {t({ en: "One ", ja: "" })}
+          <InlineCode>await</InlineCode>
+          {t({ en: "", ja: " だけ" })}
+        </>
+      ),
       desc: t({
         en: "Suspend on a durable hook and resume when a human decides.",
         ja: "耐久フックでサスペンドし、人間が判断したら再開します。",
@@ -118,10 +133,16 @@ export function CodeComparison() {
       reverse: false,
     },
     {
-      title: t({
-        en: "One waitForHuman, multiple use cases",
-        ja: "1つの waitForHuman、複数のユースケース",
-      }),
+      id: "wait-for-human",
+      title: (
+        <>
+          {t({ en: "One ", ja: "" })}
+          <InlineCode>waitForHuman</InlineCode>
+          {t({ en: ", ", ja: " ひとつで、" })}
+          <br />
+          {t({ en: "tons of patterns", ja: "無限のパターン" })}
+        </>
+      ),
       desc: t({
         en: "Model every approval pattern with typed actions — validated end to end.",
         ja: "型付き actions であらゆる承認パターンを、エンドツーエンドに検証。",
@@ -135,6 +156,7 @@ export function CodeComparison() {
       reverse: true,
     },
     {
+      id: "reminders",
       title: t({ en: "Reminders", ja: "リマインダー" }),
       desc: t({
         en: "Nudge approvers while a request is pending — on the same thread or a fallback channel.",
@@ -164,8 +186,13 @@ export function CodeComparison() {
           </SectionTitle>
           <SectionDescription>
             {t({
-              en: "Move from hand-rolled queues and custom retries to durable, resumable human approval with a single await.",
-              ja: "手作りのキューやリトライから、1つの await で実現する耐久・再開可能な人間承認へ。",
+              en: "Move from hand-rolled queues and custom retries to durable, resumable human approval with a single ",
+              ja: "手作りのキューやリトライから、",
+            })}
+            <InlineCode>await</InlineCode>
+            {t({
+              en: ".",
+              ja: " だけで実現する耐久・再開可能な人間承認へ。",
             })}
           </SectionDescription>
         </SectionHeader>
@@ -173,7 +200,7 @@ export function CodeComparison() {
         <div className="mt-16 space-y-20">
           {rows.map((row) => (
             <div
-              key={row.title}
+              key={row.id}
               className="grid items-center gap-8 lg:grid-cols-3 lg:gap-12"
             >
               <div
