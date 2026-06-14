@@ -88,15 +88,15 @@ await notify({ after: pending, message: "Extra context" });
 
 ### TimelineAnchor.externalRef
 
-`requestHuman` and `notify` return a `TimelineAnchor` with an `externalRef` string: the adapter-native ref for the message hitl posted. With this adapter the format is `channel#messageId` (e.g. `slack:C123#1710000000.123456`). It is output-only — the library does not read it for routing. When the adapter returns no id, `externalRef` is `""`.
+`requestHuman` and `notify` return a `TimelineAnchor` with an `externalRef` string: the adapter-native ref for the message hitl posted. `waitForHuman` returns the same field on `HumanResult` once the step resolves or times out — use it when you no longer have the pending anchor. With this adapter the format is `channel#messageId` (e.g. `slack:C123#1710000000.123456`). It is output-only — the library does not read it for routing. When the adapter returns no id, `externalRef` is `""`.
 
 Use it to correlate hitl deliveries with your Chat SDK bot, for example to post a side note in the same thread:
 
 ```ts
-const pending = await requestHuman({ message: "Approve?", actions, channel: "approvals" });
+const response = await waitForHuman({ message: "Approve?", actions, channel: "approvals" });
 
-if (pending.externalRef) {
-  const threadRef = pending.externalRef.replace("#", ":");
+if (response.externalRef) {
+  const threadRef = response.externalRef.replace("#", ":");
   await bot.thread(threadRef).post("Side note from the bot");
 }
 ```

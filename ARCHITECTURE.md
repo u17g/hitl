@@ -43,7 +43,7 @@ The main `hitl` entry is for workflow authoring and server setup. Everything els
 | Symbol | Purpose |
 |---|---|
 | `field`, `actions` | Typed approval fields and action definitions |
-| `isResolved`, `HumanResult` | Narrowing resolved outcomes |
+| `isResolved`, `HumanResult` | Narrowing resolved outcomes; `HumanResult` includes `externalRef` (adapter-native delivery ref, empty string when none) |
 | `remind`, `escalate` | Reminder and escalation schedules for `waitForHuman` |
 | `Hitl` | Server (`/.well-known/hitl/v1`) with inbox and adapters |
 | `TimelineAnchor` | Chain `notify` / `waitForHuman` across timeline placement; returns `externalRef` (adapter-native delivery ref, empty string when none) |
