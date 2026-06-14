@@ -25,7 +25,7 @@ import type {
   HitlCallback,
   HitlAdapter,
   Notification,
-  ThreadAnchor,
+  TimelineAnchor,
 } from "./types";
 import { validateFeedbacks } from "./validate";
 
@@ -125,7 +125,7 @@ async function resolveRequestThreadRef(
 ): Promise<string | undefined> {
   if (body.inThread) return body.inThread;
   if (body.after) {
-    return (await resolveThreadAnchor(state, body.after.id)).deliveryRef;
+    return (await resolveTimelineAnchor(state, body.after.id)).deliveryRef;
   }
   return undefined;
 }
@@ -601,23 +601,23 @@ function equalsDefaults(
   return Object.entries(fields).every(([key, field]) => values[key] === field.default);
 }
 
-export interface ThreadContext {
+export interface TimelineContext {
   /** Timeline grouping id (human/batch/notify parent). */
   groupId: string;
   /** Opaque adapter ref for in-thread delivery. */
   deliveryRef?: string;
 }
 
-/** @deprecated Use {@link resolveThreadAnchor} and {@link ThreadContext}. */
+/** @deprecated Use {@link resolveTimelineAnchor} and {@link TimelineContext}. */
 export interface NotifyThreadContext {
   threadId: string;
   threadRef: string | undefined;
 }
 
-export async function resolveThreadAnchor(
+export async function resolveTimelineAnchor(
   state: State,
   id: string,
-): Promise<ThreadContext> {
+): Promise<TimelineContext> {
   const record = await state.get(id);
   if (record?.batchId) {
     const batch = await state.getBatch(record.batchId);
@@ -645,19 +645,19 @@ export async function resolveThreadAnchor(
   return { groupId: id, deliveryRef: undefined };
 }
 
-/** @deprecated Use {@link resolveThreadAnchor}. */
+/** @deprecated Use {@link resolveTimelineAnchor}. */
 export async function resolveNotifyThread(
   state: State,
   id: string,
 ): Promise<NotifyThreadContext> {
-  const ctx = await resolveThreadAnchor(state, id);
+  const ctx = await resolveTimelineAnchor(state, id);
   return { threadId: ctx.groupId, threadRef: ctx.deliveryRef };
 }
 
 export async function notifyVia(
   runtime: HitlRuntime,
   notification: Notification,
-): Promise<ThreadAnchor> {
+): Promise<TimelineAnchor> {
   const resolved = resolveChannel(runtime.adapters, notification.channel);
   const deliveryId = crypto.randomUUID();
 
@@ -666,7 +666,7 @@ export async function notifyVia(
   let threadRef = notification.threadRef;
 
   if (anchorId) {
-    const ctx = await resolveThreadAnchor(runtime.state, anchorId);
+    const ctx = await resolveTimelineAnchor(runtime.state, anchorId);
     groupId = ctx.groupId;
     if (!threadRef && ctx.deliveryRef) threadRef = ctx.deliveryRef;
   }

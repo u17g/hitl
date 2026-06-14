@@ -6,7 +6,7 @@ import {
   remindHumanRequest,
   resolveChannel,
   resolveHumanRequest,
-  resolveThreadAnchor,
+  resolveTimelineAnchor,
   timeoutHumanRequest,
   type HitlRuntime,
 } from "./core";
@@ -419,7 +419,7 @@ describe("remindHumanRequest", () => {
 });
 
 describe("notifyVia", () => {
-  it("routes to the default adapter and returns a ThreadAnchor", async () => {
+  it("routes to the default adapter and returns a TimelineAnchor", async () => {
     const { runtime, adapters, state } = makeRuntime(["a", "b"]);
     const anchor = await notifyVia(runtime, { message: "progress" });
     expect(anchor.id).toBeTruthy();
@@ -476,12 +476,12 @@ describe("notifyVia", () => {
     expect(delivery?.externalId).toBe(`notify_ext_${id}`);
   });
 
-  it("resolveThreadAnchor resolves notify delivery id to externalId", async () => {
+  it("resolveTimelineAnchor resolves notify delivery id to externalId", async () => {
     const { runtime, state } = makeRuntime();
     const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
     const anchor = await notifyVia(runtime, { message: "ping", after: { id } });
 
-    const ctx = await resolveThreadAnchor(state, anchor.id);
+    const ctx = await resolveTimelineAnchor(state, anchor.id);
     expect(ctx.deliveryRef).toBe(`notify_ext_${id}`);
     expect(ctx.groupId).toBe(id);
   });

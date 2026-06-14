@@ -1,6 +1,6 @@
 import type { Migration } from "./types.js";
 
-/** Notify delivery records for thread anchor chains (notify → waitForHuman). */
+/** Notify delivery records for timeline anchor chains (notify → waitForHuman). */
 export const migration008NotifyDeliveries: Migration = {
   id: "008_notify_deliveries",
   sql(ctx) {

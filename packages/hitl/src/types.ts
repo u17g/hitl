@@ -10,8 +10,8 @@ export interface Reviewer {
 
 export type { HumanResult };
 
-/** Chain thread placement across notify / waitForHuman. */
-export interface ThreadAnchor {
+/** Chain timeline placement across notify / waitForHuman. */
+export interface TimelineAnchor {
   id: string;
 }
 

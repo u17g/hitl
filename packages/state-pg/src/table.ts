@@ -12,7 +12,7 @@ export interface ResolvedTable {
   batchIdIndexName: string;
   timelineSql: string;
   timelineThreadIndexName: string;
-  /** Notify delivery records for thread anchor chains. */
+  /** Notify delivery records for timeline anchor chains. */
   notifyDeliveriesSql: string;
   schema?: string;
   table: string;

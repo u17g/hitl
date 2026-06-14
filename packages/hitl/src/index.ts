@@ -37,4 +37,4 @@ export {
   remindMessage,
 } from "./reminder";
 
-export type { ThreadAnchor } from "./types";
+export type { TimelineAnchor } from "./types";

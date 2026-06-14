@@ -10,11 +10,11 @@ export {
   resolveChannel,
   resolveHumanRequest,
   resolveNotifyThread,
-  resolveThreadAnchor,
+  resolveTimelineAnchor,
   timeoutBatch,
   timeoutHumanRequest,
 } from "../core";
-export type { HitlRuntime, NotifyThreadContext, ResolvedChannel, ThreadContext } from "../core";
+export type { HitlRuntime, NotifyThreadContext, ResolvedChannel, TimelineContext } from "../core";
 export type {
   BatchTimeoutResponse,
   CreateBatchBody,

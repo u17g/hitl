@@ -4,7 +4,7 @@ import type { HumanActionDef } from "./human-actions";
 import { validateActions } from "./human-actions";
 import type { HumanResult } from "./human-result";
 import type { ReminderEntry } from "./reminder";
-import type { ThreadAnchor } from "./types";
+import type { TimelineAnchor } from "./types";
 
 type ApproveFields<Actions extends readonly HumanActionDef[]> =
   Extract<Actions[number], { id: "approve" }> extends HumanActionDef<"approve", infer F>
@@ -27,7 +27,7 @@ export interface RequestHumanOptions<Actions extends readonly HumanActionDef[]> 
   /** Adapter id or `adapter_id:destination`; defaults to the first configured adapter. */
   channel?: string;
   /** Post under the same chat thread as a prior human step or notify. */
-  after?: HumanResult<Actions> | ThreadAnchor;
+  after?: HumanResult<Actions> | TimelineAnchor;
   /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
   inThread?: string;
 }

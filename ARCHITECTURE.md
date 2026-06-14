@@ -46,7 +46,7 @@ The main `hitl` entry is for workflow authoring and server setup. Everything els
 | `isResolved`, `HumanResult` | Narrowing resolved outcomes |
 | `remind`, `escalate` | Reminder and escalation schedules for `waitForHuman` |
 | `Hitl` | Server (`/.well-known/hitl/v1`) with inbox and adapters |
-| `ThreadAnchor` | Chain `notify` / `waitForHuman` across thread placement |
+| `TimelineAnchor` | Chain `notify` / `waitForHuman` across timeline placement |
 
 Use `@hitl-sdk/resolver-workflow-sdk` for `waitForHuman`, `requestHuman`, and `notify` — not `hitl` directly.
 

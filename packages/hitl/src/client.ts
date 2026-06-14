@@ -19,7 +19,7 @@ import type { HumanActionDef } from "./human-actions";
 import type { HumanResult } from "./human-result";
 import { isEscalate, type ReminderEntry } from "./reminder";
 import { expandReminderSchedule } from "./schedule";
-import type { Notification, ThreadAnchor } from "./types";
+import type { Notification, TimelineAnchor } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
 
@@ -30,13 +30,13 @@ interface HumanPendingHandle {
   wait(opts?: HumanWaitOptions): Promise<HumanResult<HumanActionDef[]> | HumanResult<HumanActionDef[]>[]>;
 }
 
-/** Pending human request. Pass as `ThreadAnchor` to `notify` or chained `waitForHuman`. */
-export interface HumanPending<Actions extends readonly HumanActionDef[]> extends ThreadAnchor {
+/** Pending human request. Pass as `TimelineAnchor` to `notify` or chained `waitForHuman`. */
+export interface HumanPending<Actions extends readonly HumanActionDef[]> extends TimelineAnchor {
   readonly [HumanPendingBrand]: HumanPendingHandle;
 }
 
 /** Pending batch request. Anchor id is the batch id. */
-export interface HumanBatchPending<Actions extends readonly HumanActionDef[]> extends ThreadAnchor {
+export interface HumanBatchPending<Actions extends readonly HumanActionDef[]> extends TimelineAnchor {
   readonly [HumanPendingBrand]: HumanPendingHandle;
   readonly batch: true;
 }
@@ -49,7 +49,7 @@ type NotifyBase = {
 
 /** Workflow-side notify options. Prefer `after` once a human step has resolved. */
 export type NotifyOptions =
-  | (NotifyBase & { after: HumanResult | ThreadAnchor | HumanPending<readonly HumanActionDef[]> })
+  | (NotifyBase & { after: HumanResult | TimelineAnchor | HumanPending<readonly HumanActionDef[]> })
   | (NotifyBase & { on: string })
   | (NotifyBase & { threadId?: string; threadRef?: string });
 
@@ -94,7 +94,7 @@ export interface HitlClient {
     opts?: HumanWaitOptions,
   ): Promise<HumanResult<Actions>[]>;
 
-  notify(notification: NotifyOptions): Promise<ThreadAnchor>;
+  notify(notification: NotifyOptions): Promise<TimelineAnchor>;
 }
 
 function isHumanPending(

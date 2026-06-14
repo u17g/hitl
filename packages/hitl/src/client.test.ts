@@ -487,7 +487,7 @@ describe("waitForHuman batch", () => {
 });
 
 describe("notify", () => {
-  it("POSTs /notifications and returns a ThreadAnchor", async () => {
+  it("POSTs /notifications and returns a TimelineAnchor", async () => {
     const { adapters, client } = makeHarness({ adapterIds: ["a", "b"] });
 
     const anchor = await client.notify({ message: "progress", channel: "b" });
