@@ -1,5 +1,11 @@
 # @hitl-dev/hitl
 
+## 0.0.5
+
+### Patch Changes
+
+- c87c9f5: refactor and support externalRef
+
 ## 0.0.4
 
 ### Patch Changes
