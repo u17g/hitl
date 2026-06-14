@@ -35,19 +35,22 @@ npm install @hitl-sdk/adapter-chat-sdk
 
 ```ts
 import { field, actions, isResolved } from "@hitl-sdk/hitl";
-import { waitForHuman } from "../lib/hitl-client";
+import { waitForHuman, notify } from "../lib/hitl-client";
 
-export async function inboundLead(input: { email: string; draft: { subject: string; body: string } }) {
+export async function handleInboundLead(input: { email: string; }) {
   "use workflow";
 
+  const report = await researchAgent({ email: input.email });
+  const draft = await emailWriterAgent({ email: input.email, report });
+
   const approval = await waitForHuman({
-    message: `Inbound lead: ${input.email}`,
+    message: `I wrote email to: ${input.email}. Review the email. I'll send it if you approve.`,
     actions: actions()
       .approve({
         label: "Review and send",
         fields: {
-          subject: field.textField({ label: "Subject", default: input.draft.subject }),
-          body: field.textArea({ label: "Body", default: input.draft.body }),
+          subject: field.textField({ label: "Subject", default: draft.subject }),
+          body: field.textArea({ label: "Body", default: draft.body }),
         },
       })
       .deny({
@@ -57,12 +60,17 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
       .build(),
     timeout: "72h",
   });
+  if (!isResolved(approval, "approve")) {
+    await notify({ after: approval, message: "Rejected." });
+    return;
+  }
 
-  if (!isResolved(approval, "approve")) return;
+  await notify({ after: approval, message: `I'm sending email to ${input.email}...` });
 
   const { subject, body } = approval.feedbacks;
-
   await sendEmail({ to: input.email, subject, body });
+
+  await notify({ after: approval, message: `Done.` });
 }
 ```
 
