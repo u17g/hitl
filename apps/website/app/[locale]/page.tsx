@@ -22,6 +22,7 @@ export default function HomePage() {
       <ChannelsSection />
       <SectionSpacer />
       <StackSection />
+      <SectionSpacer />
       <CtaSection />
       <SectionSpacer className="border-b-0" />
     </div>
