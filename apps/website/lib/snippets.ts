@@ -51,11 +51,46 @@ export async function inboundLead(input: {
 
   await sendEmail({ to: input.email, subject, body });
 }`,
-  withoutHitl: `// Hand-rolled approval flow
-const job = await queue.enqueue("wait-approval", { leadId });
-await pollUntilApproved(job.id); // cron + DB + retries
-const edits = await db.getEdits(job.id);
-await sendEmail({ ...edits });`,
+  withoutHitl: `const approvalId = crypto.randomUUID();
+
+await db.approvals.insert({
+  id: approvalId,
+  status: "pending",
+  leadEmail: input.email,
+  draft: input.draft,
+  expiresAt: addHours(new Date(), 72),
+});
+
+await slack.postMessage({
+  channel: "#sales",
+  text: \`Inbound lead: \${input.email}\`,
+  blocks: buildApprovalBlocks(approvalId),
+});
+
+await queue.enqueue("approval.poll", { approvalId }, {
+  repeat: { every: "15m" },
+  attempts: 288,
+});
+
+// workflow pauses here — resume via cron/webhook
+let row = await db.approvals.findById(approvalId);
+while (row.status === "pending") {
+  if (row.expiresAt < new Date()) {
+    await db.approvals.update(approvalId, { status: "expired" });
+    return;
+  }
+  await sleep(POLL_INTERVAL_MS);
+  row = await db.approvals.findById(approvalId);
+}
+
+if (row.status !== "approved") return;
+
+const edits = await db.approvalEdits.findByApprovalId(approvalId);
+await sendEmail({
+  to: input.email,
+  subject: edits?.subject ?? input.draft.subject,
+  body: edits?.body ?? input.draft.body,
+});`,
   withHitl: `const approval = await waitForHuman({
   message: \`Inbound lead: \${input.email}\`,
   actions: actions()
@@ -67,6 +102,38 @@ await sendEmail({ ...edits });`,
 if (isResolved(approval, "approve") && approval.edited) {
   await sendEmail({ ...approval.feedbacks });
 }`,
+  actionPatterns: `const approval = await waitForHuman({
+  message: "Review expense report?",
+  actions: actions()
+    .approve({
+      label: "Approve",
+      fields: {
+        amount: field.textField({ label: "Amount" }),
+        category: field.textField({ label: "Category" }),
+      },
+    })
+    .deny({
+      label: "Reject",
+      fields: { reason: field.textArea({ label: "Reason" }) },
+    })
+    .custom("request_info", {
+      label: "Request info",
+      fields: { question: field.textArea({ label: "What do you need?" }) },
+    })
+    .build(),
+  timeout: "72h",
+});`,
+  remindersExample: `import { remind, escalate } from "@hitl-sdk/hitl";
+
+const approval = await waitForHuman({
+  message: "Approve expense report?",
+  actions,
+  timeout: "72h",
+  reminders: [
+    remind.after("1h", { message: "Still waiting for approval" }),
+    escalate.to("oncall").after("4h", { mode: "redeliver" }),
+  ],
+});`,
   serverSetup: `import { Hitl } from "@hitl-sdk/hitl";
 import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
 import { SqliteState } from "@hitl-sdk/state-sqlite";

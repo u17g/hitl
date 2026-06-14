@@ -16,7 +16,7 @@ export function Hero() {
     <Section variant="hero" className="bg-background">
       <SectionContainer size="6xl" className="pt-12 pb-0 md:pt-16">
         <div className="">
-          <h1 className="text-3xl font-semibold leading-[1.15] tracking-tight md:text-4xl">
+          <h1 className="font-display text-3xl font-medium leading-[1.15] tracking-tight md:text-4xl">
             <span className="text-brand">
               {t({
                 en: "Human approval layer",
@@ -28,7 +28,7 @@ export function Hero() {
               ja: "のためのライブラリ",
             })}
           </h1>
-          <p className="mt-5 text-muted-foreground text-2xl font-medium leading-[1.15] tracking-tight md:text-2xl">
+          <p className="font-display mt-5 text-muted-foreground text-2xl font-medium leading-[1.15] tracking-tight md:text-2xl">
             {t({
               en: "A unified typescript SDK for human-in-the-loop",
               ja: "クリティカルなワークフローに人の承認を組み込む Unified TypeScript SDK",

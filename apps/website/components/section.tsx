@@ -59,7 +59,7 @@ export function SectionHeader({
 }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("mx-auto max-w-2xl text-center", className)}
+      className={cn("mx-auto", className)}
       {...props}
     />
   );
@@ -98,7 +98,7 @@ export function SectionDescription({
 }: ComponentProps<"p">) {
   return (
     <p
-      className={cn("mt-4 text-base text-muted-foreground md:text-lg", className)}
+      className={cn("max-w-2xl mt-4 text-base text-muted-foreground md:text-lg", className)}
       {...props}
     />
   );
