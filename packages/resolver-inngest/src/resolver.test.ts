@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { HITL_RESUME_EVENT } from "./constants";
+import { HITL_RESUME_EVENT } from "./events";
 import { inngestResolver } from "./resolver";
 
 describe("inngestResolver", () => {

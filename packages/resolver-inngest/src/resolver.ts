@@ -1,6 +1,6 @@
 import type { Inngest } from "inngest";
 import type { HitlResolver } from "@hitl-sdk/hitl/core";
-import { HITL_RESUME_EVENT } from "./constants";
+import { HITL_RESUME_EVENT } from "./events";
 
 export interface InngestResolverOptions {
   /** Inngest client used to send resume events. */
