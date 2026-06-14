@@ -68,7 +68,7 @@ export function ChannelsSection() {
           <SectionDescription>
             {t({
               en: "AI handles the work. Humans make the calls. Keep that loop running in Slack, Teams, Discord, or your own web app.",
-              ja: "AIが処理し、人が判断する。そのループを Slack・Teams・Discord・ウェブアプリでつなぐ。",
+              ja: "AIが処理し、人が判断する。そのループを Slack・Teams・Discord・ウェブアプリ内で完結。",
             })}
           </SectionDescription>
         </SectionHeader>
