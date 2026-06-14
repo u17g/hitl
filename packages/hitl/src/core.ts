@@ -680,8 +680,8 @@ export async function notifyVia(
   const resolved = resolveChannel(runtime.adapters, notification.channel);
   const deliveryId = crypto.randomUUID();
 
-  const anchorId = notification.after?.id ?? notification.on ?? notification.threadId;
-  let groupId = notification.threadId ?? deliveryId;
+  const anchorId = notification.after?.id ?? notification.on;
+  let groupId: string = deliveryId;
   let threadRef: string | undefined;
 
   if (anchorId) {
@@ -712,7 +712,6 @@ export async function notifyVia(
     message: notification.message,
     channel: resolved.adapter.id,
     destination: adapterDestination(resolved, threadRef),
-    threadId: groupId,
     detail: notification.detail,
   });
   if (externalId) {

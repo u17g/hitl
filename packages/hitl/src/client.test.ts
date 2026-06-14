@@ -267,7 +267,6 @@ describe("waitForHuman", () => {
 
     await vi.waitFor(() => expect(adapters[0]!.notifications).toHaveLength(1));
     expect(adapters[0]!.notifications[0]).toEqual({
-      threadId: requestId,
       message: "Still waiting",
       channel: "a",
       destination: `ext_${requestId}`,
@@ -356,7 +355,6 @@ describe("waitForHuman", () => {
 
     await vi.waitFor(() => expect(adapters[0]!.notifications).toHaveLength(1));
     expect(adapters[0]!.notifications[0]).toEqual({
-      threadId: requestId,
       message: "Morning ping",
       channel: "a",
       destination: `ext_${requestId}`,
@@ -473,7 +471,6 @@ describe("waitForHuman batch", () => {
     engine.flushSleep();
     await vi.waitFor(() => expect(adapters[0]!.notifications).toHaveLength(1));
     expect(adapters[0]!.notifications[0]).toEqual({
-      threadId: batchId,
       message: "Still waiting",
       channel: "a",
       destination: `bext_${batchId}`,
@@ -518,7 +515,6 @@ describe("notify", () => {
 
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Done",
-      threadId: requestId,
       destination: `ext_${requestId}`,
     });
   });
@@ -575,7 +571,6 @@ describe("requestHuman", () => {
     await client.notify({ after: pending, message: "Extra context while pending" });
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Extra context while pending",
-      threadId: pending.id,
       destination: `ext_${pending.id}`,
     });
 
@@ -609,7 +604,7 @@ describe("requestHuman", () => {
     await client.notify({ after: pending, message: "Batch context" });
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Batch context",
-      threadId: batchId,
+      destination: `bext_${batchId}`,
     });
 
     const waiting = client.waitForHuman(pending);

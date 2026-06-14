@@ -404,7 +404,6 @@ describe("remindBatch", () => {
     expect(pending).toBe(true);
     expect(adapters[0]!.notifications).toEqual([
       {
-        threadId: batchId,
         message: "Still waiting",
         channel: "a",
         destination: `bext_${batchId}`,
@@ -480,8 +479,7 @@ describe("notifyVia batch threading", () => {
 
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Follow up",
-      threadId: batchId,
-      destination: `bext_${batchId}`,
+        destination: `bext_${batchId}`,
     });
   });
 

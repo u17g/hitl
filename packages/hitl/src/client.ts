@@ -51,7 +51,7 @@ type NotifyBase = {
 export type NotifyOptions =
   | (NotifyBase & { after: HumanResult | TimelineAnchor | HumanPending<readonly HumanActionDef[]> })
   | (NotifyBase & { on: string })
-  | (NotifyBase & { threadId?: string });
+  | NotifyBase;
 
 export interface CreateHitlClientOptions extends WorkflowPrimitives {
   /** Base URL of the app hosting the hitl server, e.g. `https://my-app.vercel.app`. Lazy so engines can resolve it at run time. */

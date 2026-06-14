@@ -174,7 +174,10 @@ describe("internal API: requests", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ pending: true });
-    expect(adapters[0]!.notifications[0]).toMatchObject({ message: "Still waiting", threadId: id });
+    expect(adapters[0]!.notifications[0]).toMatchObject({
+      message: "Still waiting",
+      destination: `ext_${id}`,
+    });
   });
 
   it("returns 400 on malformed JSON", async () => {

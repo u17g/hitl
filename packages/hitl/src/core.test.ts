@@ -334,7 +334,6 @@ describe("remindHumanRequest", () => {
     expect(pending).toBe(true);
     expect(adapters[0]!.notifications).toEqual([
       {
-        threadId: id,
         message: "Still waiting",
         channel: "a",
         destination: `ext_${id}`,
@@ -382,7 +381,6 @@ describe("remindHumanRequest", () => {
       {
         message: "Needs eyes",
         channel: "oncall",
-        threadId: id,
         destination: `ext_${id}`,
       },
     ]);
@@ -435,19 +433,6 @@ describe("notifyVia", () => {
     expect(delivery).toMatchObject({ message: "progress", channel: "a", groupId: anchor.id });
   });
 
-  it("resolves the parent approval id to the channel externalId", async () => {
-    const { runtime, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
-
-    await notifyVia(runtime, { message: "context", threadId: id });
-
-    expect(adapters[0]!.notifications[0]).toMatchObject({
-      message: "context",
-      threadId: id,
-      destination: `ext_${id}`,
-    });
-  });
-
   it("resolves after id to the channel externalId", async () => {
     const { runtime, adapters } = makeRuntime();
     const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
@@ -456,7 +441,6 @@ describe("notifyVia", () => {
 
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "context",
-      threadId: id,
       destination: `ext_${id}`,
     });
   });
@@ -469,7 +453,6 @@ describe("notifyVia", () => {
 
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "context",
-      threadId: id,
       destination: `ext_${id}`,
     });
   });
