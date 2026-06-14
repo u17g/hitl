@@ -1,65 +1,63 @@
 "use client";
 
-import { ArrowRight, Github } from "lucide-react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
-import { CodeBlock } from "@/components/docs/code-block";
-import { Button } from "@/components/ui/button";
+import { HeroDemo } from "@/components/marketing/hero-demo";
 import {
   Section,
   SectionContainer,
 } from "@/components/section";
-import { snippets } from "@/lib/snippets";
+import { Button } from "@/components/ui/button";
 
 export function Hero() {
   const t = useInlineTranslation();
 
   return (
-    <Section variant="hero">
-      <div className="absolute inset-0 grid-bg opacity-50" />
-      <SectionContainer className="relative py-24 md:py-32">
-        <SectionContainer className="px-0">
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl md:leading-tight">
+    <Section variant="hero" className="bg-background">
+      <SectionContainer size="6xl" className="pt-12 pb-0 md:pt-16">
+        <div className="">
+          <h1 className="text-3xl font-semibold leading-[1.15] tracking-tight md:text-4xl">
+            <span className="text-brand">
+              {t({
+                en: "Human approval layer",
+                ja: "ヒューマン・イン・ザ・ループ",
+              })}
+            </span>
             {t({
-              en: "Human in the loop",
-              ja: "Human in the loop",
-            })}
-            <br />
-            {t({
-              en: "for AI and workflows",
-              ja: "for AI agents and workflows",
+              en: " for your mission critical AI workflows",
+              ja: "のためのライブラリ",
             })}
           </h1>
-          <p className="mt-6 text-lg text-muted-foreground md:text-xl max-w-2xl">
+          <p className="mt-5 text-muted-foreground text-2xl font-medium leading-[1.15] tracking-tight md:text-2xl">
             {t({
-              en: "A unified typescript SDK for human-in-the-loop in AI agents, durable workflows and any chat platforms - Slack, Teams, Dicord, Web app etc.",
-              ja: "信頼性のある AI エージェントとワークフローを作る TypeScript SDK。",
+              en: "A unified typescript SDK for human-in-the-loop",
+              ja: "クリティカルなワークフローに人の承認を組み込む Unified TypeScript SDK",
             })}
-            <br />
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button size="lg" asChild>
+            <Button variant="default" size="lg" asChild>
               <Link href="/docs/getting-started">
                 {t({ en: "Get started", ja: "はじめる" })}
-                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
+            <Button variant="outline" size="lg" asChild>
               <a
-                href="https://github.com/u17g/hitl"
+                href="https://github.com/u17g/hitl/tree/main/examples/hello-world"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Github className="h-4 w-4" />
-                {t({ en: "View on GitHub", ja: "GitHub を見る" })}
+                {t({ en: "Document", ja: "ドキュメント" })}
               </a>
             </Button>
           </div>
-        </SectionContainer>
-        <SectionContainer size="2xl" className="mt-16 px-0">
-          <CodeBlock code={snippets.install} filename="terminal" />
-        </SectionContainer>
+        </div>
+
+        <div className="hero-visual-bg relative mt-12 w-full min-w-0 overflow-hidden md:mt-16">
+          <div className="flex min-h-[420px] w-full min-w-0 items-center justify-center px-2 py-12 sm:px-4 md:py-16">
+            <HeroDemo />
+          </div>
+        </div>
       </SectionContainer>
-    </Section >
+    </Section>
   );
 }

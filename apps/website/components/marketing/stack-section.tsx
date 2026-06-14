@@ -6,14 +6,9 @@ import {
   SectionContainer,
   SectionDescription,
   SectionHeader,
+  SectionLabel,
   SectionTitle,
 } from "@/components/section";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export function StackSection() {
   const t = useInlineTranslation();
@@ -25,6 +20,7 @@ export function StackSection() {
         en: "Use familiar AI SDK patterns with durable human review steps.",
         ja: "おなじみの AI SDK パターンに、耐久な人間レビューステップを追加。",
       }),
+      tag: "agent",
     },
     {
       title: "Workflow DevKit",
@@ -32,13 +28,33 @@ export function StackSection() {
         en: "Suspend, sleep, and resume with zero infrastructure setup on Vercel.",
         ja: "Vercel 上でインフラ設定なしにサスペンド・スリープ・再開。",
       }),
+      tag: "workflow",
+    },
+    {
+      title: "Inngest",
+      description: t({
+        en: "Plug in the Inngest resolver for event-driven human approval flows.",
+        ja: "Inngest resolver でイベント駆動の人間承認フローを構築。",
+      }),
+      tag: "events",
+    },
+    {
+      title: "Chat SDK",
+      description: t({
+        en: "One adapter for Slack, Teams, and Discord — no per-platform wiring.",
+        ja: "Slack・Teams・Discord を1アダプターで。プラットフォーム別配線は不要。",
+      }),
+      tag: "channels",
     },
   ];
 
   return (
     <Section variant="muted">
-      <SectionContainer>
+      <SectionContainer size="6xl">
         <SectionHeader>
+          <SectionLabel>
+            {t({ en: "Integrations", ja: "連携" })}
+          </SectionLabel>
           <SectionTitle>
             {t({ en: "Bring your own stack", ja: "既存スタックをそのまま使う" })}
           </SectionTitle>
@@ -49,16 +65,16 @@ export function StackSection() {
             })}
           </SectionDescription>
         </SectionHeader>
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {items.map(({ title, description }) => (
-            <Card key={title} className="border bg-background">
-              <CardHeader>
-                <CardTitle className="text-2xl">{title}</CardTitle>
-                <CardDescription className="text-base">
-                  {description}
-                </CardDescription>
-              </CardHeader>
-            </Card>
+
+        <div className="mt-16 grid gap-4 sm:grid-cols-2">
+          {items.map(({ title, description, tag }) => (
+            <div key={title} className="parallel-card p-6">
+              <span className="kbd-hint">{tag}</span>
+              <h3 className="mt-4 font-display text-xl">{title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {description}
+              </p>
+            </div>
           ))}
         </div>
       </SectionContainer>

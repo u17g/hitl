@@ -7,6 +7,7 @@ import {
   SectionContainer,
   SectionDescription,
   SectionHeader,
+  SectionLabel,
   SectionTitle,
 } from "@/components/section";
 
@@ -14,24 +15,36 @@ export function ArchitectureSection() {
   const t = useInlineTranslation();
 
   const points = [
-    t({
-      en: "Workflow suspends on a durable hook and POSTs a request via a memoized step.",
-      ja: "ワークフローが耐久フックでサスペンドし、メモ化されたステップでリクエストを POST。",
-    }),
-    t({
-      en: "Server records the request and delivers to your channel adapter.",
-      ja: "サーバーがリクエストを記録し、チャネルアダプターへ配信。",
-    }),
-    t({
-      en: "Reviewer approves — server resolves the hook and the workflow resumes.",
-      ja: "レビュアーが承認 — サーバーがフックを解決し、ワークフローが再開。",
-    }),
+    {
+      step: "01",
+      text: t({
+        en: "Workflow suspends on a durable hook and POSTs a request via a memoized step.",
+        ja: "ワークフローが耐久フックでサスペンドし、メモ化されたステップでリクエストを POST。",
+      }),
+    },
+    {
+      step: "02",
+      text: t({
+        en: "Server records the request and delivers to your channel adapter.",
+        ja: "サーバーがリクエストを記録し、チャネルアダプターへ配信。",
+      }),
+    },
+    {
+      step: "03",
+      text: t({
+        en: "Reviewer approves — server resolves the hook and the workflow resumes.",
+        ja: "レビュアーが承認 — サーバーがフックを解決し、ワークフローが再開。",
+      }),
+    },
   ];
 
   return (
     <Section>
-      <SectionContainer>
+      <SectionContainer size="6xl">
         <SectionHeader>
+          <SectionLabel>
+            {t({ en: "Architecture", ja: "アーキテクチャ" })}
+          </SectionLabel>
           <SectionTitle>
             {t({ en: "How it works", ja: "仕組み" })}
           </SectionTitle>
@@ -42,18 +55,19 @@ export function ArchitectureSection() {
             })}
           </SectionDescription>
         </SectionHeader>
-        <div className="mt-12 grid gap-8 lg:grid-cols-2 lg:items-center">
+
+        <div className="mt-16 grid gap-12 lg:grid-cols-2 lg:items-start">
           <ArchitectureDiagram />
-          <ol className="space-y-4">
-            {points.map((point, i) => (
-              <li key={point} className="flex gap-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-medium">
-                  {i + 1}
+          <div className="space-y-6">
+            {points.map(({ step, text }) => (
+              <div key={step} className="parallel-card flex gap-4 p-5">
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {step}
                 </span>
-                <p className="pt-1 text-muted-foreground">{point}</p>
-              </li>
+                <p className="text-sm text-muted-foreground">{text}</p>
+              </div>
             ))}
-          </ol>
+          </div>
         </div>
       </SectionContainer>
     </Section>

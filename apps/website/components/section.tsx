@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 const sectionVariants = cva("", {
   variants: {
     variant: {
-      default: "py-24",
-      muted: "border-y bg-muted/30 py-24",
-      hero: "relative overflow-hidden border-b",
+      default: "py-24 md:py-32",
+      muted: "border-y border-border bg-muted/20 py-24 md:py-32",
+      hero: "relative overflow-hidden",
     },
   },
   defaultVariants: {
@@ -65,6 +65,18 @@ export function SectionHeader({
   );
 }
 
+export function SectionLabel({
+  className,
+  ...props
+}: ComponentProps<"p">) {
+  return (
+    <p
+      className={cn("parallel-section-label mb-4", className)}
+      {...props}
+    />
+  );
+}
+
 export function SectionTitle({
   className,
   ...props
@@ -72,7 +84,7 @@ export function SectionTitle({
   return (
     <h2
       className={cn(
-        "text-3xl font-bold tracking-tight md:text-4xl",
+        "font-display text-3xl font-normal tracking-tight md:text-4xl lg:text-5xl",
         className,
       )}
       {...props}
@@ -85,6 +97,9 @@ export function SectionDescription({
   ...props
 }: ComponentProps<"p">) {
   return (
-    <p className={cn("mt-4 text-muted-foreground", className)} {...props} />
+    <p
+      className={cn("mt-4 text-base text-muted-foreground md:text-lg", className)}
+      {...props}
+    />
   );
 }

@@ -2,50 +2,78 @@
 
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
-import { Separator } from "@/components/ui/separator";
 
 export function SiteFooter() {
   const t = useInlineTranslation();
 
+  const columns = [
+    {
+      title: t({ en: "Product", ja: "プロダクト" }),
+      links: [
+        { label: t({ en: "Getting started", ja: "はじめに" }), href: "/docs/getting-started" },
+        { label: t({ en: "Installation", ja: "インストール" }), href: "/docs/installation" },
+        { label: t({ en: "Channels", ja: "チャネル" }), href: "/docs/channels" },
+        { label: t({ en: "Workflow DevKit", ja: "Workflow DevKit" }), href: "/docs/workflow-devkit" },
+      ],
+    },
+    {
+      title: t({ en: "Developers", ja: "開発者" }),
+      links: [
+        { label: "GitHub", href: "https://github.com/u17g/hitl", external: true },
+        { label: "npm", href: "https://www.npmjs.com/package/hitl", external: true },
+        { label: t({ en: "hello-world", ja: "hello-world" }), href: "https://github.com/u17g/hitl/tree/main/examples/hello-world", external: true },
+      ],
+    },
+  ];
+
   return (
-    <footer className="border-t">
-      <div className="mx-auto max-w-6xl px-4 py-12">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+    <footer className="border-t border-border">
+      <div className="mx-auto max-w-6xl px-4 py-16">
+        <div className="grid gap-12 md:grid-cols-3">
           <div>
-            <p className="font-semibold">Hitl SDK</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="font-mono text-sm font-medium">hitl</p>
+            <p className="mt-3 text-sm text-muted-foreground">
               {t({
                 en: "Human-in-the-loop for AI agents and durable workflows.",
                 ja: "AI エージェントと耐久ワークフロー向け Human-in-the-loop。",
               })}
             </p>
           </div>
-          <nav className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <Link href="/docs/getting-started" className="hover:text-foreground">
-              {t({ en: "Docs", ja: "ドキュメント" })}
-            </Link>
-            <a
-              href="https://github.com/u17g/hitl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground"
-            >
-              {t({ en: "GitHub", ja: "GitHub" })}
-            </a>
-            <a
-              href="https://www.npmjs.com/package/hitl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground"
-            >
-              {t({ en: "npm", ja: "npm" })}
-            </a>
-          </nav>
+          {columns.map((col) => (
+            <div key={col.title}>
+              <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                {col.title}
+              </p>
+              <nav className="mt-4 flex flex-col gap-2">
+                {col.links.map((link) =>
+                  "external" in link && link.external ? (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.label}
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  ),
+                )}
+              </nav>
+            </div>
+          ))}
         </div>
-        <Separator className="my-6" />
-        <p className="text-sm text-muted-foreground">
-          {t({ en: "MIT License", ja: "MIT License" })}
-        </p>
+        <div className="mt-12 flex flex-col gap-2 border-t border-border pt-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>{t({ en: "MIT License", ja: "MIT License" })}</p>
+          <p className="font-mono text-xs">hitl-sdk · 2026</p>
+        </div>
       </div>
     </footer>
   );

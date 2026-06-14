@@ -1,19 +1,15 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import * as React from "react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+const THEME_CYCLE = ["system", "light", "dark"] as const;
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const t = useInlineTranslation();
   const [mounted, setMounted] = React.useState(false);
 
@@ -23,26 +19,37 @@ export function ThemeToggle() {
     return <Button variant="ghost" size="icon" aria-hidden className="opacity-0" />;
   }
 
+  const currentTheme = THEME_CYCLE.includes(theme as (typeof THEME_CYCLE)[number])
+    ? (theme as (typeof THEME_CYCLE)[number])
+    : "system";
+
+  function cycleTheme() {
+    const index = THEME_CYCLE.indexOf(currentTheme);
+    const nextTheme = THEME_CYCLE[(index + 1) % THEME_CYCLE.length] ?? "system";
+    setTheme(nextTheme);
+  }
+
+  const ariaLabel =
+    currentTheme === "system"
+      ? t({ en: "Theme: system", ja: "テーマ: システム" })
+      : currentTheme === "light"
+        ? t({ en: "Theme: light", ja: "テーマ: ライト" })
+        : t({ en: "Theme: dark", ja: "テーマ: ダーク" });
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t({ en: "Toggle theme", ja: "テーマを切り替え" })}
-        >
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          {t({ en: "Light", ja: "ライト" })}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          {t({ en: "Dark", ja: "ダーク" })}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={ariaLabel}
+      onClick={cycleTheme}
+    >
+      {currentTheme === "system" ? (
+        <Monitor className="h-4 w-4" />
+      ) : currentTheme === "light" ? (
+        <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
+      )}
+    </Button>
   );
 }
