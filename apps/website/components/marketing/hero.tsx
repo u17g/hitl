@@ -31,7 +31,7 @@ export function Hero() {
           <p className="font-display mt-5 text-muted-foreground text-2xl font-medium leading-[1.15] tracking-tight md:text-2xl">
             {t({
               en: "A unified typescript SDK for human-in-the-loop",
-              ja: "クリティカルなワークフローを安全に実行する Unified TypeScript SDK",
+              ja: "クリティカルな AI ワークフローを安全に実行する Unified TypeScript SDK",
             })}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
