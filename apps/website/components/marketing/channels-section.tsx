@@ -51,7 +51,7 @@ export function ChannelsSection() {
       {
         title: t({ en: "Web UI", ja: "Web UI" }),
         description: t({
-          en: "Embed approvals into your platform. Inbox API is included in the SDK.",
+          en: "Embed approvals into your web app. Inbox API is included in the SDK.",
           ja: "ウェブアプリに組み込み。HITL SDK の Inbox API で自由にカスタマイズ。",
         }),
         Preview: CustomWebUiPreview,
@@ -63,12 +63,12 @@ export function ChannelsSection() {
       <SectionContainer size="6xl">
         <SectionHeader>
           <SectionTitle>
-            {t({ en: "Deliver approvals anywhere", ja: "どこでも承認を届ける" })}
+            {t({ en: "Keep humans in the loop, wherever they work", ja: "人とAIの判断を、使い慣れたツールでつなぐ" })}
           </SectionTitle>
           <SectionDescription>
             {t({
-              en: "Meet reviewers where they already work. One integration reaches Slack, Teams, Discord, or your own product.",
-              ja: "レビュアーが普段使う場所に承認を届ける。1つの連携で Slack・Teams・Discord、または自社 UI に。",
+              en: "AI handles the work. Humans make the calls. Keep that loop running in Slack, Teams, Discord, or your own web app.",
+              ja: "AIが処理し、人が判断する。そのループを Slack・Teams・Discord・ウェブアプリでつなぐ。",
             })}
           </SectionDescription>
         </SectionHeader>
