@@ -59,7 +59,7 @@ export function ChannelsSection() {
     ];
 
   return (
-    <Section>
+    <Section variant="muted">
       <SectionContainer size="6xl">
         <SectionHeader>
           <SectionTitle>

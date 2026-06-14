@@ -49,7 +49,7 @@ export function StackSection() {
   ];
 
   return (
-    <Section variant="muted">
+    <Section>
       <SectionContainer size="6xl">
         <SectionHeader>
           <SectionTitle>
