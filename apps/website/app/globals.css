@@ -48,8 +48,8 @@
   --accent: oklch(0.94 0.006 90);
   --accent-foreground: oklch(0.2 0.01 80);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0.006 90);
-  --input: oklch(0.88 0.006 90);
+  --border: oklch(0.93 0.003 90);
+  --input: oklch(0.93 0.003 90);
   --ring: oklch(0.6 0.01 80);
   --brand: oklch(0.55 0.22 250);
 }
@@ -70,8 +70,8 @@
   --accent: oklch(0.2 0.008 80);
   --accent-foreground: oklch(0.93 0.01 90);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 5%);
+  --input: oklch(1 0 0 / 8%);
   --ring: oklch(0.5 0.01 80);
   --brand: oklch(0.68 0.18 250);
 }
@@ -172,6 +172,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+
     .hero-demo-fade-in,
     .hero-demo-slide-up {
       animation: none;
