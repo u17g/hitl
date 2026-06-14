@@ -31,7 +31,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-4 py-16">
         <div className="grid gap-12 md:grid-cols-3">
           <div>
-            <p className="font-mono text-sm font-medium">hitl</p>
+            <p className="font-mono text-sm font-medium">HITL SDK</p>
             <p className="mt-3 text-sm text-muted-foreground">
               {t({
                 en: "Human-in-the-loop for AI agents and durable workflows.",
