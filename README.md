@@ -38,8 +38,6 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
       })
       .deny({
         label: "Reject",
-        submitLabel: "Confirm rejection", // optional; defaults to label, then "Deny"
-        closeLabel: "Go back", // optional; defaults to "Cancel"
         fields: { reason: field.textArea({ label: "Reason" }) },
       })
       .build(),
