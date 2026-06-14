@@ -74,7 +74,7 @@ function fakeAdapter(
 function makeRuntime(adapterIds: string[] = ["lead-approvals"]) {
   const resolver = new FakeResolver();
   const state = new InMemoryState();
-  const adapters = adapterIds.map(fakeAdapter);
+  const adapters = adapterIds.map((id) => fakeAdapter(id));
   const runtime: HitlRuntime = { resolver, state, adapters };
   return { resolver, state, adapters, runtime };
 }
