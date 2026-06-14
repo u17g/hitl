@@ -2,71 +2,61 @@
 
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import {
+  CustomWebUiPreview,
+  DiscordPreview,
+  SlackPreview,
+  TeamsPreview,
+} from "@/components/marketing/channel-previews";
+import {
   Section,
   SectionContainer,
   SectionDescription,
   SectionHeader,
-  SectionLabel,
   SectionTitle,
 } from "@/components/section";
+import type { ComponentType } from "react";
 
 export function ChannelsSection() {
   const t = useInlineTranslation();
 
-  const channels = [
-    {
-      title: t({ en: "Slack", ja: "Slack" }),
-      description: t({
-        en: "Block Kit cards with Approve/Deny and editable modals.",
-        ja: "Block Kit カードと Approve/Deny、編集可能なモーダル。",
-      }),
-      preview: [
-        "┌─ Expense approval ─────────┐",
-        "│ $1,200 · Marketing Q2     │",
-        "│ [Approve] [Deny] [Edit]   │",
-        "└───────────────────────────┘",
-      ],
-    },
-    {
-      title: t({ en: "Microsoft Teams", ja: "Microsoft Teams" }),
-      description: t({
-        en: "Adaptive Cards with native interactivity.",
-        ja: "Adaptive Cards とネイティブなインタラクティブ操作。",
-      }),
-      preview: [
-        "┌─ Adaptive Card ───────────┐",
-        "│ Deploy v2.4 to production?  │",
-        "│ [Approve]  [Request info] │",
-        "└───────────────────────────┘",
-      ],
-    },
-    {
-      title: t({ en: "Discord", ja: "Discord" }),
-      description: t({
-        en: "Embeds and modals via Chat SDK.",
-        ja: "Chat SDK 経由の Embed とモーダル。",
-      }),
-      preview: [
-        "┌─ Embed ───────────────────┐",
-        "│ Refund request #4821      │",
-        "│ [Approve]  [Deny]         │",
-        "└───────────────────────────┘",
-      ],
-    },
-    {
-      title: t({ en: "Web inbox", ja: "Web inbox" }),
-      description: t({
-        en: "Built into hitl — resolve via hitl.inbox or your own UI.",
-        ja: "hitl に内蔵 — hitl.inbox または独自 UI で解決。",
-      }),
-      preview: [
-        "pending · 3 requests",
-        "├─ Expense $1,200",
-        "├─ Deploy v2.4",
-        "└─ Refund #4821",
-      ],
-    },
-  ];
+  const channels: {
+    title: string;
+    description: string;
+    Preview: ComponentType;
+  }[] = [
+      {
+        title: t({ en: "Slack", ja: "Slack" }),
+        description: t({
+          en: "Approve without leaving the channels and threads where your team already collaborates.",
+          ja: "チームが日々やり取りしているチャンネル・スレッド上でスムーズに承認。",
+        }),
+        Preview: SlackPreview,
+      },
+      {
+        title: t({ en: "Microsoft Teams", ja: "Microsoft Teams" }),
+        description: t({
+          en: "Sign off inside Teams — right where chats and handoffs already happen.",
+          ja: "業務のやり取りが集中するチャンネル・チャット上で、そのまま完結。",
+        }),
+        Preview: TeamsPreview,
+      },
+      {
+        title: t({ en: "Discord", ja: "Discord" }),
+        description: t({
+          en: "Drop requests into the server channels your ops crew already keeps on screen.",
+          ja: "運用チームが監視しているサーバー・チャンネルに届け、その場で対応。",
+        }),
+        Preview: DiscordPreview,
+      },
+      {
+        title: t({ en: "Web UI", ja: "Web UI" }),
+        description: t({
+          en: "Embed approvals into your platform. Inbox API is included in the SDK.",
+          ja: "ウェブアプリに組み込み。HITL SDK の Inbox API で自由にカスタマイズ。",
+        }),
+        Preview: CustomWebUiPreview,
+      },
+    ];
 
   return (
     <Section>
@@ -76,26 +66,23 @@ export function ChannelsSection() {
             {t({ en: "Deliver approvals anywhere", ja: "どこでも承認を届ける" })}
           </SectionTitle>
           <SectionDescription>
-            {/* Vercel's chat sdk handle rest of the work. */}
             {t({
-              en: "One adapter covers every Chat SDK platform. Or use the built-in web inbox.",
-              ja: "1つのアダプターで Chat SDK の全プラットフォームに対応。Web inbox も内蔵。",
+              en: "Meet reviewers where they already work. One integration reaches Slack, Teams, Discord, or your own product.",
+              ja: "レビュアーが普段使う場所に承認を届ける。1つの連携で Slack・Teams・Discord、または自社 UI に。",
             })}
           </SectionDescription>
         </SectionHeader>
 
         <div className="mt-16 grid gap-4 sm:grid-cols-2">
-          {channels.map(({ title, description, preview }) => (
+          {channels.map(({ title, description, Preview }) => (
             <div
               key={title}
               className="parallel-card group overflow-hidden transition-colors hover:border-foreground/20"
             >
-              <div className="border-b border-border bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-400 dark:bg-black/40">
-                {preview.map((line) => (
-                  <div key={line}>{line}</div>
-                ))}
+              <div className="overflow-hidden border-b border-border">
+                <Preview />
               </div>
-              <div className="p-5">
+              <div className="py-5">
                 <h3 className="font-mono text-sm font-medium">{title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {description}
