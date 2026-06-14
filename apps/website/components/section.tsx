@@ -84,7 +84,7 @@ export function SectionTitle({
   return (
     <h2
       className={cn(
-        "font-display text-3xl font-normal tracking-tight md:text-4xl lg:text-5xl",
+        "font-display text-3xl font-normal tracking-tight md:text-4xl lg:text-4xl",
         className,
       )}
       {...props}
