@@ -102,7 +102,7 @@ describe("createTemporalHitlClient", () => {
   it("times out via sleep and the /timeout endpoint", async () => {
     const { request, calls } = fakeRequest([
       { id: "a1" },
-      { result: { type: "TIMED_OUT", id: "a1" } },
+      { result: { type: "TIMED_OUT", id: "a1", externalRef: "" } },
     ]);
     const hitl = createTemporalHitlClient({
       request,
@@ -116,7 +116,7 @@ describe("createTemporalHitlClient", () => {
     });
 
     expect(sleepMock).toHaveBeenCalledWith(3_600_000);
-    expect(result).toEqual({ type: "TIMED_OUT", id: "a1" });
+    expect(result).toEqual({ type: "TIMED_OUT", id: "a1", externalRef: "" });
     expect(calls[1]!.url).toBe("https://my-app.example/.well-known/hitl/v1/requests/a1/timeout");
   });
 });

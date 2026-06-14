@@ -176,6 +176,7 @@ describe("waitForHuman", () => {
       type: "RESOLVED",
       actionId: "approve",
       id: requestId,
+      externalRef: `ext_${requestId}`,
       by: { name: "ryosuke" },
       feedbacks: { subject: "Hi", body: "Hello there" },
     });
@@ -454,7 +455,11 @@ describe("waitForHuman batch", () => {
 
     const results = await pending;
     expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "approve", id: `${batchId}:0` });
-    expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
+    expect(results[1]).toEqual({
+      type: "TIMED_OUT",
+      id: `${batchId}:1`,
+      externalRef: `bext_${batchId}`,
+    });
   });
 
   it("threads a reminder notify under the batch message", async () => {
@@ -576,7 +581,11 @@ describe("requestHuman", () => {
 
     const waiting = client.waitForHuman(pending);
     await resolveHumanRequest(hitl.runtime, { requestId: pending.id, actionId: "approve" });
-    await expect(waiting).resolves.toMatchObject({ type: "RESOLVED", actionId: "approve" });
+    await expect(waiting).resolves.toMatchObject({
+      type: "RESOLVED",
+      actionId: "approve",
+      externalRef: pending.externalRef,
+    });
   });
 
   it("waitForHuman(opts) delegates to requestHuman then waitForHuman(pending)", async () => {

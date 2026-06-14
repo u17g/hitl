@@ -47,7 +47,7 @@ describe("Hitl with SqliteState", () => {
     expect(await fresh.get(requestId)).toMatchObject({
       status: "resolved",
       externalId: `ext_${requestId}`,
-      result: { type: "RESOLVED", actionId: "approve", id: requestId },
+      result: { type: "RESOLVED", actionId: "approve", id: requestId, externalRef: `ext_${requestId}` },
     });
   });
 });

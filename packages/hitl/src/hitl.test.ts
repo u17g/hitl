@@ -153,7 +153,9 @@ describe("internal API: requests", () => {
     const res = await post(hitl, `/requests/${id}/timeout`, {});
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ result: { type: "TIMED_OUT", id } });
+    expect(await res.json()).toEqual({
+      result: { type: "TIMED_OUT", id, externalRef: `ext_${id}` },
+    });
     expect((await hitl.state.get(id))?.status).toBe("resolved");
   });
 

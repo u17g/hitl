@@ -15,6 +15,7 @@ describe("temporalResolver", () => {
       type: "RESOLVED" as const,
       actionId: "approve" as const,
       id: "a1",
+      externalRef: "",
       feedbacks: {},
     };
     const token = JSON.stringify({ workflowId: "wf-123", waitToken: "hitl-wait-1" });

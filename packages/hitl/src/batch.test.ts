@@ -226,6 +226,7 @@ describe("resolveBatchHumanRequest", () => {
         type: "RESOLVED",
         actionId: "approve",
         id: `${batchId}:0`,
+        externalRef: `bext_${batchId}`,
         by: { name: "ryosuke" },
         feedbacks: { subject: "Hello ACME", body: "Hello there" },
       },
@@ -233,6 +234,7 @@ describe("resolveBatchHumanRequest", () => {
         type: "RESOLVED",
         actionId: "approve",
         id: `${batchId}:1`,
+        externalRef: `bext_${batchId}`,
         by: { name: "ryosuke" },
         feedbacks: { subject: "Hi", body: "Hello there" },
       },
@@ -380,7 +382,11 @@ describe("timeoutBatch", () => {
     const results = await timeoutBatch(runtime, batchId);
 
     expect(results[0]).toMatchObject({ type: "RESOLVED", actionId: "approve", id: `${batchId}:0` });
-    expect(results[1]).toEqual({ type: "TIMED_OUT", id: `${batchId}:1` });
+    expect(results[1]).toEqual({
+      type: "TIMED_OUT",
+      id: `${batchId}:1`,
+      externalRef: `bext_${batchId}`,
+    });
     expect((await state.get(`${batchId}:1`))?.status).toBe("resolved");
     expect(adapters[0]!.batchUpdates.at(-1)).toEqual([`bext_${batchId}`, results]);
   });

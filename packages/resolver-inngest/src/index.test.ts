@@ -111,7 +111,7 @@ describe("createInngestHitlClient", () => {
   it("times out via step.sleep and the /timeout endpoint", async () => {
     const { request, calls } = fakeRequest([
       { id: "a1" },
-      { result: { type: "TIMED_OUT", id: "a1" } },
+      { result: { type: "TIMED_OUT", id: "a1", externalRef: "" } },
     ]);
     const hitl = createInngestHitlClient({
       step: createStep(),
@@ -126,7 +126,7 @@ describe("createInngestHitlClient", () => {
     });
 
     expect(sleepMock).toHaveBeenCalledWith("hitl-timer-1", "3600000ms");
-    expect(result).toEqual({ type: "TIMED_OUT", id: "a1" });
+    expect(result).toEqual({ type: "TIMED_OUT", id: "a1", externalRef: "" });
     expect(calls[1]!.url).toBe("https://my-app.example/.well-known/hitl/v1/requests/a1/timeout");
   });
 
@@ -171,7 +171,7 @@ describe("hitl Inngest events", () => {
   it("HitlInngestEvent covers resume payloads", () => {
     const event: HitlInngestEvent = {
       name: HITL_RESUME_EVENT,
-      data: { token: "hitl-wait-1", payload: { type: "TIMED_OUT", id: "a1" } },
+      data: { token: "hitl-wait-1", payload: { type: "TIMED_OUT", id: "a1", externalRef: "" } },
     };
     expect(event.data.token).toBe("hitl-wait-1");
   });

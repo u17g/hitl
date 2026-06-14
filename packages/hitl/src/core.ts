@@ -334,12 +334,21 @@ export async function createBatchRequest(
   return { batchId, ids: items.map((item) => item.id), externalRef };
 }
 
+function externalRefFor(record: HumanRequestRecord, batch?: BatchRecord | null): string {
+  return record.externalId ?? batch?.externalId ?? "";
+}
+
 export async function timeoutHumanRequest(runtime: HitlRuntime, id: string): Promise<HumanResult> {
   const record = await runtime.state.get(id);
   if (!record) throw new NotFoundError(`Unknown human request "${id}"`);
   if (record.status === "resolved" && record.result) return record.result;
 
-  const result: HumanResult = { type: "TIMED_OUT", id };
+  const batch = record.batchId ? await runtime.state.getBatch(record.batchId) : null;
+  const result: HumanResult = {
+    type: "TIMED_OUT",
+    id,
+    externalRef: externalRefFor(record, batch),
+  };
   try {
     await runtime.state.resolve(id, result);
   } catch {
@@ -362,7 +371,11 @@ export async function timeoutBatch(runtime: HitlRuntime, batchId: string): Promi
       results.push(item.result);
       continue;
     }
-    const result: HumanResult = { type: "TIMED_OUT", id: item.id };
+    const result: HumanResult = {
+      type: "TIMED_OUT",
+      id: item.id,
+      externalRef: externalRefFor(item, batch),
+    };
     try {
       await runtime.state.resolve(item.id, result);
       results.push(result);
@@ -506,7 +519,8 @@ export async function resolveHumanRequest(
   const record = await runtime.state.get(callback.requestId);
   if (!record) throw new NotFoundError(`Unknown human request "${callback.requestId}"`);
 
-  const result = toResult(record.id, record.actions, callback);
+  const batch = record.batchId ? await runtime.state.getBatch(record.batchId) : null;
+  const result = toResult(record.id, record.actions, callback, externalRefFor(record, batch));
 
   await runtime.state.resolve(record.id, result);
   await runtime.resolver.resolve(record.token, result);
@@ -538,7 +552,7 @@ export async function resolveBatchHumanRequest(
         actionId: decision.actionId,
         feedbacks: decision.feedbacks,
         by: callback.by,
-      }),
+      }, externalRefFor(item, batch)),
       skip: false,
     };
   });
@@ -584,6 +598,7 @@ function toResult(
   id: string,
   actions: HumanActions,
   callback: HitlCallback,
+  externalRef: string,
 ): HumanResult {
   const def = actionById(actions, callback.actionId);
   if (!def) {
@@ -598,6 +613,7 @@ function toResult(
       type: "RESOLVED",
       actionId: callback.actionId,
       id,
+      externalRef,
       by: callback.by,
       feedbacks,
       ...(edited ? { edited: true } : {}),
@@ -608,6 +624,7 @@ function toResult(
     type: "RESOLVED",
     actionId: callback.actionId,
     id,
+    externalRef,
     by: callback.by,
     feedbacks: {},
   };

@@ -12,6 +12,7 @@ describe("inngestResolver", () => {
       type: "RESOLVED" as const,
       actionId: "approve" as const,
       id: "a1",
+      externalRef: "",
       feedbacks: {},
     };
     await resolver.resolve("hitl-wait-1", payload);
@@ -27,11 +28,11 @@ describe("inngestResolver", () => {
     const client = { send } as unknown as Parameters<typeof inngestResolver>[0]["client"];
     const resolver = inngestResolver({ client, event: "custom/resume" });
 
-    await resolver.resolve("tok", { type: "TIMED_OUT", id: "a1" });
+    await resolver.resolve("tok", { type: "TIMED_OUT", id: "a1", externalRef: "" });
 
     expect(send).toHaveBeenCalledWith({
       name: "custom/resume",
-      data: { token: "tok", payload: { type: "TIMED_OUT", id: "a1" } },
+      data: { token: "tok", payload: { type: "TIMED_OUT", id: "a1", externalRef: "" } },
     });
   });
 });

@@ -59,8 +59,8 @@ describe("PostgresState specifics", () => {
     await state.create(newRecord("a1"));
 
     const outcomes = await Promise.allSettled([
-      state.resolve("a1", { type: "RESOLVED", actionId: "approve", id: "a1", feedbacks: {} }),
-      state.resolve("a1", { type: "RESOLVED", actionId: "deny", id: "a1", feedbacks: {} }),
+      state.resolve("a1", { type: "RESOLVED", actionId: "approve", id: "a1", externalRef: "", feedbacks: {} }),
+      state.resolve("a1", { type: "RESOLVED", actionId: "deny", id: "a1", externalRef: "", feedbacks: {} }),
     ]);
 
     const fulfilled = outcomes.filter((o) => o.status === "fulfilled");

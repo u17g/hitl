@@ -115,6 +115,7 @@ describe("resultCard", () => {
       type: "RESOLVED",
       actionId: "approve",
       id: "req-1",
+      externalRef: "",
       by: { name: "Ryo" },
       feedbacks: {},
     };
@@ -132,6 +133,7 @@ describe("outcomeLine", () => {
         type: "RESOLVED",
         actionId: "approve",
         id: "1",
+        externalRef: "",
         by: { name: "Ryo" },
         feedbacks: {},
       }),
@@ -141,6 +143,7 @@ describe("outcomeLine", () => {
         type: "RESOLVED",
         actionId: "approve",
         id: "1",
+        externalRef: "",
         edited: true,
         feedbacks: {},
       }),
@@ -150,9 +153,10 @@ describe("outcomeLine", () => {
         type: "RESOLVED",
         actionId: "deny",
         id: "1",
+        externalRef: "",
         feedbacks: { reason: "nope" },
       }),
     ).toBe("Denied — nope");
-    expect(outcomeLine({ type: "TIMED_OUT", id: "1" })).toBe("Timed out");
+    expect(outcomeLine({ type: "TIMED_OUT", id: "1", externalRef: "" })).toBe("Timed out");
   });
 });

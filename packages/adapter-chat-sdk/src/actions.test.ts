@@ -24,7 +24,13 @@ function fakeInbox(record: unknown): HitlInbox {
     list: vi.fn(),
     get: vi.fn(async () => record),
     getBatch: vi.fn(),
-    resolve: vi.fn(async () => ({ type: "RESOLVED", actionId: "approve", id: "req-1", feedbacks: {} })),
+    resolve: vi.fn(async () => ({
+      type: "RESOLVED",
+      actionId: "approve",
+      id: "req-1",
+      externalRef: "",
+      feedbacks: {},
+    })),
     resolveBatch: vi.fn(),
     submitBatch: vi.fn(),
   } as unknown as HitlInbox;

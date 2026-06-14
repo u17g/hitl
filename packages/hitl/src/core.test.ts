@@ -190,6 +190,7 @@ describe("resolveHumanRequest", () => {
       type: "RESOLVED",
       actionId: "approve",
       id: requestId,
+      externalRef: `ext_${requestId}`,
       by: { name: "ryosuke" },
       feedbacks: { subject: "Hi", body: "Hello there" },
     });
@@ -282,7 +283,7 @@ describe("timeoutHumanRequest", () => {
 
     const result = await timeoutHumanRequest(runtime, id);
 
-    expect(result).toEqual({ type: "TIMED_OUT", id });
+    expect(result).toEqual({ type: "TIMED_OUT", id, externalRef: `ext_${id}` });
     expect((await state.get(id))?.status).toBe("resolved");
     expect(adapters[0]!.updates).toEqual([[`ext_${id}`, result]]);
   });
@@ -306,13 +307,25 @@ describe("timeoutHumanRequest", () => {
     // Simulate a callback landing between the pending check and the CAS write.
     const originalResolve = state.resolve.bind(state);
     state.resolve = async () => {
-      await originalResolve(id, { type: "RESOLVED", actionId: "approve", id, feedbacks: {} });
+      await originalResolve(id, {
+        type: "RESOLVED",
+        actionId: "approve",
+        id,
+        externalRef: `ext_${id}`,
+        feedbacks: {},
+      });
       throw new Error(`Approval "${id}" is already resolved`);
     };
 
     const result = await timeoutHumanRequest(runtime, id);
 
-    expect(result).toEqual({ type: "RESOLVED", actionId: "approve", id, feedbacks: {} });
+    expect(result).toEqual({
+      type: "RESOLVED",
+      actionId: "approve",
+      id,
+      externalRef: `ext_${id}`,
+      feedbacks: {},
+    });
   });
 
   it("throws on an unknown approval id", async () => {

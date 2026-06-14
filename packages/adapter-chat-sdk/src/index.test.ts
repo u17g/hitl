@@ -115,6 +115,7 @@ describe("createChatSdkAdapter update", () => {
       type: "RESOLVED",
       actionId: "approve",
       id: "req-1",
+      externalRef: externalId,
       by: { name: "Ryo" },
       feedbacks: {},
     });
@@ -129,7 +130,13 @@ describe("createChatSdkAdapter update", () => {
     const plugin = makePlugin(bot);
 
     await expect(
-      plugin.update?.("slack:C123#gone", { type: "RESOLVED", actionId: "approve", id: "x", feedbacks: {} }),
+      plugin.update?.("slack:C123#gone", {
+        type: "RESOLVED",
+        actionId: "approve",
+        id: "x",
+        externalRef: "",
+        feedbacks: {},
+      }),
     ).resolves.toBeUndefined();
     expect(handles).toHaveLength(0);
   });

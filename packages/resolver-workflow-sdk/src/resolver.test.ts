@@ -13,6 +13,7 @@ describe("workflowResolver", () => {
       type: "RESOLVED" as const,
       actionId: "approve" as const,
       id: "a1",
+      externalRef: "",
       feedbacks: {},
     };
     await resolver.resolve("hook_token", payload);

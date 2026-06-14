@@ -8,6 +8,7 @@ type ResolvedResult<Actions extends readonly HumanActionDef[]> = {
         type: "RESOLVED";
         actionId: Id;
         id: string;
+        externalRef: string;
         by?: Reviewer;
         feedbacks: FeedbackValues<F>;
         /** Present when this action had fields and the reviewer changed defaults. */
@@ -19,7 +20,7 @@ type ResolvedResult<Actions extends readonly HumanActionDef[]> = {
 export type HumanResult<
   Actions extends readonly HumanActionDef[] = readonly HumanActionDef[],
 > =
-  | { type: "TIMED_OUT"; id: string }
+  | { type: "TIMED_OUT"; id: string; externalRef: string }
   | ResolvedResult<Actions>;
 
 export function isResolved<

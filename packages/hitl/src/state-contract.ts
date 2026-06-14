@@ -95,6 +95,7 @@ export function describeStateContract(
         type: "RESOLVED" as const,
         actionId: "approve" as const,
         id: "a1",
+        externalRef: "",
         feedbacks: {},
       };
       await state.resolve("a1", resolved);
@@ -112,6 +113,7 @@ export function describeStateContract(
         type: "RESOLVED" as const,
         actionId: "approve" as const,
         id: "a1",
+        externalRef: "",
         feedbacks: {},
       };
       await state.resolve("a1", first);
@@ -121,6 +123,7 @@ export function describeStateContract(
           type: "RESOLVED",
           actionId: "deny",
           id: "a1",
+          externalRef: "",
           feedbacks: {},
         }),
       ).rejects.toThrow(/already resolved/i);
@@ -134,6 +137,7 @@ export function describeStateContract(
         type: "RESOLVED",
         actionId: "approve",
         id: "a1",
+        externalRef: "",
         feedbacks: {},
       });
 
@@ -152,6 +156,7 @@ export function describeStateContract(
         type: "RESOLVED",
         actionId: "approve",
         id: "a1",
+        externalRef: "",
         feedbacks: {},
       });
 
@@ -192,6 +197,7 @@ export function describeStateContract(
           type: "RESOLVED",
           actionId: "approve",
           id: "missing",
+          externalRef: "",
           feedbacks: {},
         }),
       ).rejects.toThrow(/unknown human request/i);

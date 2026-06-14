@@ -89,7 +89,7 @@ describe("createWorkflowSdkHitlClient", () => {
   it("times out via WDK sleep and the /timeout endpoint", async () => {
     const { request, calls } = fakeRequest([
       { id: "a1" },
-      { result: { type: "TIMED_OUT", id: "a1" } },
+      { result: { type: "TIMED_OUT", id: "a1", externalRef: "" } },
     ]);
     const hitl = createWorkflowSdkHitlClient({ request });
 
@@ -100,7 +100,7 @@ describe("createWorkflowSdkHitlClient", () => {
     });
 
     expect(sleepMock).toHaveBeenCalledWith("3600000ms");
-    expect(result).toEqual({ type: "TIMED_OUT", id: "a1" });
+    expect(result).toEqual({ type: "TIMED_OUT", id: "a1", externalRef: "" });
     expect(calls[1]!.url).toBe(
       "https://my-app.vercel.app/.well-known/hitl/v1/requests/a1/timeout",
     );
