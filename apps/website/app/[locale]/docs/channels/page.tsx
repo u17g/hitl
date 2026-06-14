@@ -24,6 +24,24 @@ export default function Page() {
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">
+          {t({ en: "Routing keys", ja: "ルーティングキー" })}
+        </h2>
+        <p className="text-muted-foreground">
+          {t({
+            en: "Pass an adapter id to use its defaultChannel, or adapter_id:destination to target a specific Chat SDK channel ref. Escalation uses the same format.",
+            ja: "adapter id だけなら defaultChannel、adapter_id:destination で Chat SDK の channel ref を指定できます。escalation も同じ形式です。",
+          })}
+        </p>
+        <CodeBlock
+          code={`await waitForHuman({ channel: "approvals", ... });
+await waitForHuman({ channel: "approvals:slack:C456", ... });
+escalate.to("approvals:slack:C999").after("1h", { mode: "redeliver" });`}
+          filename="workflow.ts"
+        />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">
           {t({ en: "Chat SDK adapter", ja: "Chat SDK アダプター" })}
         </h2>
         <p className="text-muted-foreground">

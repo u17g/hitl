@@ -86,15 +86,29 @@ export const { waitForHuman } = createWorkflowSdkHitlClient({
     return fetch(url, init);
   },
 });`,
-  chatAdapter: `import { Chat } from "chat";
+  chatAdapter: `import { Hitl } from "@hitl-sdk/hitl";
 import { createChatSdkAdapter } from "@hitl-sdk/adapter-chat-sdk";
-import { slack } from "@chat-adapter/slack";
+import { Chat } from "chat";
 
-const chat = new Chat({
-  adapters: [createChatSdkAdapter({ hitl })],
+const bot = new Chat({ /* platform adapters + state */ });
+
+export const hitl = new Hitl({
+  adapters: [
+    createChatSdkAdapter({
+      id: "approvals",
+      bot,
+      defaultChannel: "slack:C123",
+      inbox: () => hitl.inbox,
+    }),
+  ],
 });
 
-chat.register(slack({ ... }));`,
+// Per-request destination (one adapter, many channels):
+await waitForHuman({
+  channel: "approvals:slack:C456",
+  message: "Approve?",
+  actions,
+});`,
   inboxApi: `// List pending human requests
 const pending = await hitl.inbox.list({ status: "pending" });
 
