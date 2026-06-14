@@ -66,3 +66,37 @@ Escalation uses the same routing key:
 ```ts
 reminders: [escalate.to("approvals:slack:C999").after("1h", { mode: "redeliver" })],
 ```
+
+### Post in a thread
+
+Include the Chat SDK thread ref in the channel destination (everything after `adapter_id:`):
+
+```ts
+await waitForHuman({
+  channel: "approvals:slack:C123:1710000000.123456",
+  message: "Approve?",
+  actions,
+});
+```
+
+Inside a workflow, chain later steps with `after` — hitl resolves the thread from state:
+
+```ts
+const pending = await requestHuman({ message: "Step 1", actions });
+await notify({ after: pending, message: "Extra context" });
+```
+
+### TimelineAnchor.externalRef
+
+`requestHuman` and `notify` return a `TimelineAnchor` with an `externalRef` string: the adapter-native ref for the message hitl posted. With this adapter the format is `channel#messageId` (e.g. `slack:C123#1710000000.123456`). It is output-only — the library does not read it for routing. When the adapter returns no id, `externalRef` is `""`.
+
+Use it to correlate hitl deliveries with your Chat SDK bot, for example to post a side note in the same thread:
+
+```ts
+const pending = await requestHuman({ message: "Approve?", actions, channel: "approvals" });
+
+if (pending.externalRef) {
+  const threadRef = pending.externalRef.replace("#", ":");
+  await bot.thread(threadRef).post("Side note from the bot");
+}
+```
