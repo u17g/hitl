@@ -33,6 +33,3 @@ export { inngestResolver, type InngestResolverOptions } from "./resolver";
 
 export type { HitlClient, HumanBatchPending, HumanPending } from "@hitl-sdk/hitl/client";
 export type { HitlRequestFn, HitlResolver } from "@hitl-sdk/hitl/core";
-
-/** @deprecated Use {@link HitlRequestHumanInvokeResult} */
-export type { HitlRequestHumanInvokeResult as InngestHitlRequestHumanResult } from "./events";

@@ -644,12 +644,6 @@ export interface TimelineContext {
   deliveryRef?: string;
 }
 
-/** @deprecated Use {@link resolveTimelineAnchor} and {@link TimelineContext}. */
-export interface NotifyThreadContext {
-  threadId: string;
-  threadRef: string | undefined;
-}
-
 export async function resolveTimelineAnchor(
   state: State,
   id: string,
@@ -679,15 +673,6 @@ export async function resolveTimelineAnchor(
     return { groupId: delivery.groupId, deliveryRef: delivery.externalId };
   }
   return { groupId: id, deliveryRef: undefined };
-}
-
-/** @deprecated Use {@link resolveTimelineAnchor}. */
-export async function resolveNotifyThread(
-  state: State,
-  id: string,
-): Promise<NotifyThreadContext> {
-  const ctx = await resolveTimelineAnchor(state, id);
-  return { threadId: ctx.groupId, threadRef: ctx.deliveryRef };
 }
 
 export async function notifyVia(
