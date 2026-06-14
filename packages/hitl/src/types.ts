@@ -13,6 +13,8 @@ export type { HumanResult };
 /** Chain timeline placement across notify / waitForHuman. */
 export interface TimelineAnchor {
   id: string;
+  /** Adapter-native ref for the delivered message. Empty when the adapter did not return one. */
+  externalRef: string;
 }
 
 /**
@@ -29,8 +31,6 @@ export interface HumanRequest {
   message: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
-  /** Adapter-native thread ref for in-thread delivery. Inbox ignores. */
-  threadRef?: string;
 }
 
 /**
@@ -48,8 +48,6 @@ export interface BatchHumanRequest {
   /** Input order. `defaults` are submit field defaults overridden per item. */
   items: Array<{ id: string; message: string; defaults: Record<string, unknown> }>;
   context?: Record<string, unknown>;
-  /** Adapter-native thread ref for in-thread delivery. Inbox ignores. */
-  threadRef?: string;
 }
 
 export interface Notification {
@@ -63,8 +61,6 @@ export interface Notification {
    * Timeline entries and notify group under this. Chat thread = adapter `externalId`.
    */
   threadId?: string;
-  /** Chat SDK thread ref; skip resolution when already known. */
-  threadRef?: string;
   detail?: Record<string, unknown>;
   /** Adapter id or `adapter_id:destination` routing key. */
   channel?: string;

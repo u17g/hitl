@@ -173,7 +173,6 @@ async function handleInternalApi(
           context: create.context,
           channel: create.channel,
           after: create.after,
-          inThread: create.inThread,
         });
         return json(result, 201);
       }
@@ -197,7 +196,6 @@ async function handleInternalApi(
           context: create.context,
           defaultsActionId: create.defaultsActionId,
           after: create.after,
-          inThread: create.inThread,
           items: create.items,
         });
         return json(result, 201);

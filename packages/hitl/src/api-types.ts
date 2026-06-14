@@ -17,12 +17,11 @@ export interface CreateRequestBody {
   channel?: string;
   /** Post under the same chat thread as a prior human step or notify. */
   after?: { id: string };
-  /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
-  inThread?: string;
 }
 
 export interface CreateRequestResponse {
   id: string;
+  externalRef: string;
 }
 
 export interface CreateBatchItemBody {
@@ -44,14 +43,13 @@ export interface CreateBatchBody {
   items: CreateBatchItemBody[];
   /** Post under the same chat thread as a prior human step or notify. */
   after?: { id: string };
-  /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
-  inThread?: string;
 }
 
 export interface CreateBatchResponse {
   batchId: string;
   /** Item ids in input order. */
   ids: string[];
+  externalRef: string;
 }
 
 /**
@@ -79,4 +77,5 @@ export type NotifyBody = Notification;
 
 export interface NotifyResponse {
   id: string;
+  externalRef: string;
 }

@@ -97,7 +97,11 @@ function fakeAdapter(id: string, opts?: { batch?: boolean }): FakeAdapter {
     },
     async notify(notification) {
       adapter.notifications.push(notification);
-      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
+      const dest = notification.destination;
+      const chained =
+        dest !== undefined &&
+        (dest.startsWith("ext_") || dest.startsWith("bext_") || dest.startsWith("notify_"));
+      return { externalId: chained ? `notify_${dest}` : undefined };
     },
   };
   if (opts?.batch !== false) {
@@ -266,7 +270,7 @@ describe("waitForHuman", () => {
       threadId: requestId,
       message: "Still waiting",
       channel: "a",
-      threadRef: `ext_${requestId}`,
+      destination: `ext_${requestId}`,
     });
 
     await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
@@ -355,7 +359,7 @@ describe("waitForHuman", () => {
       threadId: requestId,
       message: "Morning ping",
       channel: "a",
-      threadRef: `ext_${requestId}`,
+      destination: `ext_${requestId}`,
     });
 
     await resolveHumanRequest(hitl.runtime, { requestId, actionId: "approve" });
@@ -472,7 +476,7 @@ describe("waitForHuman batch", () => {
       threadId: batchId,
       message: "Still waiting",
       channel: "a",
-      threadRef: `bext_${batchId}`,
+      destination: `bext_${batchId}`,
     });
 
     await resolveBatchHumanRequest(hitl.runtime, {
@@ -493,6 +497,7 @@ describe("notify", () => {
     const anchor = await client.notify({ message: "progress", channel: "b" });
 
     expect(anchor.id).toBeTruthy();
+    expect(anchor.externalRef).toBe("");
     expect(adapters[1]!.notifications[0]).toMatchObject({ message: "progress", channel: "b" });
   });
 
@@ -514,11 +519,11 @@ describe("notify", () => {
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Done",
       threadId: requestId,
-      threadRef: `ext_${requestId}`,
+      destination: `ext_${requestId}`,
     });
   });
 
-  it("notify → waitForHuman chains threadRef via after", async () => {
+  it("notify → waitForHuman chains destination via after", async () => {
     const { adapters, client, hitl } = makeHarness();
 
     const pending1 = client.waitForHuman({ message: "Step 1", actions: approveOnly });
@@ -527,7 +532,7 @@ describe("notify", () => {
     await resolveHumanRequest(hitl.runtime, { requestId: step1Id, actionId: "approve" });
     await pending1;
 
-    const ping = await client.notify({ after: { id: step1Id }, message: "Deploy started" });
+    const ping = await client.notify({ after: { id: step1Id, externalRef: "" }, message: "Deploy started" });
     const pending2 = client.waitForHuman({
       after: ping,
       message: "Proceed?",
@@ -537,28 +542,23 @@ describe("notify", () => {
 
     expect(adapters[0]!.sent[1]).toMatchObject({
       message: "Proceed?",
-      threadRef: `notify_ext_${step1Id}`,
+      destination: `notify_ext_${step1Id}`,
     });
     void pending2;
   });
 
-  it("serializes after and inThread on waitForHuman", async () => {
+  it("serializes channel with thread ts on waitForHuman", async () => {
     const { client, requestCalls } = makeHarness();
 
     void client.waitForHuman({
       message: "Approve?",
       actions: approveOnly,
-      after: { id: "prev-step" },
-      inThread: "slack:C123:ts-1",
+      channel: "a:slack:C123:ts-1",
     });
     await vi.waitFor(() => expect(requestCalls).toHaveLength(1));
 
-    const body = JSON.parse(requestCalls[0]!.body) as {
-      after?: { id: string };
-      inThread?: string;
-    };
-    expect(body.after).toEqual({ id: "prev-step" });
-    expect(body.inThread).toBe("slack:C123:ts-1");
+    const body = JSON.parse(requestCalls[0]!.body) as { channel?: string };
+    expect(body.channel).toBe("a:slack:C123:ts-1");
   });
 });
 
@@ -570,12 +570,13 @@ describe("requestHuman", () => {
     await vi.waitFor(() => expect(adapters[0]!.sent).toHaveLength(1));
 
     expect(pending.id).toBe(adapters[0]!.sent[0]!.id);
+    expect(pending.externalRef).toBe(`ext_${pending.id}`);
 
     await client.notify({ after: pending, message: "Extra context while pending" });
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Extra context while pending",
       threadId: pending.id,
-      threadRef: `ext_${pending.id}`,
+      destination: `ext_${pending.id}`,
     });
 
     const waiting = client.waitForHuman(pending);

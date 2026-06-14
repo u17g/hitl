@@ -28,8 +28,6 @@ export interface RequestHumanOptions<Actions extends readonly HumanActionDef[]> 
   channel?: string;
   /** Post under the same chat thread as a prior human step or notify. */
   after?: HumanResult<Actions> | TimelineAnchor;
-  /** Adapter-native thread ref (e.g. Chat SDK "slack:C123:ts"). Inbox ignores. */
-  inThread?: string;
 }
 
 /** Options for the wait phase (`waitForHuman(pending, …)`). */

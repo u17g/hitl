@@ -76,7 +76,11 @@ function fakeAdapter(id: string, opts?: { batch?: boolean }): FakeAdapter {
     },
     async notify(notification) {
       notifications.push(notification);
-      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
+      const dest = notification.destination;
+      const chained =
+        dest !== undefined &&
+        (dest.startsWith("ext_") || dest.startsWith("bext_") || dest.startsWith("notify_"));
+      return { externalId: chained ? `notify_${dest}` : undefined };
     },
   };
   if (opts?.batch !== false) {
@@ -403,7 +407,7 @@ describe("remindBatch", () => {
         threadId: batchId,
         message: "Still waiting",
         channel: "a",
-        threadRef: `bext_${batchId}`,
+        destination: `bext_${batchId}`,
       },
     ]);
   });
@@ -414,7 +418,7 @@ describe("remindBatch", () => {
 
     await remindBatch(runtime, batchId, { kind: "remind" });
 
-    expect(adapters[0]!.notifications[0]?.threadRef).toBe(`ext_${batchId}:0`);
+    expect(adapters[0]!.notifications[0]?.destination).toBe(`ext_${batchId}:0`);
   });
 
   it("is a no-op once every item is resolved", async () => {
@@ -477,11 +481,11 @@ describe("notifyVia batch threading", () => {
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "Follow up",
       threadId: batchId,
-      threadRef: `bext_${batchId}`,
+      destination: `bext_${batchId}`,
     });
   });
 
-  it("createBatchRequest passes threadRef when after is a notify anchor", async () => {
+  it("createBatchRequest passes destination when after is a notify anchor", async () => {
     const { runtime, adapters } = makeRuntime([fakeAdapter("a")]);
     const { id } = await createHumanRequest(runtime, {
       token: "tok_1",
@@ -497,7 +501,7 @@ describe("notifyVia batch threading", () => {
     });
 
     expect(adapters[0]!.sentBatches[0]).toMatchObject({
-      threadRef: `notify_ext_${id}`,
+      destination: `notify_ext_${id}`,
     });
   });
 });

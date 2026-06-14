@@ -66,7 +66,11 @@ function fakeAdapter(
     },
     async notify(notification) {
       notifications.push(notification);
-      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
+      const dest = notification.destination;
+      const chained =
+        dest !== undefined &&
+        (dest.startsWith("ext_") || dest.startsWith("bext_") || dest.startsWith("notify_"));
+      return { externalId: chained ? `notify_${dest}` : undefined };
     },
   };
 }
@@ -93,11 +97,13 @@ describe("createHumanRequest", () => {
   it("records the request, sends via the default adapter, and stores the externalId", async () => {
     const { runtime, state, adapters } = makeRuntime(["a", "b"]);
 
-    const { id } = await createHumanRequest(runtime, {
+    const { id, externalRef } = await createHumanRequest(runtime, {
       token: "tok_1",
       message: "Approve?",
       actions: approvalActions,
     });
+
+    expect(externalRef).toBe(`ext_${id}`);
 
     expect(adapters[0]!.sent).toHaveLength(1);
     expect(adapters[0]!.sent[0]).toMatchObject({ id, message: "Approve?", channel: "a" });
@@ -331,7 +337,7 @@ describe("remindHumanRequest", () => {
         threadId: id,
         message: "Still waiting",
         channel: "a",
-        threadRef: `ext_${id}`,
+        destination: `ext_${id}`,
       },
     ]);
   });
@@ -377,7 +383,7 @@ describe("remindHumanRequest", () => {
         message: "Needs eyes",
         channel: "oncall",
         threadId: id,
-        threadRef: `ext_${id}`,
+        destination: `ext_${id}`,
       },
     ]);
   });
@@ -423,6 +429,7 @@ describe("notifyVia", () => {
     const { runtime, adapters, state } = makeRuntime(["a", "b"]);
     const anchor = await notifyVia(runtime, { message: "progress" });
     expect(anchor.id).toBeTruthy();
+    expect(anchor.externalRef).toBe("");
     expect(adapters[0]!.notifications[0]).toMatchObject({ message: "progress", channel: "a" });
     const delivery = await state.getNotifyDelivery(anchor.id);
     expect(delivery).toMatchObject({ message: "progress", channel: "a", groupId: anchor.id });
@@ -437,7 +444,7 @@ describe("notifyVia", () => {
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "context",
       threadId: id,
-      threadRef: `ext_${id}`,
+      destination: `ext_${id}`,
     });
   });
 
@@ -450,7 +457,7 @@ describe("notifyVia", () => {
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "context",
       threadId: id,
-      threadRef: `ext_${id}`,
+      destination: `ext_${id}`,
     });
   });
 
@@ -463,7 +470,7 @@ describe("notifyVia", () => {
     expect(adapters[0]!.notifications[0]).toMatchObject({
       message: "context",
       threadId: id,
-      threadRef: `ext_${id}`,
+      destination: `ext_${id}`,
     });
   });
 
@@ -474,6 +481,7 @@ describe("notifyVia", () => {
     const anchor = await notifyVia(runtime, { message: "context", after: { id } });
     const delivery = await state.getNotifyDelivery(anchor.id);
     expect(delivery?.externalId).toBe(`notify_ext_${id}`);
+    expect(anchor.externalRef).toBe(`notify_ext_${id}`);
   });
 
   it("resolveTimelineAnchor resolves notify delivery id to externalId", async () => {
@@ -486,7 +494,7 @@ describe("notifyVia", () => {
     expect(ctx.groupId).toBe(id);
   });
 
-  it("createHumanRequest passes threadRef when after is a notify anchor", async () => {
+  it("createHumanRequest passes destination when after is a notify anchor", async () => {
     const { runtime, adapters, state } = makeRuntime();
     const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
     const anchor = await notifyVia(runtime, { message: "ping", after: { id } });
@@ -500,25 +508,24 @@ describe("notifyVia", () => {
 
     expect(adapters[0]!.sent.at(-1)).toMatchObject({
       message: "Proceed?",
-      threadRef: `notify_ext_${id}`,
+      destination: `notify_ext_${id}`,
     });
     void state;
   });
 
-  it("createHumanRequest prefers inThread over after", async () => {
-    const { runtime, adapters } = makeRuntime();
-    const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
+  it("createHumanRequest posts in thread when channel destination includes thread ts", async () => {
+    const { runtime, adapters } = makeRuntime(["a"]);
+    await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 
     await createHumanRequest(runtime, {
       token: "tok_2",
       message: "Proceed?",
       actions: approveOnly,
-      after: { id },
-      inThread: "slack:C123:ts-99",
+      channel: "a:slack:C123:ts-99",
     });
 
     expect(adapters[0]!.sent.at(-1)).toMatchObject({
-      threadRef: "slack:C123:ts-99",
+      destination: "slack:C123:ts-99",
     });
   });
 });

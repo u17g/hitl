@@ -51,7 +51,7 @@ type NotifyBase = {
 export type NotifyOptions =
   | (NotifyBase & { after: HumanResult | TimelineAnchor | HumanPending<readonly HumanActionDef[]> })
   | (NotifyBase & { on: string })
-  | (NotifyBase & { threadId?: string; threadRef?: string });
+  | (NotifyBase & { threadId?: string });
 
 export interface CreateHitlClientOptions extends WorkflowPrimitives {
   /** Base URL of the app hosting the hitl server, e.g. `https://my-app.vercel.app`. Lazy so engines can resolve it at run time. */
@@ -105,16 +105,18 @@ function isHumanPending(
 
 function createPending<Actions extends readonly HumanActionDef[]>(
   id: string,
+  externalRef: string,
   handle: HumanPendingHandle,
 ): HumanPending<Actions> {
-  return { id, [HumanPendingBrand]: handle };
+  return { id, externalRef, [HumanPendingBrand]: handle };
 }
 
 function createBatchPending<Actions extends readonly HumanActionDef[]>(
   id: string,
+  externalRef: string,
   handle: HumanPendingHandle,
 ): HumanBatchPending<Actions> {
-  return { id, batch: true, [HumanPendingBrand]: handle };
+  return { id, externalRef, batch: true, [HumanPendingBrand]: handle };
 }
 
 export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
@@ -159,17 +161,16 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     opts: RequestHumanOptions<Actions> & { items?: undefined },
   ): Promise<HumanPending<Actions>> {
     const suspension = suspend<HumanResult<Actions>>();
-    const { id } = await callApi<CreateRequestResponse>("/requests", {
+    const { id, externalRef } = await callApi<CreateRequestResponse>("/requests", {
       token: suspension.token,
       message: opts.message,
       actions: opts.actions,
       context: opts.context,
       channel: opts.channel,
       after: opts.after ? { id: opts.after.id } : undefined,
-      inThread: opts.inThread,
     });
 
-    return createPending(id, {
+    return createPending(id, externalRef, {
       batch: false,
       wait: (waitOpts) =>
         waitWithReminders(waitOpts ?? {}, {
@@ -189,14 +190,13 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
   ): Promise<HumanBatchPending<Actions>> {
     const suspensions = opts.items.map(() => suspend<HumanResult<Actions>>());
 
-    const { batchId } = await callApi<CreateBatchResponse>("/batches", {
+    const { batchId, externalRef } = await callApi<CreateBatchResponse>("/batches", {
       message: opts.message,
       channel: opts.channel,
       actions: opts.actions,
       context: opts.context,
       defaultsActionId: opts.defaultsActionId,
       after: opts.after ? { id: opts.after.id } : undefined,
-      inThread: opts.inThread,
       items: opts.items.map((item, index) => ({
         token: suspensions[index]!.token,
         message: item.message,
@@ -204,7 +204,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       })),
     });
 
-    return createBatchPending(batchId, {
+    return createBatchPending(batchId, externalRef, {
       batch: true,
       wait: (waitOpts) =>
         waitWithReminders(waitOpts ?? {}, {
@@ -307,6 +307,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
     notify: (notification) =>
       callApi<NotifyResponse>("/notifications", toNotifyBody(notification)).then((res) => ({
         id: res.id,
+        externalRef: res.externalRef,
       })),
   };
 }

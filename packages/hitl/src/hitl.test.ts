@@ -62,7 +62,11 @@ function jsonAdapter(id: string): FakeAdapter {
     },
     async notify(notification) {
       notifications.push(notification);
-      return { externalId: notification.threadRef ? `notify_${notification.threadRef}` : undefined };
+      const dest = notification.destination;
+      const chained =
+        dest !== undefined &&
+        (dest.startsWith("ext_") || dest.startsWith("bext_") || dest.startsWith("notify_"));
+      return { externalId: chained ? `notify_${dest}` : undefined };
     },
   };
 }
