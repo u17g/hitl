@@ -5,7 +5,7 @@ Temporal binding for hitl.
 ## Install
 
 ```bash
-pnpm add @hitl-sdk/resolver-temporal @hitl-sdk/hitl @temporalio/client @temporalio/workflow
+npm add @hitl-sdk/resolver-temporal @hitl-sdk/hitl @temporalio/client @temporalio/workflow
 ```
 
 `@hitl-sdk/hitl`, `@temporalio/client`, and `@temporalio/workflow` are peer dependencies.
