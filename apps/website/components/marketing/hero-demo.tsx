@@ -687,7 +687,7 @@ export function HeroDemo({
   return (
     <div
       aria-hidden="true"
-      className="w-full min-w-0 max-w-5xl overflow-hidden border border-black/5 bg-zinc-950 shadow-xl shadow-black/20 dark:border-white/10"
+      className="w-full min-w-0 max-w-5xl overflow-hidden rounded-lg border border-black/5 bg-zinc-950 shadow-xl shadow-black/20 dark:border-white/10"
     >
       <div className="grid min-w-0 grid-cols-1 md:grid-cols-2">
         <CodePanel stepStatuses={stepStatuses} />
