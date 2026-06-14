@@ -13,20 +13,30 @@ import { SyntaxHighlight } from "@/components/syntax-highlight";
 import { cn } from "@/lib/utils";
 import { snippets } from "@/lib/snippets";
 
+function CodeWindowChrome({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="w-full bg-zinc-200/70 p-4 dark:bg-zinc-900/60">
+      {children}
+    </div>
+  );
+}
+
 function Snippet({ code }: { code: string }) {
   const codeClassName =
     "p-4 font-mono text-sm leading-relaxed text-zinc-300 sm:leading-relaxed";
 
   return (
-    <div className="min-w-0 w-full overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
-      <div className="h-62 min-w-0 overflow-x-auto overflow-y-auto sm:h-82">
-        <SyntaxHighlight
-          code={code}
-          lang="typescript"
-          className={codeClassName}
-        />
+    <CodeWindowChrome>
+      <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
+        <div className="h-62 min-w-0 overflow-x-auto overflow-y-auto sm:h-82">
+          <SyntaxHighlight
+            code={code}
+            lang="typescript"
+            className={codeClassName}
+          />
+        </div>
       </div>
-    </div>
+    </CodeWindowChrome>
   );
 }
 
@@ -43,7 +53,8 @@ function TabbedCodeBlock({
   if (!activeTab) return null;
 
   return (
-    <div className="min-w-0 w-full overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
+    <CodeWindowChrome>
+    <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
       <div
         role="tablist"
         aria-label="HITL patterns"
@@ -60,7 +71,7 @@ function TabbedCodeBlock({
               aria-selected={isActive}
               onClick={() => setActiveId(tab.id)}
               className={cn(
-                "shrink-0 border-b-2 px-4 py-2.5 font-mono text-xs whitespace-nowrap transition-colors",
+                "shrink-0 border-b-2 px-4 py-2 font-mono text-xs whitespace-nowrap transition-colors",
                 isActive
                   ? "border-blue-400 font-semibold text-blue-400"
                   : "border-transparent text-zinc-500 hover:text-zinc-300",
@@ -82,6 +93,7 @@ function TabbedCodeBlock({
         />
       </div>
     </div>
+    </CodeWindowChrome>
   );
 }
 
@@ -100,10 +112,11 @@ function ComparisonBlock({
     "p-4 font-mono leading-snug text-zinc-300 sm:leading-relaxed";
 
   return (
-    <div className="min-w-0 w-full overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
+    <CodeWindowChrome>
+    <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
       <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col overflow-hidden border-b border-white/10 bg-zinc-950 sm:border-r sm:border-b-0">
-          <div className="shrink-0 border-b border-white/10 px-4 py-2.5">
+          <div className="shrink-0 border-b border-white/10 px-4 py-2">
             <span className="font-mono text-xs text-zinc-500">{beforeLabel}</span>
           </div>
           <div className="h-62 overflow-hidden sm:h-82">
@@ -115,7 +128,7 @@ function ComparisonBlock({
           </div>
         </div>
         <div className="flex min-w-0 flex-col overflow-hidden bg-zinc-900">
-          <div className="shrink-0 border-b border-zinc-800 px-4 py-2.5">
+          <div className="shrink-0 border-b border-zinc-800 px-4 py-2">
             <span className="font-mono text-xs font-semibold text-blue-400">{afterLabel}</span>
           </div>
           <div className="flex h-62 items-center overflow-hidden sm:h-82">
@@ -128,6 +141,7 @@ function ComparisonBlock({
         </div>
       </div>
     </div>
+    </CodeWindowChrome>
   );
 }
 
