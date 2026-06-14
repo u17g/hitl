@@ -49,13 +49,17 @@ Registers three Inngest functions and returns them for `step.invoke`:
 | `notify` | `@hitl-sdk/hitl/notify` | send notification; returns `{ id }` |
 
 ```ts
-const { waitForHuman, requestHuman, notify } = createHitlInngestFunctions(inngest);
+const actionsDef = actions().approve().deny().build();
 
-// in a handler
-await step.invoke("approve", { function: waitForHuman, data: { message, actions, timeout } });
+const approval = (await step.invoke("approve", {
+  function: waitForHuman,
+  data: { message, actions: actionsDef, timeout: "72h" },
+})) as HumanResult<typeof actionsDef>;
 ```
 
 Register all three in your serve `functions` array. Each invoke target creates its own `createInngestHitlClient({ step })` for the duration of that run.
+
+**Typing:** `step.invoke` serializes `data`, so Inngest cannot infer `HumanResult` from inline `actions`. Export types such as `HitlWaitForHumanEventData` are intentionally wide (`HumanActionDef[]`). At call sites, bind `actions` to a `const` and assert `HumanResult<typeof actionsDef>` so `isResolved` and `feedbacks` stay typed.
 
 ### Workflow side — `createInngestHitlClient` (low-level)
 

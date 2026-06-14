@@ -38,31 +38,35 @@ export const { GET, POST } = serve({
 });
 ```
 
-Call hitl from your functions via `step.invoke`:
+Call hitl from your functions via `step.invoke`. Pull `actions` into a variable and assert the result so `isResolved` keeps action ids and feedback types:
 
 ```ts
 // inngest/functions/inbound-lead.ts
-import { actions, isResolved } from "@hitl-sdk/hitl";
+import { actions, isResolved, type HumanResult } from "@hitl-sdk/hitl";
 import { inngest, waitForHuman } from "../client";
 
 export const inboundLead = inngest.createFunction(
   { id: "inbound-lead" },
   { event: "lead/inbound" },
   async ({ event, step }) => {
-    const approval = await step.invoke("approve-lead", {
+    const actionsDef = actions().approve().deny().build();
+
+    const approval = (await step.invoke("approve-lead", {
       function: waitForHuman,
       data: {
         message: `Inbound lead: ${event.data.email}`,
-        actions: actions().approve().deny().build(),
+        actions: actionsDef,
         timeout: "72h",
       },
-    });
+    })) as HumanResult<typeof actionsDef>;
 
     if (!isResolved(approval, "approve")) return;
-    // ...
+    // approval.feedbacks is typed for the approve action
   },
 );
 ```
+
+`step.invoke` crosses a JSON boundary, so TypeScript cannot infer `HumanResult` from inline `data`. The `actionsDef` variable ties input actions to the asserted result type.
 
 Pass options such as `url`, `secret`, or `event` as the second argument to `createHitlInngestFunctions` if needed. Durable HTTP uses incrementing `hitl-fetch-N` step IDs inside each invoke target.
 
@@ -96,7 +100,7 @@ export const inngest = new Inngest({
 });
 ```
 
-Use `HitlWaitForHumanEventData` as the `data` shape in `step.invoke({ function: waitForHuman, data })`.
+Use `HitlWaitForHumanEventData` when wiring `EventSchemas`. For per-call action typing at invoke sites, prefer `HumanResult<typeof actionsDef>` as shown above.
 
 ## Server side
 
@@ -131,7 +135,7 @@ The same Inngest app must serve the hitl HTTP routes and run the functions that 
 
 ## Advanced
 
-For tests or custom fetch behavior, use the lower-level client directly inside a handler:
+For tests or a custom `request` `step.run` wrapper, use the lower-level client (not for app handlers — use `step.invoke` instead):
 
 ```ts
 import { createInngestHitlClient, type InngestStep } from "@hitl-sdk/resolver-inngest";
