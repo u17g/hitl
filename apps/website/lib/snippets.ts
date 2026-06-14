@@ -102,26 +102,74 @@ await sendEmail({
 if (isResolved(approval, "approve") && approval.edited) {
   await sendEmail({ ...approval.feedbacks });
 }`,
-  actionPatterns: `const approval = await waitForHuman({
-  message: "Review expense report?",
+  hitlPatternEmailReview: `const approval = await waitForHuman({
+  message: \`Draft email to \${input.email} ready for your review.\`,
   actions: actions()
     .approve({
-      label: "Approve",
+      label: "Review and send",
+      fields: {
+        subject: field.textField({ label: "Subject", default: draft.subject }),
+        body: field.textArea({ label: "Body", default: draft.body }),
+      },
+    })
+    .deny({ fields: { reason: field.textArea({ label: "Reason" }) } })
+    .build(),
+});`,
+  hitlPatternExpense: `const approval = await waitForHuman({
+  message: "Expense report: $1,200 · Marketing Q2",
+  actions: actions()
+    .approve({
       fields: {
         amount: field.textField({ label: "Amount" }),
         category: field.textField({ label: "Category" }),
       },
     })
-    .deny({
-      label: "Reject",
-      fields: { reason: field.textArea({ label: "Reason" }) },
-    })
+    .deny({ fields: { reason: field.textArea({ label: "Reason" }) } })
+    .build(),
+});`,
+  hitlPatternDeploy: `const approval = await waitForHuman({
+  message: "Deploy v2.4 to production?",
+  actions: actions()
+    .approve({ label: "Ship it" })
     .custom("request_info", {
       label: "Request info",
-      fields: { question: field.textArea({ label: "What do you need?" }) },
+      fields: { question: field.textArea({ label: "What's blocking?" }) },
+    })
+    .deny({ label: "Rollback" })
+    .build(),
+});`,
+  hitlPatternRefund: `const approval = await waitForHuman({
+  message: "Refund request #4821 — $89.00",
+  actions: actions()
+    .approve({ label: "Approve refund" })
+    .deny({
+      label: "Decline",
+      fields: { reason: field.textArea({ label: "Reason" }) },
     })
     .build(),
-  timeout: "72h",
+});`,
+  hitlPatternAccess: `const approval = await waitForHuman({
+  message: \`Grant \${input.role} access to \${input.resource}?\`,
+  actions: actions()
+    .approve({ label: "Grant access" })
+    .deny({ fields: { reason: field.textArea({ label: "Reason" }) } })
+    .custom("temporary", {
+      label: "Grant temporary",
+      fields: { duration: field.textField({ label: "Duration" }) },
+    })
+    .build(),
+});`,
+  hitlPatternDataExport: `const approval = await waitForHuman({
+  message: \`Export \${input.recordCount} customer records to CSV?\`,
+  actions: actions()
+    .approve({
+      label: "Approve export",
+      fields: {
+        justification: field.textArea({ label: "Business justification" }),
+      },
+    })
+    .deny({ label: "Deny" })
+    .build(),
 });`,
   remindersExample: `import { remind, escalate } from "@hitl-sdk/hitl";
 

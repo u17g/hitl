@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import {
   Section,
@@ -25,6 +26,61 @@ function Snippet({ code, className }: { code: string; className?: string }) {
   );
 }
 
+function TabbedCodeBlock({
+  tabs,
+}: {
+  tabs: { id: string; label: string; code: string }[];
+}) {
+  const [activeId, setActiveId] = useState(tabs[0]?.id ?? "");
+  const activeTab = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
+  const codeClassName =
+    "p-4 font-mono text-sm leading-relaxed text-zinc-300 sm:leading-relaxed";
+
+  if (!activeTab) return null;
+
+  return (
+    <div className="min-w-0 w-full overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
+      <div
+        role="tablist"
+        aria-label="HITL patterns"
+        className="flex min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain border-b border-white/10 scrollbar-thin"
+      >
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeId;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveId(tab.id)}
+              className={cn(
+                "shrink-0 border-b-2 px-4 py-2.5 font-mono text-xs whitespace-nowrap transition-colors",
+                isActive
+                  ? "border-blue-400 font-semibold text-blue-400"
+                  : "border-transparent text-zinc-500 hover:text-zinc-300",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        role="tabpanel"
+        className="h-62 min-w-0 overflow-x-auto overflow-y-auto sm:h-82"
+      >
+        <SyntaxHighlight
+          code={activeTab.code}
+          lang="typescript"
+          className={codeClassName}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ComparisonBlock({
   beforeLabel,
   afterLabel,
@@ -40,7 +96,7 @@ function ComparisonBlock({
     "p-4 font-mono leading-snug text-zinc-300 sm:leading-relaxed";
 
   return (
-    <div className="overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
+    <div className="min-w-0 w-full overflow-hidden border border-black/5 bg-zinc-950 dark:border-white/10">
       <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2">
         <div className="flex min-w-0 flex-col overflow-hidden border-b border-white/10 bg-zinc-950 sm:border-r sm:border-b-0">
           <div className="shrink-0 border-b border-white/10 px-4 py-2.5">
@@ -152,7 +208,38 @@ export function CodeComparison() {
         t({ en: "Deny with a reason", ja: "理由付き拒否" }),
         t({ en: "Custom actions for any workflow", ja: "任意ワークフロー向けカスタム action" }),
       ],
-      code: snippets.actionPatterns,
+      tabs: [
+        {
+          id: "email-review",
+          label: t({ en: "Email review", ja: "メールレビュー" }),
+          code: snippets.hitlPatternEmailReview,
+        },
+        {
+          id: "expense",
+          label: t({ en: "Expense report", ja: "経費申請" }),
+          code: snippets.hitlPatternExpense,
+        },
+        {
+          id: "deploy",
+          label: t({ en: "Production deploy", ja: "本番デプロイ" }),
+          code: snippets.hitlPatternDeploy,
+        },
+        {
+          id: "refund",
+          label: t({ en: "Refund", ja: "返金申請" }),
+          code: snippets.hitlPatternRefund,
+        },
+        {
+          id: "access",
+          label: t({ en: "Access request", ja: "アクセス申請" }),
+          code: snippets.hitlPatternAccess,
+        },
+        {
+          id: "data-export",
+          label: t({ en: "Data export", ja: "データエクスポート" }),
+          code: snippets.hitlPatternDataExport,
+        },
+      ],
       reverse: true,
     },
     {
@@ -201,7 +288,7 @@ export function CodeComparison() {
           {rows.map((row) => (
             <div
               key={row.id}
-              className="grid items-center gap-8 lg:grid-cols-3 lg:gap-12"
+              className="grid min-w-0 items-center gap-8 lg:grid-cols-3 lg:gap-12"
             >
               <div
                 className={
@@ -215,11 +302,14 @@ export function CodeComparison() {
                 />
               </div>
               <div
-                className={
-                  row.reverse ? "lg:order-1 lg:col-span-2" : "lg:col-span-2"
-                }
+                className={cn(
+                  "min-w-0",
+                  row.reverse ? "lg:order-1 lg:col-span-2" : "lg:col-span-2",
+                )}
               >
-                {"comparison" in row && row.comparison ? (
+                {"tabs" in row && row.tabs ? (
+                  <TabbedCodeBlock tabs={row.tabs} />
+                ) : "comparison" in row && row.comparison ? (
                   <ComparisonBlock
                     beforeLabel={t({ en: "Without HITL", ja: "Hitl SDK なし" })}
                     afterLabel={t({ en: "With HITL", ja: "Hitl SDK あり" })}
