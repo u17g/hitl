@@ -99,7 +99,7 @@ await sendEmail({
   timeout: "72h",
 });
 
-if (isResolved(approval, "approve") && approval.edited) {
+if (isResolved(approval, "approve")) {
   await sendEmail({ ...approval.feedbacks });
 }`,
   hitlPatternEmailReview: `const approval = await waitForHuman({
