@@ -204,13 +204,13 @@ export function CodeComparison() {
         </>
       ),
       desc: t({
-        en: "Model every approval pattern with typed actions — validated end to end.",
-        ja: "型付き actions であらゆる承認パターンを、エンドツーエンドに検証。",
+        en: "Editable approve, deny with reason, and custom actions — all in one call.",
+        ja: "内容を修正して承認・フィードバックを含めてキャンセル・状況に合わせてカスタマイズまで、ひとつで。",
       }),
       bullets: [
-        t({ en: "Approve with editable fields", ja: "編集付き承認" }),
-        t({ en: "Deny with a reason", ja: "理由付き拒否" }),
-        t({ en: "Custom actions for any workflow", ja: "任意ワークフロー向けカスタム action" }),
+        t({ en: "Approve with editable fields", ja: "内容を修正して承認" }),
+        t({ en: "Deny with a reason", ja: "フィードバックを含めてキャンセル" }),
+        t({ en: "Custom actions for any workflow", ja: "状況に合わせてカスタマイズ" }),
       ],
       tabs: [
         {
