@@ -19,6 +19,9 @@ npm install @hitl-sdk/resolver-workflow-sdk
 
 # for inngest
 npm install @hitl-sdk/resolver-inngest
+
+# for temporal
+npm install @hitl-sdk/resolver-temporal
 ```
 
 Install channel adapters for the platforms:
@@ -67,6 +70,7 @@ export async function inboundLead(input: { email: string; draft: { subject: stri
 
 - [Vercel Workflow SDK](https://workflow-sdk.dev): `@hitl-sdk/resolver-workflow-sdk`
 - [Inngest](https://www.inngest.com): `@hitl-sdk/resolver-inngest`
+- [Temporal](https://temporal.io): `@hitl-sdk/resolver-temporal`
 
 ## Supported backends for persistence
 

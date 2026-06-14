@@ -88,8 +88,8 @@ All state and adapter IO lives on the server, so the workflow side never runs ar
 The architecture is split along that contract:
 
 - **Core (engine-agnostic):** approval state, field builders, `HumanResult` typing and validation, the adapter interface, server services and HTTP layer (`Hitl`), and the workflow-side client (`createHitlClient`). Knows nothing about engines.
-- **Binding (per engine, thin):** `WorkflowPrimitives` (`suspend` / `sleep` / `request`) on the workflow side; `HitlResolver` (`resolve`) on the server side. `@hitl-sdk/resolver-workflow-sdk` packages this as `createWorkflowSdkHitlClient()` + `workflowResolver()`.
+- **Binding (per engine, thin):** `WorkflowPrimitives` (`suspend` / `sleep` / `request`) on the workflow side; `HitlResolver` (`resolve`) on the server side. Each engine ships a small package — e.g. `@hitl-sdk/resolver-workflow-sdk` (`createWorkflowSdkHitlClient()` + `workflowResolver()`), `@hitl-sdk/resolver-inngest`, `@hitl-sdk/resolver-temporal`.
 
 The resume token is opaque to the core — for Temporal it might encode `{ workflowId, signalId }`, for Inngest a correlation key. The core stores it and hands it back.
 
-Switching engines means switching one import and the `resolver` in `new Hitl()`. Adapters, state, inbox, and workflow helpers stay shared. Today only the Workflow DevKit binding ships (`@hitl-sdk/resolver-workflow-sdk`).
+Switching engines means switching one import and the `resolver` in `new Hitl()`. Adapters, state, inbox, and workflow helpers stay shared.

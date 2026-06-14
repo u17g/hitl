@@ -1,0 +1,42 @@
+{
+  "name": "@hitl-sdk/resolver-temporal",
+  "version": "0.0.1",
+  "description": "Temporal binding for hitl.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-lib.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@hitl-sdk/hitl": "workspace:*",
+    "@temporalio/client": ">=1.9.0",
+    "@temporalio/workflow": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@hitl-sdk/hitl": "workspace:*",
+    "@temporalio/client": "^1.11.7",
+    "@temporalio/workflow": "^1.11.7",
+    "@types/node": "^25.9.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
