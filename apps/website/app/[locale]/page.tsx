@@ -15,8 +15,6 @@ export default function HomePage() {
       <SectionSpacer />
       <LogoStrip />
       <SectionSpacer />
-      <SetupSection />
-      <SectionSpacer />
       <CodeComparison />
       <SectionSpacer />
       <ChannelsSection />
