@@ -59,7 +59,7 @@ export default function Page() {
           })}
         </p>
         <CodeBlock
-          code={`npm install @hitl-sdk/state-sqlite\n# or\nnpm install @hitl-sdk/state-pg`}
+          code={`npm i @hitl-sdk/state-sqlite\n# or\nnpm i @hitl-sdk/state-pg`}
           filename="terminal"
         />
       </section>

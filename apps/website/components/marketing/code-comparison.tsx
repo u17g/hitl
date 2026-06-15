@@ -13,9 +13,9 @@ import { SyntaxHighlight } from "@/components/syntax-highlight";
 import { cn } from "@/lib/utils";
 import { snippets } from "@/lib/snippets";
 
-function CodeWindowChrome({ children }: { children: React.ReactNode }) {
+export function CodeWindowChrome({ children, className }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className="w-full bg-zinc-200/70 p-4 dark:bg-zinc-900/60">
+    <div className={cn("w-full bg-zinc-200/70 p-4 dark:bg-zinc-900/60", className)}>
       {children}
     </div>
   );
@@ -54,45 +54,45 @@ function TabbedCodeBlock({
 
   return (
     <CodeWindowChrome>
-    <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
-      <div
-        role="tablist"
-        aria-label="HITL patterns"
-        className="flex min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain border-b border-white/10 scrollbar-thin"
-      >
-        {tabs.map((tab) => {
-          const isActive = tab.id === activeId;
+      <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
+        <div
+          role="tablist"
+          aria-label="HITL patterns"
+          className="flex min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain border-b border-white/10 scrollbar-thin"
+        >
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeId;
 
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveId(tab.id)}
-              className={cn(
-                "shrink-0 border-b-2 px-4 py-2 font-mono text-xs whitespace-nowrap transition-colors",
-                isActive
-                  ? "border-blue-400 font-semibold text-blue-400"
-                  : "border-transparent text-zinc-500 hover:text-zinc-300",
-              )}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveId(tab.id)}
+                className={cn(
+                  "shrink-0 border-b-2 px-4 py-2 font-mono text-xs whitespace-nowrap transition-colors",
+                  isActive
+                    ? "border-blue-400 font-semibold text-blue-400"
+                    : "border-transparent text-zinc-500 hover:text-zinc-300",
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+        <div
+          role="tabpanel"
+          className="h-62 min-w-0 overflow-x-auto overflow-y-auto sm:h-82"
+        >
+          <SyntaxHighlight
+            code={activeTab.code}
+            lang="typescript"
+            className={codeClassName}
+          />
+        </div>
       </div>
-      <div
-        role="tabpanel"
-        className="h-62 min-w-0 overflow-x-auto overflow-y-auto sm:h-82"
-      >
-        <SyntaxHighlight
-          code={activeTab.code}
-          lang="typescript"
-          className={codeClassName}
-        />
-      </div>
-    </div>
     </CodeWindowChrome>
   );
 }
@@ -113,34 +113,34 @@ function ComparisonBlock({
 
   return (
     <CodeWindowChrome>
-    <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
-      <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2">
-        <div className="flex min-w-0 flex-col overflow-hidden border-b border-white/10 bg-zinc-950 sm:border-r sm:border-b-0">
-          <div className="shrink-0 border-b border-white/10 px-4 py-2">
-            <span className="font-mono text-xs text-zinc-500">{beforeLabel}</span>
+      <div className="min-w-0 w-full overflow-hidden rounded-lg border border-black/5 bg-zinc-950 dark:border-white/10">
+        <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2">
+          <div className="flex min-w-0 flex-col overflow-hidden border-b border-white/10 bg-zinc-950 sm:border-r sm:border-b-0">
+            <div className="shrink-0 border-b border-white/10 px-4 py-2">
+              <span className="font-mono text-xs text-zinc-500">{beforeLabel}</span>
+            </div>
+            <div className="h-62 overflow-hidden sm:h-82">
+              <SyntaxHighlight
+                code={before}
+                lang="typescript"
+                className={cn(codeClassName, "overflow-hidden text-[6px]")}
+              />
+            </div>
           </div>
-          <div className="h-62 overflow-hidden sm:h-82">
-            <SyntaxHighlight
-              code={before}
-              lang="typescript"
-              className={cn(codeClassName, "overflow-hidden text-[6px]")}
-            />
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-col overflow-hidden bg-zinc-900">
-          <div className="shrink-0 border-b border-zinc-800 px-4 py-2">
-            <span className="font-mono text-xs font-semibold text-blue-400">{afterLabel}</span>
-          </div>
-          <div className="flex h-62 items-center overflow-hidden sm:h-82">
-            <SyntaxHighlight
-              code={after}
-              lang="typescript"
-              className={cn(codeClassName, "w-full overflow-hidden text-sm sm:text-md")}
-            />
+          <div className="flex min-w-0 flex-col overflow-hidden bg-zinc-900">
+            <div className="shrink-0 border-b border-zinc-800 px-4 py-2">
+              <span className="font-mono text-xs font-semibold text-blue-400">{afterLabel}</span>
+            </div>
+            <div className="flex h-62 items-center overflow-hidden sm:h-82">
+              <SyntaxHighlight
+                code={after}
+                lang="typescript"
+                className={cn(codeClassName, "w-full overflow-hidden text-sm sm:text-md")}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </CodeWindowChrome>
   );
 }

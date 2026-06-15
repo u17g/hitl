@@ -131,3 +131,27 @@ export function SectionDescription({
     />
   );
 }
+
+export function SectionInfo({
+  className,
+  ...props
+}: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn("lg:sticky lg:top-24", className)}
+      {...props}
+    />
+  );
+}
+
+export function SectionBody({
+  className,
+  ...props
+}: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn("min-w-0", className)}
+      {...props}
+    />
+  );
+}

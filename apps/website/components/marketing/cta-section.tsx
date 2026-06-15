@@ -60,7 +60,7 @@ export function CtaSection() {
               </div>
               <div className="p-4">
                 <CodeBlock
-                  code={`npm install @hitl-sdk/hitl\n\n# Read docs at /docs/getting-started`}
+                  code={`npm i @hitl-sdk/hitl\n\n# Read docs at /docs/getting-started`}
                   filename="terminal"
                 />
               </div>
