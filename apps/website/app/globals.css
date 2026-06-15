@@ -55,19 +55,19 @@
 }
 
 .dark {
-  --background: oklch(0.11 0.005 80);
+  --background: oklch(0.145 0.006 80);
   --foreground: oklch(0.93 0.01 90);
-  --card: oklch(0.14 0.006 80);
+  --card: oklch(0.17 0.006 80);
   --card-foreground: oklch(0.93 0.01 90);
-  --popover: oklch(0.14 0.006 80);
+  --popover: oklch(0.17 0.006 80);
   --popover-foreground: oklch(0.93 0.01 90);
   --primary: oklch(0.93 0.01 90);
-  --primary-foreground: oklch(0.12 0.005 80);
-  --secondary: oklch(0.18 0.006 80);
+  --primary-foreground: oklch(0.145 0.006 80);
+  --secondary: oklch(0.21 0.006 80);
   --secondary-foreground: oklch(0.93 0.01 90);
-  --muted: oklch(0.18 0.006 80);
+  --muted: oklch(0.21 0.006 80);
   --muted-foreground: oklch(0.6 0.01 80);
-  --accent: oklch(0.2 0.008 80);
+  --accent: oklch(0.23 0.008 80);
   --accent-foreground: oklch(0.93 0.01 90);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 5%);
@@ -133,12 +133,12 @@
   .dark .hero-visual-bg {
     background:
       radial-gradient(ellipse 80% 60% at 50% 100%,
-        oklch(0.35 0.08 235 / 60%) 0%,
+        oklch(0.42 0.08 235 / 65%) 0%,
         transparent 70%),
       linear-gradient(180deg,
-        oklch(0.2 0.04 230) 0%,
-        oklch(0.16 0.06 235) 50%,
-        oklch(0.14 0.08 240) 100%);
+        oklch(0.24 0.04 230) 0%,
+        oklch(0.19 0.06 235) 50%,
+        oklch(0.17 0.08 240) 100%);
   }
 
   .stack-section-bg {
@@ -150,9 +150,9 @@
 
   .dark .stack-section-bg {
     background:
-      radial-gradient(ellipse 90% 70% at 12% 15%, oklch(0.2 0.03 250 / 30%) 0%, transparent 55%),
-      radial-gradient(ellipse 85% 65% at 88% 85%, oklch(0.15 0.012 90 / 20%) 0%, transparent 50%),
-      oklch(0.115 0.006 250);
+      radial-gradient(ellipse 90% 70% at 12% 15%, oklch(0.26 0.042 250 / 50%) 0%, transparent 55%),
+      radial-gradient(ellipse 85% 65% at 88% 85%, oklch(0.2 0.019 90 / 34%) 0%, transparent 50%),
+      oklch(0.138 0.015 250);
   }
 
   .hero-demo-fade-in {
