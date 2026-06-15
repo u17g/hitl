@@ -63,7 +63,7 @@ export function ChannelsSection() {
       <SectionContainer size="6xl">
         <SectionHeader>
           <SectionTitle>
-            {t({ en: "Keep humans in the loop, wherever they work", ja: "人とAIの判断を、使い慣れたツールでつなぐ" })}
+            {t({ en: "Keep humans in the loop, wherever they work", ja: "人の判断とAIを、使い慣れたツールでつなぐ" })}
           </SectionTitle>
           <SectionDescription>
             {t({
