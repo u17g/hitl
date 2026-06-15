@@ -78,7 +78,7 @@ export function StackSection() {
   const layers: StackLayer[] = [
     {
       id: "ai-agent",
-      title: t({ en: "AI Agent layer", ja: "AI エージェントレイヤー" }),
+      title: t({ en: "AI Agent layer", ja: "AIエージェントレイヤー" }),
       description: t({
         en: "Claude, GPT, Kimi, and more. Build your own AI agents.",
         ja: "Claude、GPT、Kimi など、あらゆる LLM モデルを活用。AIエージェントを自由に構築。",
