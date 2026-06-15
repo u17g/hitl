@@ -68,7 +68,7 @@ export function ChannelsSection() {
           <SectionDescription>
             {t({
               en: "AI handles the work. Humans make the calls. Integrates with ",
-              ja: "AIが処理し、人が判断する。",
+              ja: "AIが実行し、人が判断する。",
             })}
             <a
               href="https://chat-sdk.dev/"
