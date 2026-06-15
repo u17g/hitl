@@ -151,7 +151,7 @@ export function StackSection() {
   ];
 
   return (
-    <Section>
+    <Section className="stack-section-bg">
       <SectionContainer size="6xl">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:items-start xl:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
           <SectionInfo>

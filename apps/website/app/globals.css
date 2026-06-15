@@ -141,6 +141,20 @@
         oklch(0.14 0.08 240) 100%);
   }
 
+  .stack-section-bg {
+    background:
+      radial-gradient(ellipse 90% 70% at 12% 15%, oklch(0.94 0.018 250 / 35%) 0%, transparent 55%),
+      radial-gradient(ellipse 85% 65% at 88% 85%, oklch(0.97 0.006 90 / 30%) 0%, transparent 50%),
+      oklch(0.992 0.003 250);
+  }
+
+  .dark .stack-section-bg {
+    background:
+      radial-gradient(ellipse 90% 70% at 12% 15%, oklch(0.2 0.03 250 / 30%) 0%, transparent 55%),
+      radial-gradient(ellipse 85% 65% at 88% 85%, oklch(0.15 0.012 90 / 20%) 0%, transparent 50%),
+      oklch(0.115 0.006 250);
+  }
+
   .hero-demo-fade-in {
     animation: hero-demo-fade-in 0.35s ease-out both;
   }
