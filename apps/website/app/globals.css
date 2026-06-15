@@ -111,6 +111,13 @@
         transparent 1px);
   }
 
+  .section-spacer-bg {
+    background-color: var(--background);
+    background-image: repeating-linear-gradient(-45deg,
+        color-mix(in oklch, var(--border) 40%, transparent) 0 1px,
+        transparent 1px 6px);
+  }
+
   .font-display {
     font-family: var(--font-newsreader), ui-serif, Georgia, serif;
   }

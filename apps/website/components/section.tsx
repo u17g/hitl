@@ -25,7 +25,7 @@ export function Section({
   );
 }
 
-const sectionSpacerVariants = cva("border-b border-border", {
+const sectionSpacerVariants = cva("border-b border-border section-spacer-bg", {
   variants: {
     size: {
       sm: "h-8 md:h-12",
