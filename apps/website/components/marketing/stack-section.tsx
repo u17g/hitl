@@ -48,11 +48,11 @@ type StackLayer = {
 
 function StackLayerCard({ layer }: { layer: StackLayer }) {
   return (
-    <div className="parallel-card flex h-full flex-col p-5">
+    <div className="flex h-full flex-col">
       <h3 className="font-mono text-sm font-medium">{layer.title}</h3>
       <p className="mt-2 text-sm text-muted-foreground">{layer.description}</p>
       {layer.visual ? (
-        <CodeWindowChrome className="mt-2 flex flex-1 flex-col justify-center overflow-hidden">
+        <CodeWindowChrome className="mt-2 max-h-42 flex flex-1 flex-col justify-center overflow-hidden">
           {layer.visual}
         </CodeWindowChrome>
       ) : null}

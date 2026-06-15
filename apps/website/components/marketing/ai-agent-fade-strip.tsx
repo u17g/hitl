@@ -72,7 +72,7 @@ function ProviderIcon({
   return (
     <div
       className={cn(
-        "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-background shadow-sm sm:h-16 sm:w-16",
+        "relative flex h-18 w-18 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-full border border-border bg-background shadow-sm",
         className,
       )}
       style={{
@@ -81,7 +81,7 @@ function ProviderIcon({
       }}
       title={name}
     >
-      <Logo className="h-6 w-6 sm:h-7 sm:w-7" />
+      <Logo className="h-8 w-8 sm:h-10 sm:w-10" />
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function AiAgentFadeStrip({
         className,
       )}
     >
-      <div className="relative z-0 flex flex-col items-center [&>*+*]:-mt-3 sm:[&>*+*]:-mt-3.5">
+      <div className="relative z-0 flex flex-col items-center [&>*+*]:-mt-4 sm:[&>*+*]:-mt-4">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="flex justify-center">
             {row.map((provider, colIndex) => (
@@ -141,7 +141,7 @@ export function AiAgentFadeStrip({
                   colIndex,
                   row.length,
                 )}
-                className={colIndex > 0 ? "-ml-2.5 sm:-ml-3" : undefined}
+                className={colIndex > 0 ? "-ml-4 sm:-ml-4" : undefined}
               />
             ))}
           </div>
