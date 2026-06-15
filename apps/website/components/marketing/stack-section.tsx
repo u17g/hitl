@@ -80,8 +80,8 @@ export function StackSection() {
       id: "ai-agent",
       title: t({ en: "AI Agent layer", ja: "AI エージェントレイヤー" }),
       description: t({
-        en: "Build durable agents with Workflow SDK and the AI SDK.",
-        ja: "Workflow DevKit と AI SDK で耐久エージェントを構築。",
+        en: "Claude, GPT, Kimi, and more. Build your own AI agents.",
+        ja: "Claude、GPT、Kimi など、あらゆる LLM モデルを活用。AIエージェントを自由に構築。",
       }),
       visual: <AiAgentFadeStrip install={snippets.installAiAgent} />,
       options: [],
@@ -90,8 +90,8 @@ export function StackSection() {
       id: "chat",
       title: t({ en: "Chat layer", ja: "チャットレイヤー" }),
       description: t({
-        en: "Deliver approvals to Slack, Teams, Discord, and every Chat SDK platform.",
-        ja: "Slack・Teams・Discord など、Chat SDK 対応プラットフォームへ承認を届ける。",
+        en: "Deliver approvals to Slack, Teams, Discord, and every chat platform.",
+        ja: "ヒューマン・イン・ザ・ループを、あらゆるチャットプラットフォームで実現。",
       }),
       visual: (
         <ChatPlatformFadeStrip install={snippets.installChatAdapter} />
@@ -102,8 +102,8 @@ export function StackSection() {
       id: "durable-execution",
       title: t({ en: "Workflow layer", ja: "ワークフローレイヤー" }),
       description: t({
-        en: "Pick your workflow engine. HITL ships a resolver for each.",
-        ja: "ワークフローエンジンを選ぶだけ。HITL が各エンジン用 resolver を提供。",
+        en: "Pick your workflow engine. Make workflows durable.",
+        ja: "ワークフローエンジンを選び、信頼性のあるワークフローを実装。",
       }),
       options: [
         {
@@ -127,8 +127,8 @@ export function StackSection() {
       id: "persistent-layer",
       title: t({ en: "Persistent layer", ja: "データベースレイヤー" }),
       description: t({
-        en: "Store approval state in the backend you already run.",
-        ja: "承認ステートを、既存のバックエンドに保存。",
+        en: "Pick your database. Wait years for approval.",
+        ja: "環境にあったデータベースを活用。いつでもリカバリー。",
       }),
       options: [
         {
@@ -158,7 +158,7 @@ export function StackSection() {
             <SectionTitle className="text-left text-2xl md:text-3xl">
               {t({
                 en: "Your durable agent stack.",
-                ja: "AI スタック",
+                ja: "自由なAIスタック",
               })}
               <br />
               {t({
