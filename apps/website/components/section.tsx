@@ -136,12 +136,7 @@ export function SectionInfo({
   className,
   ...props
 }: ComponentProps<"div">) {
-  return (
-    <div
-      className={cn("lg:sticky lg:top-24", className)}
-      {...props}
-    />
-  );
+  return <div className={cn(className)} {...props} />;
 }
 
 export function SectionBody({

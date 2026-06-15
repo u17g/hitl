@@ -4,8 +4,7 @@ import { ArrowRight } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
-import { CodeBlock } from "@/components/docs/code-block";
-import { StackInstallRow } from "@/components/marketing/stack-install-row";
+import { StackInstallRow, InstallCommandPill } from "@/components/marketing/stack-install-row";
 import { AiAgentFadeStrip } from "@/components/marketing/ai-agent-fade-strip";
 import { CodeWindowChrome } from "@/components/marketing/code-comparison";
 import {
@@ -25,12 +24,10 @@ import {
   SectionContainer,
   SectionDescription,
   SectionInfo,
-  SectionLabel,
   SectionTitle,
 } from "@/components/section";
 import { Button } from "@/components/ui/button";
 import { snippets } from "@/lib/snippets";
-import { cn } from "@/lib/utils";
 
 type StackOption = {
   name: string;
@@ -50,29 +47,27 @@ function StackLayerCard({ layer }: { layer: StackLayer }) {
   return (
     <div className="flex h-full flex-col">
       <h3 className="font-mono text-sm font-medium">{layer.title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground">{layer.description}</p>
-      {layer.visual ? (
-        <CodeWindowChrome className="mt-2 max-h-42 flex flex-1 flex-col justify-center overflow-hidden">
-          {layer.visual}
-        </CodeWindowChrome>
-      ) : null}
-      {layer.options.length > 0 ? (
-        <div
-          className={cn(
-            "flex flex-col space-y-2",
-            layer.visual ? "mt-4" : "mt-4 flex flex-1 flex-col",
+      <p className="mt-2 min-h-10 text-sm text-muted-foreground">
+        {layer.description}
+      </p>
+      <div className="mt-2 flex h-42 flex-col overflow-hidden">
+        <CodeWindowChrome className="flex h-full flex-col justify-center overflow-hidden">
+          {layer.visual ? (
+            layer.visual
+          ) : (
+            <div className="flex flex-col items-center space-y-2">
+              {layer.options.map((option) => (
+                <StackInstallRow
+                  key={option.name}
+                  name={option.name}
+                  Logo={option.Logo}
+                  install={option.install}
+                />
+              ))}
+            </div>
           )}
-        >
-          {layer.options.map((option) => (
-            <StackInstallRow
-              key={option.name}
-              name={option.name}
-              Logo={option.Logo}
-              install={option.install}
-            />
-          ))}
-        </div>
-      ) : null}
+        </CodeWindowChrome>
+      </div>
     </div>
   );
 }
@@ -85,7 +80,7 @@ export function StackSection() {
       id: "ai-agent",
       title: t({ en: "AI Agent layer", ja: "AI エージェントレイヤー" }),
       description: t({
-        en: "Build durable agents with Workflow DevKit and the AI SDK.",
+        en: "Build durable agents with Workflow SDK and the AI SDK.",
         ja: "Workflow DevKit と AI SDK で耐久エージェントを構築。",
       }),
       visual: <AiAgentFadeStrip install={snippets.installAiAgent} />,
@@ -178,18 +173,8 @@ export function StackSection() {
               })}
             </SectionDescription>
             <div className="mt-6">
-              <CodeBlock code={snippets.install} filename="terminal" />
+              <InstallCommandPill install={snippets.install} />
             </div>
-            <Button
-              variant="link"
-              className="mt-4 h-auto p-0 font-mono text-xs text-muted-foreground"
-              asChild
-            >
-              <Link href="/docs/installation">
-                {t({ en: "Learn more", ja: "詳しく見る" })}
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </Button>
           </SectionInfo>
 
           <SectionBody>

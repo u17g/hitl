@@ -1,7 +1,5 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
-import * as React from "react";
 import type { ComponentType } from "react";
 import {
   ClaudeLogo,
@@ -15,7 +13,7 @@ import {
   XAiLogo,
   ZAiLogo,
 } from "@/components/ui/icons/ai-provider-logos";
-import { Button } from "@/components/ui/button";
+import { InstallCommandPill } from "@/components/marketing/stack-install-row";
 import { cn } from "@/lib/utils";
 
 type Provider = {
@@ -68,30 +66,12 @@ function ProviderIcon({
 }
 
 function InstallOverlay({ install }: { install: string }) {
-  const [copied, setCopied] = React.useState(false);
-
-  async function copy() {
-    await navigator.clipboard.writeText(install);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   return (
     <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center">
-      <div className="translate-y-6 pointer-events-auto flex max-w-[92%] items-center gap-2 rounded-full border border-border px-3 py-2 shadow-md backdrop-blur-md">
-        <code className="truncate font-mono text-[10px] text-foreground">
-          {install}
-        </code>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-4 w-4 shrink-0 rounded-sm text-muted-foreground hover:text-foreground [&_svg]:size-3"
-          onClick={copy}
-          aria-label={`Copy ${install}`}
-        >
-          {copied ? <Check /> : <Copy />}
-        </Button>
-      </div>
+      <InstallCommandPill
+        install={install}
+        className="pointer-events-auto max-w-[92%] translate-y-5"
+      />
     </div>
   );
 }
