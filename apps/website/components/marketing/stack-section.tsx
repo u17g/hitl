@@ -173,7 +173,7 @@ export function StackSection() {
               })}
             </SectionDescription>
             <div className="mt-6">
-              <InstallCommandPill install={snippets.install} />
+              <InstallCommandPill install={snippets.install} size="lg" />
             </div>
           </SectionInfo>
 
