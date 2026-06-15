@@ -260,7 +260,7 @@ function CodePanel({ stepStatuses }: { stepStatuses: StepStatus[] }) {
   const activeStep = stepStatuses.findIndex((s) => s === "running");
 
   return (
-    <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden border-r border-black/5 dark:border-white/10">
+    <div className="flex min-h-[360px] min-w-0 flex-col overflow-hidden border-r border-black/5 dark:border-white/10">
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <span className="font-mono text-xs text-zinc-400">workflow.ts</span>
       </div>
@@ -518,7 +518,7 @@ function ChannelPanel({
   const editingBody = phase === "modalEditBody";
 
   return (
-    <div className="relative flex min-h-[340px] min-w-0 flex-col overflow-hidden bg-[#1a1d21]">
+    <div className="relative flex min-h-[360px] min-w-0 flex-col overflow-hidden bg-[#1a1d21]">
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <SlackIcon />
         <span className="font-mono text-xs text-zinc-300">#general</span>
