@@ -336,8 +336,8 @@ export function CodeComparison() {
                   <TabbedCodeBlock tabs={row.tabs} />
                 ) : "comparison" in row && row.comparison ? (
                   <ComparisonBlock
-                    beforeLabel={t({ en: "Without HITL SDK", ja: "HITL SDK なし" })}
-                    afterLabel={t({ en: "With HITL SDK", ja: "HITL SDK あり" })}
+                    beforeLabel={t({ en: "Without HITL sdk", ja: "HITL sdk なし" })}
+                    afterLabel={t({ en: "With HITL sdk", ja: "HITL sdk あり" })}
                     before={row.comparison.before}
                     after={row.comparison.after}
                   />

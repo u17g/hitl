@@ -39,12 +39,12 @@ export async function generateMetadata({
 
   return {
     title: t({
-      en: "Hitl SDK — Human-in-the-loop for AI agents and durable workflows",
-      ja: "Hitl SDK — AI エージェントと耐久ワークフロー向け Human-in-the-loop",
+      en: "HITL sdk — Human approval layer for your mission critical AI workflows",
+      ja: "HITL sdk — 人の判断とAIを組み合わせ、クリティカルな業務を自動化",
     }),
     description: t({
-      en: "A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable workflows. One await, suspend for hours or days, resume when a human approves.",
-      ja: "AI エージェントと耐久ワークフローに人間の承認を組み込む統一 TypeScript SDK。1つの await で数時間・数日サスペンドし、Slack・Teams・Discord・Web inbox で承認されたら再開します。",
+      en: "A unified TypeScript SDK for human-in-the-loop approval in your mission critical AI workflows. One await, suspend for hours or days, resume when a human approves.",
+      ja: "ヒューマン・イン・ザ・ループを組み込むための Unified TypeScript SDK",
     }),
   };
 }

@@ -32,8 +32,8 @@ export function CtaSection() {
               </SectionTitle>
               <SectionDescription className="text-left">
                 {t({
-                  en: "See Hitl SDK in action with the hello-world example.",
-                  ja: "hello-world サンプルで Hitl SDK を試せます。",
+                  en: "See HITL sdk in action with the hello-world example.",
+                  ja: "hello-world サンプルで HITL sdk を試せます。",
                 })}
               </SectionDescription>
               <div className="mt-8 flex flex-wrap items-center gap-3">

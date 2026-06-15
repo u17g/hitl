@@ -29,9 +29,9 @@ export function SiteHeader() {
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="text-lg font-bold tracking-tight"
+            className="text-lg font-semibold tracking-tight"
           >
-            HITL SDK
+            HITL sdk<span className="ml-1 text-brand text-xs font-medium bg-brand/10 px-1 py-0.5">Beta</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             <Link

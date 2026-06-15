@@ -52,7 +52,7 @@ export function ChannelsSection() {
         title: t({ en: "Web UI", ja: "Web UI" }),
         description: t({
           en: "Embed approvals into your web app. Inbox API is included in the SDK.",
-          ja: "ウェブアプリに組み込み。HITL SDK の Inbox API で自由にカスタマイズ。",
+          ja: "ウェブアプリに組み込み。HITL sdk の Inbox API で自由にカスタマイズ。",
         }),
         Preview: CustomWebUiPreview,
       },

@@ -168,8 +168,8 @@ export function StackSection() {
             </SectionTitle>
             <SectionDescription className="text-left text-sm md:text-base">
               {t({
-                en: "HITL SDK plugs into the tools you already use.",
-                ja: "HITL SDK は既存ツールと組み合わせるだけ。",
+                en: "HITL sdk plugs into the tools you already use.",
+                ja: "HITL sdk は既存ツールと組み合わせるだけ。",
               })}
             </SectionDescription>
             <div className="mt-6">
