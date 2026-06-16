@@ -7,12 +7,12 @@ description: Build a complete human-in-the-loop approval loop with Workflow SDK,
 
 This guide walks through a complete approval loop: a workflow suspends on `waitForHuman`, you approve via the web inbox, and the workflow resumes. It uses opinionated defaults:
 
-- **Workflow engine** — [Workflow SDK](https://workflow-sdk.dev)
-- **State** — SQLite (swap to in-memory for the fastest local try)
-- **Delivery** — built-in web inbox (no Slack setup)
-- **Host** — Next.js App Router
+- **Workflow engine**: [Workflow SDK](https://workflow-sdk.dev)
+- **State**: SQLite (swap to in-memory for the fastest local try)
+- **Delivery**: built-in web inbox (no Slack setup)
+- **Host**: Next.js App Router
 
-To swap any axis later, see [Install — Choose your stack](/docs/install).
+To swap any axis later, see [Install](/docs/install).
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ npm i @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk @hitl-sdk/state-sqlite work
 
 ## 2. Create the server
 
-`lib/hitl.ts` — persistence, resolver, and the built-in inbox channel:
+`lib/hitl.ts` holds persistence, the resolver, and the built-in inbox channel:
 
 ```typescript
 import { mkdirSync } from "node:fs";
@@ -46,7 +46,7 @@ export const hitl = new Hitl({
 });
 ```
 
-For a throwaway local demo, you can use `InMemoryState` from `@hitl-sdk/hitl/state` instead of SQLite — pending requests reset on server restart.
+For a throwaway local demo, you can use `InMemoryState` from `@hitl-sdk/hitl/state` instead of SQLite. Pending requests reset on server restart.
 
 ## 3. Mount the internal API
 
@@ -59,7 +59,7 @@ import { hitl } from "@/lib/hitl";
 export const { POST } = hitl.routeHandlers;
 ```
 
-See [Host integration — Next.js](/docs/host-integration#nextjs) for Express, Hono, and other frameworks.
+See [Host integration (Next.js)](/docs/host-integration#nextjs) for Express, Hono, and other frameworks.
 
 ## 4. Create the workflow client
 
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
 
 ## 7. Expose the inbox (optional custom UI)
 
-The web inbox channel is built in. You can resolve approvals programmatically via `hitl.inbox` — the hello-world example wraps it in REST routes:
+The web inbox channel is built in. You can resolve approvals programmatically via `hitl.inbox`. The hello-world example wraps it in REST routes:
 
 ```typescript
 // app/api/inbox/route.ts
@@ -192,7 +192,7 @@ Check your dev server logs for `Hello, world!`.
 
 | Piece | Role |
 |-------|------|
-| `lib/hitl.ts` | Server — state, resolver, inbox |
+| `lib/hitl.ts` | Server: state, resolver, inbox |
 | `.well-known/hitl/v1` | Internal API workflows POST to |
 | `lib/hitl-client.ts` | Workflow-side client |
 | `workflows/hello.ts` | `"use workflow"` + `waitForHuman` |

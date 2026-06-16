@@ -1,13 +1,13 @@
 ---
 title: Workflow SDK
-description: Bind Hitl to Vercel Workflow SDK — suspend in use workflow functions and resume over a durable step fetch.
+description: Bind Hitl to Vercel Workflow SDK. Suspend in use workflow functions and resume over a durable step fetch.
 ---
 
 # Workflow SDK
 
 Replaces **Quickstart steps 2 and 4** when using [Vercel Workflow SDK](https://workflow-sdk.dev).
 
-Workflow DevKit runs workflows in a separate sandbox from your app server. The workflow client carries no state backend — it suspends and POSTs to the server over a durable `"use step"` fetch.
+Workflow DevKit runs workflows in a separate sandbox from your app server. The workflow client carries no state backend. It suspends and POSTs to the server over a durable `"use step"` fetch.
 
 ## Install
 
@@ -27,7 +27,7 @@ export const hitl = new Hitl({
 });
 ```
 
-Mount `hitl.routeHandlers` at `/.well-known/hitl/v1` — see [Host integration](/docs/host-integration).
+Mount `hitl.routeHandlers` at `/.well-known/hitl/v1`. See [Host integration](/docs/host-integration).
 
 ## Workflow client (Quickstart step 4)
 
@@ -50,13 +50,13 @@ export const { waitForHuman, requestHuman, notify } = createWorkflowSdkHitlClien
 });
 ```
 
-Import `waitForHuman` from this module inside `"use workflow"` functions — not from `@hitl-sdk/hitl` directly.
+Import `waitForHuman` from this module inside `"use workflow"` functions, not from `@hitl-sdk/hitl` directly.
 
 ## Approval flow
 
-1. Workflow calls `waitForHuman` — suspends and POSTs to the server.
+1. Workflow calls `waitForHuman`, suspends, and POSTs to the server.
 2. Server persists the request, delivers to inbox/adapters, and waits.
-3. Reviewer approves — `workflowResolver` resumes the workflow with the result.
+3. Reviewer approves. `workflowResolver` resumes the workflow with the result.
 
 ## Postgres world
 
@@ -66,4 +66,4 @@ If you use Workflow DevKit's Postgres world, run its migrations separately from 
 npx workflow-postgres-setup
 ```
 
-Hitl tables are managed by `@hitl-sdk/state-pg` — see [Postgres state](/docs/state/postgres).
+Hitl tables are managed by `@hitl-sdk/state-pg`. See [Postgres state](/docs/state/postgres).

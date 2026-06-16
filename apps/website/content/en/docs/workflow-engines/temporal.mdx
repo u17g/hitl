@@ -1,6 +1,6 @@
 ---
 title: Temporal
-description: Bind Hitl to Temporal — activities for HTTP, signals for resume.
+description: Bind Hitl to Temporal. Activities for HTTP, signals for resume.
 ---
 
 # Temporal
@@ -39,7 +39,7 @@ export const hitl = new Hitl({
 ## Activity (HTTP to Hitl server)
 
 ```typescript
-// activities/hitl.ts — register with your Worker
+// activities/hitl.ts (register with your Worker)
 import type { HitlRequest, HitlResponse } from "@hitl-sdk/hitl/core";
 
 export async function hitlRequestActivity(req: HitlRequest): Promise<HitlResponse> {
@@ -55,7 +55,7 @@ export async function hitlRequestActivity(req: HitlRequest): Promise<HitlRespons
 ## Workflow client (Quickstart step 4)
 
 ```typescript
-// lib/hitl-client.ts — import in workflows only
+// lib/hitl-client.ts (import in workflows only)
 import { proxyActivities } from "@temporalio/workflow";
 import { createTemporalHitlClient } from "@hitl-sdk/resolver-temporal";
 import type * as activities from "../activities/hitl";
@@ -96,4 +96,4 @@ export async function inboundLead(input: { email: string }) {
 | `TEMPORAL_ADDRESS` | Temporal frontend for `temporalResolver` |
 | `TEMPORAL_NAMESPACE` | Namespace for workflow handles |
 
-Mount the Hitl server routes — see [Host integration](/docs/host-integration).
+Mount the Hitl server routes. See [Host integration](/docs/host-integration).

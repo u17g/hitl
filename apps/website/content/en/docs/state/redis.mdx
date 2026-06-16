@@ -1,6 +1,6 @@
 ---
 title: Redis State
-description: Persist approval requests in Redis — bring your own ioredis client, in-process migrations.
+description: Persist approval requests in Redis. Bring your own ioredis client, in-process migrations.
 ---
 
 # Redis State
@@ -51,7 +51,7 @@ Default prefix: `hitl:human_requests` (from table name `hitl.human_requests`).
 | Status index | `{prefix}:idx:status:{pending\|resolved}` |
 | Timeline | `{prefix}:timeline:{threadId}` |
 
-No setup CLI — migrations run in-process against your Redis instance.
+No setup CLI. Migrations run in-process against your Redis instance.
 
 ## Migrations
 

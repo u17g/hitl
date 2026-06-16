@@ -1,0 +1,144 @@
+---
+title: waitForHuman
+description: Suspend a workflow until a human approves, denies, or edits fields. Returns typed results.
+---
+
+# waitForHuman
+
+The core primitive. Suspend a workflow until a human resolves the request.
+
+## Import
+
+```typescript
+import { waitForHuman } from "@/lib/hitl-client";
+```
+
+Import from your engine-bound client module, not from `@hitl-sdk/hitl` inside `"use workflow"` functions.
+
+## Signatures
+
+```typescript
+// Create and wait in one call
+waitForHuman(opts: WaitForHumanOptions<Actions>): Promise<HumanResult<Actions>>
+
+// Batch: create and wait for multiple items
+waitForHuman(opts: WaitForHumanOptions<Actions> & { items: HumanItem[] }): Promise<HumanResult<Actions>[]>
+
+// Wait on an existing pending handle
+waitForHuman(pending: HumanPending<Actions>, opts?: HumanWaitOptions): Promise<HumanResult<Actions>>
+
+// Batch pending handle
+waitForHuman(pending: HumanBatchPending<Actions>, opts?: HumanWaitOptions): Promise<HumanResult<Actions>[]>
+```
+
+## Options
+
+### `WaitForHumanOptions`
+
+Combines create options with wait options. Used when calling `waitForHuman({ … })` directly.
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `message` | `string` | Yes* | Prompt shown to the reviewer |
+| `actions` | `HumanActions` | Yes | Built with [`actions()`](/docs/foundations/actions-and-fields) |
+| `timeout` | `Duration` | No | Auto-resolve as timed out after this duration |
+| `reminders` | `ReminderEntry[]` | No | Scheduled [`remind`](/docs/foundations/reminders) / [`escalate`](/docs/foundations/reminders) entries |
+| `context` | `Record<string, unknown>` | No | Opaque metadata stored with the request |
+| `channel` | `string` | No | Adapter id or `adapter_id:destination`; defaults to first configured adapter |
+| `after` | `HumanResult \| TimelineAnchor` | No | Post under the same chat thread as a prior step |
+| `items` | `HumanItem[]` | No | Batch mode: one reviewer decision per item |
+| `defaultsActionId` | `string` | No | Batch defaults target when no approve action exists |
+
+\*Required when `items` is absent.
+
+### `HumanWaitOptions`
+
+Used when waiting on a pending handle from [`requestHuman`](/docs/foundations/request-human).
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `timeout` | `Duration` | Auto-resolve as timed out (`"72h"`, `"1d"`, or ms number) |
+| `reminders` | `ReminderEntry[]` | Reminder and escalation schedule |
+
+## Returns
+
+`HumanResult<Actions>` is a discriminated union:
+
+| `type` | Meaning |
+|--------|---------|
+| `"RESOLVED"` | Reviewer chose an action; `actionId` and typed `feedbacks` are set |
+| `"TIMED_OUT"` | No decision before `timeout` |
+
+Use [`isResolved`](/docs/foundations/actions-and-fields) to narrow to a specific action and get typed feedback values.
+
+## Example
+
+```typescript
+import { actions, field, isResolved } from "@hitl-sdk/hitl";
+import { waitForHuman } from "@/lib/hitl-client";
+
+const approval = await waitForHuman({
+  message: "Send this email?",
+  actions: actions()
+    .approve({
+      label: "Send",
+      fields: {
+        subject: field.textField({ label: "Subject", default: draft.subject }),
+        body: field.textArea({ label: "Body", default: draft.body }),
+      },
+    })
+    .deny({
+      label: "Reject",
+      fields: { reason: field.textArea({ label: "Reason" }) },
+    })
+    .build(),
+  timeout: "72h",
+});
+
+if (!isResolved(approval, "approve")) {
+  return; // denied, timed out, or another action
+}
+
+const { subject, body } = approval.feedbacks;
+```
+
+## Create + wait split
+
+When you need to [`notify`](/docs/foundations/notify) between creation and waiting:
+
+```typescript
+import { remind } from "@hitl-sdk/hitl";
+import { requestHuman, waitForHuman, notify } from "@/lib/hitl-client";
+
+const pending = await requestHuman({ message: "Approve expense?", actions });
+
+await notify({ after: pending, message: "Receipt attached in thread" });
+
+const result = await waitForHuman(pending, {
+  timeout: "72h",
+  reminders: [remind.after("1h", { message: "Still waiting" })],
+});
+```
+
+## Batch mode
+
+Pass `items` to create multiple reviewer decisions in one message:
+
+```typescript
+const results = await waitForHuman({
+  actions,
+  items: [
+    { message: "Review item A" },
+    { message: "Review item B", defaults: { amount: "1200" } },
+  ],
+});
+```
+
+For programmatic resolution, see `hitl.inbox.resolveBatch` on the server side.
+
+## See also
+
+- [requestHuman](/docs/foundations/request-human): create phase only
+- [Actions and fields](/docs/foundations/actions-and-fields): build actions and read typed results
+- [Reminders](/docs/foundations/reminders): schedule nudges and escalations
+- [Foundations overview](/docs/foundations/overview): API map

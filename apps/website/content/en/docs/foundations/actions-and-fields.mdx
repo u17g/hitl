@@ -1,0 +1,138 @@
+---
+title: Actions and fields
+description: Build typed approve/deny/custom buttons and reviewer-editable fields with actions(), field, and isResolved.
+---
+
+# Actions and fields
+
+Import from `@hitl-sdk/hitl`. Safe inside and outside `"use workflow"` functions.
+
+```typescript
+import { actions, field, isResolved } from "@hitl-sdk/hitl";
+```
+
+## `actions()`
+
+Build an ordered list of reviewer buttons. Index 0 renders first (left / top).
+
+### Signature
+
+```typescript
+actions(): ActionsBuilder<[]>
+
+// Builder methods (chainable)
+.approve(opts?: HumanActionOpts): ActionsBuilder
+.deny(opts?: HumanActionOpts): ActionsBuilder
+.custom<Id>(id: Id, opts?: HumanActionOpts): ActionsBuilder
+.build(): HumanActions
+```
+
+### `HumanActionOpts`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `"Approve"` / `"Deny"` / id | Button label |
+| `submitLabel` | `string` | `label` | Modal submit button |
+| `closeLabel` | `string` | `"Cancel"` | Modal cancel button |
+| `style` | `"primary" \| "danger" \| "default"` | primary for approve, danger for deny | Visual style |
+| `fields` | `Record<string, HitlField>` | none | Editable fields on this action |
+
+### Example
+
+```typescript
+const approvalActions = actions()
+  .approve({
+    label: "Send",
+    fields: {
+      subject: field.textField({ label: "Subject", default: draft.subject }),
+    },
+  })
+  .deny({
+    label: "Reject",
+    fields: { reason: field.textArea({ label: "Reason" }) },
+  })
+  .custom("request_info", {
+    label: "Request info",
+    fields: { question: field.textArea({ label: "What's blocking?" }) },
+  })
+  .build();
+```
+
+Pass `approvalActions` to [`waitForHuman`](/docs/foundations/wait-for-human) or [`requestHuman`](/docs/foundations/request-human). The builder preserves literal action ids for TypeScript inference on results.
+
+## `field`
+
+Define reviewer-editable fields attached to an action.
+
+### Methods
+
+| Method | Returns | Value type |
+|--------|---------|------------|
+| `field.textField({ label, default? })` | `TextField` | `string` |
+| `field.textArea({ label, default? })` | `TextAreaField` | `string` |
+| `field.select({ label, options, default? })` | `SelectField<O>` | union of option strings |
+| `field.confirm({ label, default? })` | `ConfirmField` | `boolean` |
+
+### Example
+
+```typescript
+fields: {
+  amount: field.textField({ label: "Amount", default: "1200" }),
+  category: field.select({
+    label: "Category",
+    options: ["travel", "software", "other"] as const,
+  }),
+  acknowledged: field.confirm({ label: "I reviewed the receipt" }),
+}
+```
+
+`FeedbackValues<F>` infers the shape of `result.feedbacks` from your field definitions.
+
+## `isResolved`
+
+Type guard that narrows `HumanResult` to a specific action.
+
+### Signature
+
+```typescript
+isResolved<Actions, Id extends Actions[number]["id"]>(
+  result: HumanResult<Actions>,
+  actionId: Id,
+): result is Extract<HumanResult<Actions>, { actionId: Id }>
+```
+
+### Example
+
+```typescript
+const result = await waitForHuman({ message: "Deploy?", actions: approvalActions });
+
+if (!isResolved(result, "approve")) {
+  // result is TIMED_OUT, deny, request_info, etc.
+  return;
+}
+
+// result.actionId is "approve"
+// result.feedbacks is typed to approve action fields
+const { subject } = result.feedbacks;
+```
+
+### `HumanResult` shape
+
+When `type === "RESOLVED"`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `actionId` | action id literal | Which button the reviewer chose |
+| `feedbacks` | `FeedbackValues<F>` | Submitted field values for that action |
+| `edited` | `boolean?` | True when reviewer changed field defaults |
+| `by` | `Reviewer?` | Reviewer identity when available |
+| `id` | `string` | Request id |
+| `externalRef` | `string` | Adapter-native message ref |
+
+When `type === "TIMED_OUT"`: only `id` and `externalRef` are set.
+
+## See also
+
+- [waitForHuman](/docs/foundations/wait-for-human): pass actions to the workflow client
+- [Package exports](/docs/foundations/package-exports): full `@hitl-sdk/hitl` export map
+- [Foundations overview](/docs/foundations/overview): API map

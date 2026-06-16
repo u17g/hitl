@@ -40,3 +40,19 @@ export function inferLang(filename?: string): BundledLanguage {
 
   return "typescript";
 }
+
+const PLAIN_FENCE_LANGS = new Set(["text", "plaintext", "plain"]);
+
+export function isPlainFenceLang(lang: string): boolean {
+  return PLAIN_FENCE_LANGS.has(lang.toLowerCase());
+}
+
+export function fenceLangToShiki(lang: string): BundledLanguage {
+  const normalized = lang.toLowerCase();
+  if (normalized === "bash" || normalized === "sh" || normalized === "shell") {
+    return "shell";
+  }
+  if (normalized === "tsx") return "tsx";
+  if (normalized === "typescript" || normalized === "ts") return "typescript";
+  return "typescript";
+}

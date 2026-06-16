@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { compileMDX } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { setRequestLocale } from "next-intl/server";
 import { DocPager } from "@/components/docs/doc-pager";
 import { DocsProse, mdxComponents } from "@/components/docs/mdx-components";
@@ -53,6 +54,11 @@ export default async function DocPage({ params }: PageProps) {
   const { content } = await compileMDX({
     source: doc.content,
     components: mdxComponents,
+    options: {
+      mdxOptions: {
+        remarkPlugins: [remarkGfm],
+      },
+    },
   });
 
   const { prev, next } = getAdjacentDocs(slug);

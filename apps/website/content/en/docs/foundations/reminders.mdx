@@ -1,0 +1,121 @@
+---
+title: Reminders
+description: Schedule same-channel reminders and cross-channel escalations with remind and escalate while waiting for human input.
+---
+
+# Reminders
+
+Import from `@hitl-sdk/hitl`:
+
+```typescript
+import { remind, escalate } from "@hitl-sdk/hitl";
+```
+
+Pass entries to [`waitForHuman`](/docs/foundations/wait-for-human)'s `reminders` option (or the wait phase after [`requestHuman`](/docs/foundations/request-human)). The workflow client owns the durable schedule via `sleep()`; the server only acts if the request is still pending.
+
+## Duration
+
+Reminder timings use the `Duration` type:
+
+| Form | Example | Meaning |
+|------|---------|---------|
+| ms number | `3600000` | 1 hour in milliseconds |
+| `"Ns"` | `"30s"` | seconds |
+| `"Nm"` | `"15m"` | minutes |
+| `"Nh"` | `"72h"` | hours |
+| `"Nd"` | `"2d"` | days |
+| `"Nw"` | `"1w"` | weeks |
+
+## `remind`
+
+Same-channel thread reminders while an approval is pending.
+
+### Methods
+
+All return a `RemindEntry` for the `reminders` array.
+
+| Method | Timing |
+|--------|--------|
+| `remind.after(duration, { message? })` | Fixed delay from wait start |
+| `remind.at(clock, { message?, tz?, skip? })` | Wall-clock time today (e.g. `"07:00"`) |
+| `remind.tomorrowAt(clock, opts?)` | Wall-clock time next day |
+| `remind.every(interval, { message?, at?, count?, for?, until?, tz?, skip? })` | Repeating interval |
+| `remind.dailyAt(clock, opts?)` | Every day at clock time |
+| `remind.weekdaysAt(clock, opts?)` | Weekdays at clock time (skips Sat/Sun by default) |
+
+Default message: `"Reminder: approval still pending"`.
+
+### Example
+
+```typescript
+import { remind } from "@hitl-sdk/hitl";
+import { waitForHuman } from "@/lib/hitl-client";
+
+await waitForHuman(pending, {
+  reminders: [
+    remind.after("1h", { message: "Still waiting for approval" }),
+    remind.weekdaysAt("07:00", { tz: "UTC", message: "Morning reminder" }),
+  ],
+});
+```
+
+## `escalate`
+
+Fallback channel notification or re-delivery while pending.
+
+### Signature
+
+```typescript
+escalate.to(channel: string).after(duration, { message?, mode? })
+escalate.to(channel).at(clock, opts?)
+escalate.to(channel).tomorrowAt(clock, opts?)
+escalate.to(channel).every(interval, opts)
+escalate.to(channel).dailyAt(clock, opts?)
+escalate.to(channel).weekdaysAt(clock, opts?)
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `channel` | `string` | (required) | Target adapter id or `adapter_id:destination` |
+| `message` | `string` | `"Escalation: approval still pending"` | Escalation body |
+| `mode` | `"notify" \| "redeliver"` | `"notify"` | Notify on fallback channel, or re-send the full approval there |
+
+### Example
+
+```typescript
+import { remind, escalate } from "@hitl-sdk/hitl";
+
+await waitForHuman({
+  message: "Approve expense report?",
+  actions,
+  timeout: "72h",
+  reminders: [
+    remind.after("1h", { message: "Still waiting for approval" }),
+    escalate.to("oncall:slack:C999").after("4h", { mode: "redeliver" }),
+  ],
+});
+```
+
+With `mode: "redeliver"`, the server re-sends the full approval message to the escalation channel. With `"notify"` (default), it sends only the escalation message.
+
+## Combined schedule
+
+```typescript
+await waitForHuman(pending, {
+  timeout: "72h",
+  reminders: [
+    remind.after("1h"),
+    remind.after("4h", { message: "Urgent: approval needed" }),
+    escalate.to("manager:slack:C123").after("8h"),
+    escalate.to("oncall").after("24h", { mode: "redeliver" }),
+  ],
+});
+```
+
+Reminders fire in schedule order. If the human resolves before a reminder fires, subsequent reminders are skipped.
+
+## See also
+
+- [waitForHuman](/docs/foundations/wait-for-human): `timeout` and `reminders` options
+- [Package exports](/docs/foundations/package-exports): `RemindEntry`, `EscalateEntry` types
+- [Foundations overview](/docs/foundations/overview): API map

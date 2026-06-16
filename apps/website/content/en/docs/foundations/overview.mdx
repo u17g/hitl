@@ -1,0 +1,56 @@
+---
+title: Foundations
+description: API map for the workflow client and @hitl-sdk/hitl building blocks.
+---
+
+# Foundations
+
+Hitl SDK splits into two import layers. Use the right one inside `"use workflow"` functions.
+
+| Layer | Import from | APIs |
+|-------|-------------|------|
+| **Workflow client** | `lib/hitl-client.ts` | `requestHuman`, `waitForHuman`, `notify` |
+| **SDK helpers** | `@hitl-sdk/hitl` | `actions`, `field`, `remind`, `escalate`, `isResolved` |
+
+The workflow client is a thin HTTP wrapper over your engine's `suspend()` / `sleep()`. It POSTs to your server's internal API; state and channel delivery live only on the server (`new Hitl({ … })`).
+
+## One call vs create + wait
+
+**One call** creates and waits in a single step:
+
+```typescript
+const result = await waitForHuman({ message: "Approve?", actions, timeout: "72h" });
+```
+
+**Create + wait** splits creation and waiting when you need to send context in between:
+
+```typescript
+const pending = await requestHuman({ message: "Approve?", actions });
+await notify({ after: pending, message: "Extra context for the reviewer" });
+const result = await waitForHuman(pending, { reminders: [remind.after("1h")] });
+```
+
+Use create + wait when reviewers need follow-up messages, multi-step timelines, or logic between creation and waiting.
+
+## API reference
+
+| Page | What it covers |
+|------|----------------|
+| [waitForHuman](/docs/foundations/wait-for-human) | Suspend until a human resolves; timeouts and batch mode |
+| [requestHuman](/docs/foundations/request-human) | Create phase only; returns a pending handle |
+| [notify](/docs/foundations/notify) | Post context to a channel thread while pending |
+| [Actions and fields](/docs/foundations/actions-and-fields) | `actions()`, `field.*`, `isResolved`, typed results |
+| [Reminders](/docs/foundations/reminders) | `remind.*` and `escalate.to()` schedules |
+| [Package exports](/docs/foundations/package-exports) | `@hitl-sdk/hitl` subpath map |
+
+## Typical flow
+
+```text
+actions() + field.*  →  requestHuman / waitForHuman  →  isResolved(result, "approve")
+                              ↓
+                         notify (optional)
+                              ↓
+                    remind / escalate (optional, on wait)
+```
+
+See also: [Overview](/docs/overview) for architecture, [Quickstart](/docs/quickstart) for a full end-to-end loop.

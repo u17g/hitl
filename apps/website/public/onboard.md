@@ -1,6 +1,6 @@
 # HITL SDK onboarding
 
-AI Agent setup guide. Human-readable docs live at https://hitl-sdk.dev/docs — fetch MDX pages below; do not duplicate prose here.
+AI Agent setup guide. Human-readable docs live at https://hitl-sdk.dev/docs. Fetch MDX pages below; do not duplicate prose here.
 
 ## Disclaimer
 
@@ -18,12 +18,12 @@ AI Agent setup guide. Human-readable docs live at https://hitl-sdk.dev/docs — 
 
 Human approval layer for mission-critical agentic workflows. Add human-in-the-loop with `waitForHuman`.
 
-Orthogonal axes (compose one choice per axis — not a Cartesian product of guides):
+Orthogonal axes (compose one choice per axis, not a Cartesian product of guides):
 
 - **Workflow engine**: Workflow SDK (default), Temporal, Inngest
 - **State**: in-memory (dev only), SQLite (default for new projects), Postgres, Redis
 - **Delivery**: web inbox (always built in; default) + optional Chat SDK adapter for Slack/Teams/Discord/etc.
-- **Host**: mount server routes — see host-integration (Next.js default in quickstart)
+- **Host**: mount server routes. See host-integration (Next.js default in quickstart)
 
 Chat SDK and web inbox are **not** mutually exclusive. `new Hitl()` always includes the web inbox channel; add `@hitl-sdk/adapter-chat-sdk` only when chat platforms are needed.
 
@@ -57,7 +57,7 @@ Workflow engine (if not installed):
 # Workflow SDK (default)
 npm i -S workflow
 
-# Temporal or Inngest — see their docs for worker/client setup
+# Temporal or Inngest. See their docs for worker/client setup
 ```
 
 Workflow resolver (pick one):
@@ -68,7 +68,7 @@ npm i -S @hitl-sdk/resolver-temporal        # Temporal
 npm i -S @hitl-sdk/resolver-inngest       # Inngest
 ```
 
-Chat adapter (optional — only if Slack/Teams/etc.):
+Chat adapter (optional, only if Slack/Teams/etc.):
 
 ```sh
 npm i -S chat @hitl-sdk/adapter-chat-sdk @chat-adapter/slack
@@ -84,7 +84,7 @@ npm i -S @hitl-sdk/state-ioredis ioredis   # Redis
 
 ### 3. Fetch docs (compose, do not multiply)
 
-Fetch prose from docs — one page per axis, not one page per combination.
+Fetch prose from docs: one page per axis, not one page per combination.
 
 1. Always fetch **overview** + **quickstart** first.
 2. Fetch exactly **one** workflow engine page from diagnosis.
@@ -102,15 +102,16 @@ Fetch prose from docs — one page per axis, not one page per combination.
 | Delivery | https://hitl-sdk.dev/docs/channels/web-inbox (default) ; + `/channels/chat-sdk` if chat needed |
 | Host | https://hitl-sdk.dev/docs/host-integration#nextjs \| `#express` \| `#hono` \| `#fastify` \| `#nestjs` \| `#nitro` \| `#nuxt` \| `#astro` \| `#sveltekit` \| `#vite` |
 | Install reference | https://hitl-sdk.dev/docs/install |
-| Concepts (optional) | https://hitl-sdk.dev/docs/concepts/wait-for-human |
+| Foundations (optional) | https://hitl-sdk.dev/docs/foundations/overview |
 
-Each axis page describes **what to change** relative to quickstart — do not expect a standalone end-to-end guide per URL.
+Each axis page describes **what to change** relative to quickstart. Do not expect a standalone end-to-end guide per URL.
 
 ## Concept questions (pre install)
 
 If the user asks conceptual questions before installing, fetch:
 
 - https://hitl-sdk.dev/docs/overview
-- https://hitl-sdk.dev/docs/concepts/wait-for-human
+- https://hitl-sdk.dev/docs/foundations/overview
+- https://hitl-sdk.dev/docs/foundations/wait-for-human
 - https://hitl-sdk.dev
 - https://github.com/u17g/hitl

@@ -1,6 +1,6 @@
 ---
 title: Inngest
-description: Bind Hitl to Inngest — step.invoke for waitForHuman and events for resume.
+description: Bind Hitl to Inngest. Use step.invoke for waitForHuman and events for resume.
 ---
 
 # Inngest
@@ -52,11 +52,11 @@ export const hitl = new Hitl({
 });
 ```
 
-Mount `hitl.routeHandlers` — see [Host integration](/docs/host-integration). The same app must serve both Inngest and Hitl HTTP routes.
+Mount `hitl.routeHandlers`. See [Host integration](/docs/host-integration). The same app must serve both Inngest and Hitl HTTP routes.
 
 ## Call from your functions (Quickstart step 4 / workflow)
 
-Use `step.invoke` — not the low-level client directly:
+Use `step.invoke`, not the low-level client directly:
 
 ```typescript
 import { actions, isResolved, type HumanResult } from "@hitl-sdk/hitl";
@@ -82,7 +82,7 @@ export const inboundLead = inngest.createFunction(
 );
 ```
 
-`step.invoke` crosses a JSON boundary — assert `HumanResult<typeof actionsDef>` for typed feedbacks.
+`step.invoke` crosses a JSON boundary. Assert `HumanResult<typeof actionsDef>` for typed feedbacks.
 
 ## Environment
 
@@ -93,4 +93,4 @@ export const inboundLead = inngest.createFunction(
 
 ## Advanced
 
-For tests or custom `step.run` wrappers, use `createInngestHitlClient({ step, url })` — prefer `step.invoke` in application code.
+For tests or custom `step.run` wrappers, use `createInngestHitlClient({ step, url })`. Prefer `step.invoke` in application code.

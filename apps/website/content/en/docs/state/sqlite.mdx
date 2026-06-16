@@ -1,6 +1,6 @@
 ---
 title: SQLite State
-description: Persist approval requests with Node built-in SQLite — zero runtime dependencies, auto-migrations on open.
+description: Persist approval requests with Node built-in SQLite. Zero runtime dependencies, auto-migrations on open.
 ---
 
 # SQLite State
@@ -17,7 +17,7 @@ npm i @hitl-sdk/hitl @hitl-sdk/state-sqlite
 
 ## Setup
 
-Constructing `SqliteState` runs migrations automatically — no separate setup step for most apps:
+Constructing `SqliteState` runs migrations automatically. No separate setup step for most apps:
 
 ```typescript
 import { mkdirSync } from "node:fs";
@@ -38,7 +38,7 @@ export const hitl = new Hitl({
 
 ## CLI (optional)
 
-Initialize a database outside your app — CI, scripts, or infra that runs before the server:
+Initialize a database outside your app: CI, scripts, or infra that runs before the server:
 
 ```bash
 npx @hitl-sdk/state-sqlite setup --db .hitl/human_requests.db
@@ -47,8 +47,8 @@ npx @hitl-sdk/state-sqlite schema   # export DDL without opening a database
 
 ## When to use something else
 
-- **Multi-replica production** — use [Postgres](/docs/state/postgres) or [Redis](/docs/state/redis)
-- **Throwaway local demo** — omit `state` or use `InMemoryState` from `@hitl-sdk/hitl/state`
+- **Multi-replica production**: use [Postgres](/docs/state/postgres) or [Redis](/docs/state/redis)
+- **Throwaway local demo**: omit `state` or use `InMemoryState` from `@hitl-sdk/hitl/state`
 
 ## Migrations
 

@@ -1,42 +1,76 @@
 ---
 title: Overview
-description: Human-in-the-loop approval for TypeScript workflows — one waitForHuman primitive, any engine, any channel.
+description: Human-in-the-loop approval for TypeScript workflows. One waitForHuman primitive, any engine, any channel.
 ---
 
 # Overview
 
-Hitl SDK adds human approval to AI agents and durable workflows with a single `waitForHuman` call. Workflows suspend until a reviewer approves, denies, or edits fields — then resume with typed results.
-
-## Beta
-
-Hitl SDK is in beta. APIs may change without notice. Node.js only (22.13+ recommended for SQLite state).
+Hitl SDK adds human approval to AI agents and durable workflows with a single `waitForHuman` call. Workflows suspend until a reviewer approves, denies, or edits fields, then resume with typed results.
 
 ## What you get
 
-- **One primitive** — `waitForHuman`, `requestHuman`, `notify`, reminders, and escalation
-- **Workflow engine agnostic** — Workflow SDK, Temporal, or Inngest
-- **Channel agnostic** — built-in web inbox plus optional Chat SDK adapter (Slack, Teams, Discord, and [more](https://chat-sdk.dev/adapters))
-- **Persistent state** — in-memory (dev), SQLite, Postgres, or Redis
+- **Small workflow API**: `waitForHuman` is the core call. Pass `remind` and `escalate` on the wait for schedules.
+- **Workflow engine agnostic**: Workflow SDK, Temporal, or Inngest
+- **Channel agnostic**: built-in web inbox plus optional Chat SDK adapter (Slack, Teams, Discord, and [more](https://chat-sdk.dev/adapters))
+- **Database agnostic**: in-memory (dev), SQLite, Postgres, or Redis
 
 ## Two-process architecture
 
-Hitl splits into a **workflow client** and a **server**:
+Durable workflows **replay from an event log**. If a worker crashes or redeploys mid-run, the engine restarts the workflow from recorded steps instead of losing in-flight work. Side effects (posting to Slack, writing to Postgres, handling webhooks) must not run inside workflow code, or they fire again on every replay and break determinism. Human approval also waits hours or days. The run should stay **suspended at zero cost**, not hold connections or run background IO in the workflow sandbox.
 
-```text
-Workflow (use workflow)          Server (your app)
-─────────────────────           ─────────────────
-waitForHuman()                  new Hitl({ state, resolver, adapters })
-     │                                │
-     │  POST /.well-known/hitl/v1     │
-     └──────────────────────────────► │
-                                        │ deliver to inbox / Slack / …
-     ◄──────────────────────────────┘ │ resolver resumes workflow
+Hitl therefore splits into two processes with a narrow boundary:
+
+- **Workflow process**: `waitForHuman()` suspends the run, then makes a **durable HTTP POST** to your server. No state backend, no adapters, no channel SDKs on this side.
+- **Server process**: your app with `new Hitl({ state, resolver, adapters })`. Records requests, delivers to inbox / Slack / Teams, accepts reviewer input, and calls your engine's **resolver** to resume the run.
+
+The only link between them is HTTP to `.well-known/hitl/v1`. That split buys you:
+
+- **Replay-safe approval steps**: workflow code never touches channels or databases directly
+- **Failure tolerance**: the create-request POST and timeout/reminder sleeps are **durable steps** memoized by the engine, so replay does not duplicate Slack posts or inbox rows. Pending requests live in your server state until someone resolves or times out, even if the workflow sandbox restarts.
+- **Cheap long waits**: the engine suspends until a human acts or a timeout/reminder fires
+- **Engine portability**: Swap Workflow SDK, Temporal, or Inngest by changing only the workflow client import and the `resolver` in `new Hitl()`. Your state backend, channel adapters, and inbox setup stay the same.
+- **Channel portability**: add or change Slack, web inbox, or other adapters on the server without editing workflow functions
+
+```mermaid
+sequenceDiagram
+  participant W as Workflow
+  participant H as Hitl server<br/>(your app)
+  Note over W: waitForHuman()
+  Note over H: new Hitl({ state, resolver, adapters })
+  W->>H: POST /.well-known/hitl/v1
+  Note over H: state, channels, resume
+  H->>W: resolver resumes workflow
 ```
 
-- **Workflow side** — engine-specific client (`createWorkflowSdkHitlClient`, etc.). No state or adapters here; only durable suspend + HTTP to the server.
-- **Server side** — `new Hitl({ state, resolver, adapters })`. Owns persistence, channel delivery, and resuming the workflow when a human decides.
+- **Workflow side**: engine-specific client (`createWorkflowSdkHitlClient`, etc.). Suspend, sleep, and durable HTTP only.
+- **Server side**: `new Hitl({ state, resolver, adapters })`. Persistence, delivery, inbox, and resume.
 
-The workflow never talks to Slack or Postgres directly. It POSTs to your server's internal API; the server handles everything else.
+The workflow never talks to Slack, Postgres, or your inbox UI directly. The next section shows what happens inside the server between POST and resume.
+
+## End-to-end approval flow
+
+Inside those two processes, a single `waitForHuman` call looks like this. Slack via Chat SDK is shown below. With the [web inbox](/docs/channels/web-inbox), channel participants are skipped and resolution happens through `hitl.inbox` in the browser.
+
+```mermaid
+sequenceDiagram
+  participant W as Workflow
+  participant H as Hitl server
+  participant B as Chat SDK bot
+  participant S as Slack
+  participant R as Reviewer
+  W->>W: waitForHuman(): suspend (get resume token)
+  W->>H: POST /.well-known/hitl/v1/requests {token, actions}
+  H->>H: record request
+  H->>S: adapter.send: native card with Submit/Deny
+  Note over W: suspended, zero cost while waiting
+  R->>S: clicks Submit, edits fields in the modal
+  S->>B: interactivity (webhook verifies + parses)
+  B->>H: hitl.inbox.resolve(id, {actionId, feedbacks})
+  H->>W: run resumes with HumanResult
+  H->>S: adapter.update: Approved by @ryosuke
+```
+
+The server handles everything between the POST and the resume: persistence, delivery, and calling your workflow engine's resolver when a human decides.
 
 ## Supported matrix
 
@@ -45,7 +79,7 @@ The workflow never talks to Slack or Postgres directly. It POSTs to your server'
 | Workflow engine | [Workflow SDK](https://workflow-sdk.dev), [Temporal](https://temporal.io), [Inngest](https://www.inngest.com) |
 | State | in-memory, SQLite, Postgres, Redis |
 | Delivery | web inbox (built in), Chat SDK adapter |
-| Host | any Node HTTP server — see [Host integration](/docs/host-integration) |
+| Host | any Node HTTP server. See [Host integration](/docs/host-integration) |
 
 ## Next steps
 

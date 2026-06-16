@@ -1,0 +1,119 @@
+---
+title: notify
+description: Post a follow-up message to a channel thread while a human request is pending or after it resolves.
+---
+
+# notify
+
+Send a contextual message to the reviewer's channel without creating a new approval step.
+
+## Import
+
+```typescript
+import { notify } from "@/lib/hitl-client";
+```
+
+## Signature
+
+```typescript
+notify(notification: NotifyOptions): Promise<TimelineAnchor>
+```
+
+## Options
+
+`NotifyOptions` is a discriminated union of three shapes:
+
+### Anchor to a prior step (`after`)
+
+```typescript
+notify({
+  after: HumanPending | HumanBatchPending | HumanResult | TimelineAnchor,
+  message: string,
+  channel?: string,
+  detail?: Record<string, unknown>,
+})
+```
+
+Posts in the same chat thread as the referenced step. Most common pattern after [`requestHuman`](/docs/foundations/request-human).
+
+### Anchor by id (`on`)
+
+```typescript
+notify({
+  on: string, // human request or batch id
+  message: string,
+  channel?: string,
+  detail?: Record<string, unknown>,
+})
+```
+
+Use when you have an id but not the full pending object (e.g. from stored context).
+
+### Standalone
+
+```typescript
+notify({
+  message: string,
+  channel?: string,
+  detail?: Record<string, unknown>,
+})
+```
+
+Delivers to the default channel without threading.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | `string` | Notification body shown in the channel |
+| `after` | pending / result / anchor | Thread under this step |
+| `on` | `string` | Request or batch id when `after` is unavailable |
+| `detail` | `Record<string, unknown>` | Opaque metadata (not shown to reviewer by default) |
+| `channel` | `string` | Adapter id or `adapter_id:destination`; defaults to first configured adapter |
+
+## Returns
+
+`TimelineAnchor` (`{ id, externalRef }`). Use as `after` on a subsequent [`requestHuman`](/docs/foundations/request-human) or [`waitForHuman`](/docs/foundations/wait-for-human) call to keep threading.
+
+## Example
+
+```typescript
+import { actions } from "@hitl-sdk/hitl";
+import { requestHuman, notify, waitForHuman } from "@/lib/hitl-client";
+
+const pending = await requestHuman({
+  message: `Say hello to ${name}?`,
+  actions: actions().approve({ label: "Approve" }).deny({ label: "Deny" }).build(),
+});
+
+await notify({
+  after: pending,
+  message: `Context for ${name}`,
+  detail: { requestedAt: new Date().toISOString() },
+});
+
+const response = await waitForHuman(pending);
+```
+
+## Chaining after resolution
+
+Notify after a resolved step, then start a follow-up request in the same thread:
+
+```typescript
+const first = await waitForHuman({ message: "Approve draft?", actions });
+
+await notify({
+  after: first,
+  message: "Draft was approved. Scheduling send for tomorrow.",
+});
+
+const second = await requestHuman({
+  message: "Confirm send time?",
+  actions,
+  after: first,
+});
+```
+
+## See also
+
+- [requestHuman](/docs/foundations/request-human): create phase before notify
+- [waitForHuman](/docs/foundations/wait-for-human): wait after notify
+- [Foundations overview](/docs/foundations/overview): API map

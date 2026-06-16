@@ -5,7 +5,7 @@ description: Deliver approvals to Slack, Teams, Discord, and every Chat SDK plat
 
 # Chat SDK Adapter
 
-**Adds to Quickstart step 2** — optional channel adapter on top of the built-in [web inbox](/docs/channels/web-inbox). You can use both: inbox for internal tools, Chat SDK for Slack/Teams.
+**Adds to Quickstart step 2**: optional channel adapter on top of the built-in [web inbox](/docs/channels/web-inbox). You can use both: inbox for internal tools, Chat SDK for Slack/Teams.
 
 ## Install
 
@@ -37,7 +37,7 @@ export const hitl = new Hitl({
       id: "approvals",
       bot,
       defaultChannel: "slack:C123",
-      inbox: () => hitl.inbox, // lazy — Hitl constructs inbox after adapters
+      inbox: () => hitl.inbox, // lazy: Hitl constructs inbox after adapters
     }),
   ],
 });
@@ -75,6 +75,6 @@ reminders: [escalate.to("approvals:slack:C999").after("1h", { mode: "redeliver" 
 
 ## How it works
 
-`createChatSdkAdapter` registers approve/deny handlers on the Chat SDK bot. Interactivity resolves through `hitl.inbox` — the same API as the web inbox.
+`createChatSdkAdapter` registers approve/deny handlers on the Chat SDK bot. Interactivity resolves through `hitl.inbox`, the same API as the web inbox.
 
 Multiple adapters can share one `bot`; handlers register only once.

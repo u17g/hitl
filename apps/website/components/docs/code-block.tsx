@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
+import type { BundledLanguage } from "shiki";
 import * as React from "react";
 import { SyntaxHighlight } from "@/components/syntax-highlight";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,12 @@ export function CodeBlock({
   code,
   className,
   filename,
+  lang,
 }: {
   code: string;
   className?: string;
   filename?: string;
+  lang?: BundledLanguage;
 }) {
   const [copied, setCopied] = React.useState(false);
 
@@ -66,7 +69,7 @@ export function CodeBlock({
       <div className="overflow-x-auto p-4 text-sm leading-relaxed">
         <SyntaxHighlight
           code={code}
-          lang={inferLang(filename)}
+          lang={lang ?? inferLang(filename)}
           className="leading-relaxed"
         />
       </div>

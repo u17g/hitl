@@ -1,6 +1,12 @@
 import type { ComponentProps, ReactNode } from "react";
 import { CodeBlock } from "@/components/docs/code-block";
+import { MermaidDiagram } from "@/components/docs/mermaid-diagram";
 import { Link } from "@/i18n/navigation";
+import {
+  fenceLangToShiki,
+  isPlainFenceLang,
+} from "@/lib/shiki";
+import { cn } from "@/lib/utils";
 
 type MDXComponents = Record<string, React.ComponentType<Record<string, unknown>>>;
 
@@ -21,31 +27,56 @@ function Pre({
   ...props
 }: ComponentProps<"pre"> & { "data-language"?: string }) {
   const child = Array.isArray(children) ? children[0] : children;
-  if (
-    child &&
-    typeof child === "object" &&
-    "props" in child &&
-    child.type === "code"
-  ) {
+  if (child && typeof child === "object" && "props" in child) {
     const codeProps = child.props as {
       children?: ReactNode;
       className?: string;
     };
-    const code = getTextContent(codeProps.children).replace(/\n$/, "");
-    const langClass = codeProps.className?.match(/language-(\w+)/)?.[1];
-    const filename =
-      props["data-language"] ??
-      (langClass === "bash" || langClass === "sh" || langClass === "shell"
-        ? "terminal"
-        : langClass === "typescript" || langClass === "tsx"
-          ? "workflow.ts"
-          : undefined);
+    const langMatch = codeProps.className?.match(/language-([\w-]+)/);
+    if (langMatch?.[1]) {
+      const fenceLang = langMatch[1];
+      const code = getTextContent(codeProps.children).replace(/\n$/, "");
 
-    return <CodeBlock code={code} filename={filename} />;
+      if (fenceLang === "mermaid") {
+        return <MermaidDiagram chart={code} />;
+      }
+
+      if (isPlainFenceLang(fenceLang)) {
+        return (
+          <pre
+            className="overflow-x-auto rounded border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed"
+            {...props}
+          >
+            <code>{code}</code>
+          </pre>
+        );
+      }
+
+      const filename =
+        props["data-language"] ??
+        (fenceLang === "bash" ||
+        fenceLang === "sh" ||
+        fenceLang === "shell"
+          ? "terminal"
+          : fenceLang === "typescript" || fenceLang === "tsx"
+            ? "workflow.ts"
+            : undefined);
+
+      return (
+        <CodeBlock
+          code={code}
+          filename={filename}
+          lang={fenceLangToShiki(fenceLang)}
+        />
+      );
+    }
   }
 
   return <pre {...props}>{children}</pre>;
 }
+
+const inlineCodeClassName =
+  "rounded bg-muted px-1.5 py-0.5 font-mono text-[0.875em] font-normal text-foreground before:content-none after:content-none";
 
 export const mdxComponents: MDXComponents = {
   a: ({
@@ -75,7 +106,7 @@ export const mdxComponents: MDXComponents = {
     const isInline = !className?.includes("language-");
     if (isInline) {
       return (
-        <code className={className} {...props}>
+        <code className={cn(inlineCodeClassName, className)} {...props}>
           {children}
         </code>
       );
@@ -86,11 +117,16 @@ export const mdxComponents: MDXComponents = {
       </code>
     );
   },
+  table: ({ children, ...props }: ComponentProps<"table">) => (
+    <div className="overflow-x-auto">
+      <table {...props}>{children}</table>
+    </div>
+  ),
 };
 
 export function DocsProse({ children }: { children: ReactNode }) {
   return (
-    <div className="prose prose-neutral dark:prose-invert max-w-none">
+    <div className="prose prose-neutral dark:prose-invert prose-code:before:content-none prose-code:after:content-none prose-table:w-full max-w-none">
       {children}
     </div>
   );
