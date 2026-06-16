@@ -23,13 +23,12 @@ const approval = await waitForHuman({
   actions: actions().approve().deny().build(),
 });
 
-// equivalent, inbox channel explicit:
-const approval = await waitForHuman({
-  channel: "inbox",
-  message: `Send email to: ${input.email}?`,
-  actions: actions().approve().deny().build(),
-});
+if (!isResolved(approval, "approve")) return;
+
+await sendEmail(emailDraft);
 ```
+
+Omit `channel` to use the inbox by default. Passing `channel: "inbox"` is equivalent.
 
 ## List pending requests
 

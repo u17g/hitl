@@ -52,6 +52,8 @@ export const hitl = new Hitl({
     }),
   ],
 });
+
+export { bot };
 ```
 
 Set `defaultChannel` to the Slack channel ref your bot should post into when workflows pass `channel: "approvals"` without a destination suffix.
@@ -65,8 +67,7 @@ Mount the platform webhook on your HTTP server. On plain Node.js, add a route al
 ```typescript
 // server.ts
 import { createServer } from "node:http";
-import { hitl } from "./lib/hitl";
-import { bot } from "./lib/chat-bot"; // export `bot` from lib/hitl.ts or a sibling module
+import { hitl, bot } from "./lib/hitl";
 
 createServer((req, res) => {
   if (req.method === "POST" && req.url === "/webhooks/slack") {
