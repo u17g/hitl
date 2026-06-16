@@ -70,7 +70,7 @@ export function SetupSection() {
           className="mt-4 h-auto p-0 font-mono text-xs text-muted-foreground"
           asChild
         >
-          <Link href="/docs/getting-started">
+          <Link href="/docs/quickstart">
             {t({ en: "Learn more", ja: "詳しく見る" })}
             <ArrowRight className="h-3 w-3" />
           </Link>

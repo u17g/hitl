@@ -1,0 +1,80 @@
+---
+title: Chat SDK Adapter
+description: Deliver approvals to Slack, Teams, Discord, and every Chat SDK platform with native cards.
+---
+
+# Chat SDK Adapter
+
+**Adds to Quickstart step 2** — optional channel adapter on top of the built-in [web inbox](/docs/channels/web-inbox). You can use both: inbox for internal tools, Chat SDK for Slack/Teams.
+
+## Install
+
+```bash
+npm i @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
+```
+
+Install `@chat-adapter/*` for each platform. See the [Chat SDK packages list](https://github.com/vercel/chat/tree/main/packages).
+
+## Server setup
+
+```typescript
+import { Hitl } from "@hitl-sdk/hitl";
+import { createChatSdkAdapter } from "@hitl-sdk/adapter-chat-sdk";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+import { Chat } from "chat";
+import { createSlackAdapter } from "@chat-adapter/slack";
+
+const bot = new Chat({
+  adapters: { slack: createSlackAdapter() },
+  state: createRedisState(), // any Chat SDK state adapter
+});
+
+export const hitl = new Hitl({
+  state,
+  resolver: workflowResolver(),
+  adapters: [
+    createChatSdkAdapter({
+      id: "approvals",
+      bot,
+      defaultChannel: "slack:C123",
+      inbox: () => hitl.inbox, // lazy — Hitl constructs inbox after adapters
+    }),
+  ],
+});
+```
+
+Mount Chat SDK webhooks separately:
+
+```typescript
+// app/api/webhooks/slack/route.ts
+export const POST = bot.webhooks.slack;
+```
+
+## Route to channels from workflows
+
+```typescript
+// Default channel for adapter id "approvals":
+await waitForHuman({ channel: "approvals", message: "Approve?", actions });
+
+// Specific Slack channel:
+await waitForHuman({ channel: "approvals:slack:C456", message: "Approve?", actions });
+
+// Thread:
+await waitForHuman({
+  channel: "approvals:slack:C123:1710000000.123456",
+  message: "Approve?",
+  actions,
+});
+```
+
+Escalation uses the same routing key:
+
+```typescript
+reminders: [escalate.to("approvals:slack:C999").after("1h", { mode: "redeliver" })],
+```
+
+## How it works
+
+`createChatSdkAdapter` registers approve/deny handlers on the Chat SDK bot. Interactivity resolves through `hitl.inbox` — the same API as the web inbox.
+
+Multiple adapters can share one `bot`; handlers register only once.

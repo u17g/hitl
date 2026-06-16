@@ -1,0 +1,99 @@
+---
+title: Temporal
+description: Bind Hitl to Temporal — activities for HTTP, signals for resume.
+---
+
+# Temporal
+
+Replaces **Quickstart steps 2 and 4** when using [Temporal](https://temporal.io).
+
+Temporal splits activity code (I/O) from workflow code (orchestration). Keep them in separate files.
+
+## Install
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/resolver-temporal @temporalio/client @temporalio/workflow
+```
+
+## Server (Quickstart step 2)
+
+```typescript
+import { Connection, Client } from "@temporalio/client";
+import { Hitl } from "@hitl-sdk/hitl";
+import { temporalResolver } from "@hitl-sdk/resolver-temporal";
+
+const connection = await Connection.connect({
+  address: process.env.TEMPORAL_ADDRESS,
+});
+const temporalClient = new Client({
+  connection,
+  namespace: process.env.TEMPORAL_NAMESPACE,
+});
+
+export const hitl = new Hitl({
+  state, // see State docs
+  resolver: temporalResolver({ client: temporalClient }),
+});
+```
+
+## Activity (HTTP to Hitl server)
+
+```typescript
+// activities/hitl.ts — register with your Worker
+import type { HitlRequest, HitlResponse } from "@hitl-sdk/hitl/core";
+
+export async function hitlRequestActivity(req: HitlRequest): Promise<HitlResponse> {
+  const res = await fetch(req.url, {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  });
+  return { status: res.status, ok: res.ok, body: await res.text() };
+}
+```
+
+## Workflow client (Quickstart step 4)
+
+```typescript
+// lib/hitl-client.ts — import in workflows only
+import { proxyActivities } from "@temporalio/workflow";
+import { createTemporalHitlClient } from "@hitl-sdk/resolver-temporal";
+import type * as activities from "../activities/hitl";
+
+const { hitlRequestActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1m",
+});
+
+export const { waitForHuman, requestHuman, notify } = createTemporalHitlClient({
+  request: hitlRequestActivity,
+});
+```
+
+**Call `createTemporalHitlClient` once per workflow execution.** Signal handlers can only be registered once per run.
+
+## Workflow usage
+
+```typescript
+import { actions, isResolved } from "@hitl-sdk/hitl";
+import { waitForHuman } from "../lib/hitl-client";
+
+export async function inboundLead(input: { email: string }) {
+  const approval = await waitForHuman({
+    message: `Inbound lead: ${input.email}`,
+    actions: actions().approve().deny().build(),
+    timeout: "72h",
+  });
+
+  if (!isResolved(approval, "approve")) return;
+  // approval.feedbacks is typed
+}
+```
+
+## Environment
+
+| Variable | Purpose |
+|----------|---------|
+| `TEMPORAL_ADDRESS` | Temporal frontend for `temporalResolver` |
+| `TEMPORAL_NAMESPACE` | Namespace for workflow handles |
+
+Mount the Hitl server routes — see [Host integration](/docs/host-integration).

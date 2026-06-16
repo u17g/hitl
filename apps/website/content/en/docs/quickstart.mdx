@@ -1,0 +1,209 @@
+---
+title: Quickstart
+description: Build a complete human-in-the-loop approval loop with Workflow SDK, SQLite, and the web inbox on Next.js.
+---
+
+# Quickstart
+
+This guide walks through a complete approval loop: a workflow suspends on `waitForHuman`, you approve via the web inbox, and the workflow resumes. It uses opinionated defaults:
+
+- **Workflow engine** — [Workflow SDK](https://workflow-sdk.dev)
+- **State** — SQLite (swap to in-memory for the fastest local try)
+- **Delivery** — built-in web inbox (no Slack setup)
+- **Host** — Next.js App Router
+
+To swap any axis later, see [Install — Choose your stack](/docs/install).
+
+## Prerequisites
+
+- Node.js 22.13+
+- A Next.js project with Workflow SDK configured (or clone the [hello-world example](https://github.com/u17g/hitl/tree/main/examples/hello-world))
+
+## 1. Install packages
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk @hitl-sdk/state-sqlite workflow
+```
+
+## 2. Create the server
+
+`lib/hitl.ts` — persistence, resolver, and the built-in inbox channel:
+
+```typescript
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { Hitl } from "@hitl-sdk/hitl";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+import { SqliteState } from "@hitl-sdk/state-sqlite";
+
+const dbPath = join(process.cwd(), ".hitl", "human_requests.db");
+mkdirSync(join(process.cwd(), ".hitl"), { recursive: true });
+
+export const hitl = new Hitl({
+  state: new SqliteState(new DatabaseSync(dbPath)),
+  resolver: workflowResolver(),
+});
+```
+
+For a throwaway local demo, you can use `InMemoryState` from `@hitl-sdk/hitl/state` instead of SQLite — pending requests reset on server restart.
+
+## 3. Mount the internal API
+
+Workflows POST to `/.well-known/hitl/v1`. In Next.js App Router:
+
+```typescript
+// app/.well-known/hitl/v1/[[...path]]/route.ts
+import { hitl } from "@/lib/hitl";
+
+export const { POST } = hitl.routeHandlers;
+```
+
+See [Host integration — Next.js](/docs/host-integration#nextjs) for Express, Hono, and other frameworks.
+
+## 4. Create the workflow client
+
+The workflow runs in a separate sandbox and cannot import the server. Create a thin client with a durable `"use step"` fetch:
+
+```typescript
+// lib/hitl-client.ts
+import type { HitlRequest } from "@hitl-sdk/hitl/core";
+import { createWorkflowSdkHitlClient } from "@hitl-sdk/resolver-workflow-sdk";
+
+async function hitlRequest(req: HitlRequest) {
+  "use step";
+  const res = await fetch(req.url, {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  });
+  return { status: res.status, ok: res.ok, body: await res.text() };
+}
+
+export const { waitForHuman, requestHuman, notify } = createWorkflowSdkHitlClient({
+  request: hitlRequest,
+});
+```
+
+## 5. Write a workflow
+
+```typescript
+// workflows/hello.ts
+import { actions, field, isResolved } from "@hitl-sdk/hitl";
+import { waitForHuman } from "@/lib/hitl-client";
+
+export async function helloWorkflow(name: string) {
+  "use workflow";
+
+  const approval = await waitForHuman({
+    message: `Say hello to ${name}?`,
+    actions: actions()
+      .approve({ label: "Approve" })
+      .deny({
+        label: "Deny",
+        fields: { reason: field.textArea({ label: "Reason" }) },
+      })
+      .build(),
+  });
+
+  if (!isResolved(approval, "approve")) {
+    return { ok: false };
+  }
+
+  await greet(name);
+  return { ok: true, greeted: name };
+}
+
+async function greet(name: string) {
+  "use step";
+  console.log(`Hello, ${name}!`);
+}
+```
+
+## 6. Trigger the workflow
+
+```typescript
+// app/api/run/route.ts
+import { helloWorkflow } from "@/workflows/hello";
+import { start } from "workflow/api";
+
+export async function POST(req: Request) {
+  const body = (await req.json()) as { name?: string };
+  const name = body.name ?? "world";
+  const run = await start(helloWorkflow, [name]);
+  return Response.json({ runId: run.runId, name });
+}
+```
+
+## 7. Expose the inbox (optional custom UI)
+
+The web inbox channel is built in. You can resolve approvals programmatically via `hitl.inbox` — the hello-world example wraps it in REST routes:
+
+```typescript
+// app/api/inbox/route.ts
+import { hitl } from "@/lib/hitl";
+
+export async function GET(req: Request) {
+  const status = new URL(req.url).searchParams.get("status");
+  const requests = await hitl.inbox.list(
+    status === "pending" || status === "resolved" ? { status } : undefined,
+  );
+  return Response.json({ requests });
+}
+
+export async function POST(req: Request) {
+  const { id, actionId, by, feedbacks } = await req.json();
+  const result = await hitl.inbox.resolve(id, { actionId, feedbacks, by });
+  return Response.json({ result });
+}
+```
+
+See [Web inbox](/docs/channels/web-inbox) for list/resolve options.
+
+## 8. Run and verify
+
+Start your dev server, then:
+
+**Start a workflow:**
+
+```bash
+curl -s -X POST http://localhost:3000/api/run \
+  -H 'content-type: application/json' \
+  -d '{"name":"world"}'
+```
+
+**List pending requests:**
+
+```bash
+curl -s 'http://localhost:3000/api/inbox?status=pending'
+```
+
+**Approve** (replace `<id>` from the list):
+
+```bash
+curl -s -X POST http://localhost:3000/api/inbox \
+  -H 'content-type: application/json' \
+  -d '{"id":"<id>","actionId":"approve","by":{"name":"you"}}'
+```
+
+Check your dev server logs for `Hello, world!`.
+
+## What you built
+
+| Piece | Role |
+|-------|------|
+| `lib/hitl.ts` | Server — state, resolver, inbox |
+| `.well-known/hitl/v1` | Internal API workflows POST to |
+| `lib/hitl-client.ts` | Workflow-side client |
+| `workflows/hello.ts` | `"use workflow"` + `waitForHuman` |
+| `app/api/inbox` | Your UI/API on top of `hitl.inbox` |
+
+## Swap an axis
+
+| Want to change | Read |
+|----------------|------|
+| Workflow SDK details | [Workflow SDK](/docs/workflow-engines/workflow-sdk) |
+| Temporal or Inngest | [Temporal](/docs/workflow-engines/temporal) or [Inngest](/docs/workflow-engines/inngest) |
+| Postgres or Redis | [SQLite](/docs/state/sqlite), [Postgres](/docs/state/postgres), or [Redis](/docs/state/redis) |
+| Slack / Teams | [Chat SDK adapter](/docs/channels/chat-sdk) |
+| Express / Hono / … | [Host integration](/docs/host-integration) |

@@ -1,0 +1,158 @@
+---
+title: Host Integration
+description: Mount Hitl internal API routes on Next.js, Express, Hono, Fastify, and other Node HTTP frameworks.
+---
+
+# Host Integration
+
+Replaces **Quickstart step 3** — mount the Hitl server so workflows can POST to `/.well-known/hitl/v1`.
+
+`new Hitl()` exposes three mount styles:
+
+| Method | Use when |
+|--------|----------|
+| `hitl.routeHandlers.POST` | Next.js App Router, frameworks with `Request`/`Response` route exports |
+| `hitl.fetch(req)` | Edge runtimes, custom routers, manual `fetch` handlers |
+| `hitl.handler(req, res)` | Node `IncomingMessage` / `ServerResponse` (Express, raw `http`) |
+
+Also mount Chat SDK webhooks separately when using [chat adapters](/docs/channels/chat-sdk).
+
+<h2 id="nextjs">Next.js</h2>
+
+App Router — catch-all under `.well-known`:
+
+```typescript
+// app/.well-known/hitl/v1/[[...path]]/route.ts
+import { hitl } from "@/lib/hitl";
+
+export const { POST } = hitl.routeHandlers;
+```
+
+<h2 id="express">Express</h2>
+
+```typescript
+import express from "express";
+import { hitl } from "./lib/hitl";
+
+const app = express();
+
+app.post("/.well-known/hitl/v1/*", (req, res) => {
+  void hitl.handler(req, res);
+});
+```
+
+Or adapt `hitl.fetch` if you prefer middleware that builds a `Request`:
+
+```typescript
+app.post("/.well-known/hitl/v1/*", async (req, res) => {
+  const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const body = req.method !== "GET" ? JSON.stringify(req.body) : undefined;
+  const response = await hitl.fetch(
+    new Request(url, { method: req.method, headers: req.headers as HeadersInit, body }),
+  );
+  res.status(response.status);
+  response.headers.forEach((v, k) => res.setHeader(k, v));
+  res.send(await response.text());
+});
+```
+
+<h2 id="hono">Hono</h2>
+
+```typescript
+import { Hono } from "hono";
+import { hitl } from "./lib/hitl";
+
+const app = new Hono();
+
+app.post("/.well-known/hitl/v1/*", (c) => hitl.fetch(c.req.raw));
+```
+
+<h2 id="fastify">Fastify</h2>
+
+```typescript
+import Fastify from "fastify";
+import { hitl } from "./lib/hitl";
+
+const app = Fastify();
+
+app.post("/.well-known/hitl/v1/*", async (req, reply) => {
+  const url = `${req.protocol}://${req.hostname}${req.url}`;
+  const response = await hitl.fetch(
+    new Request(url, { method: "POST", headers: req.headers as HeadersInit, body: JSON.stringify(req.body) }),
+  );
+  reply.status(response.status);
+  for (const [k, v] of response.headers) reply.header(k, v);
+  reply.send(await response.text());
+});
+```
+
+<h2 id="nestjs">NestJS</h2>
+
+```typescript
+import { Controller, Post, Req, Res } from "@nestjs/common";
+import type { Request, Response } from "express";
+import { hitl } from "./hitl";
+
+@Controller(".well-known/hitl/v1")
+export class HitlController {
+  @Post("*")
+  handle(@Req() req: Request, @Res() res: Response) {
+    return hitl.handler(req, res);
+  }
+}
+```
+
+<h2 id="nitro">Nitro</h2>
+
+```typescript
+// server/routes/.well-known/hitl/v1/[...path].ts
+import { hitl } from "../../lib/hitl";
+
+export default defineEventHandler((event) => hitl.fetch(toWebRequest(event)));
+```
+
+<h2 id="nuxt">Nuxt</h2>
+
+Use a Nitro server route (same as Nitro above) under `server/routes/.well-known/hitl/v1/[...path].ts`.
+
+<h2 id="astro">Astro</h2>
+
+```typescript
+// src/pages/.well-known/hitl/v1/[...path].ts
+import type { APIRoute } from "astro";
+import { hitl } from "../../../lib/hitl";
+
+export const POST: APIRoute = ({ request }) => hitl.fetch(request);
+```
+
+<h2 id="sveltekit">SvelteKit</h2>
+
+```typescript
+// src/routes/.well-known/hitl/v1/[...path]/+server.ts
+import { hitl } from "$lib/hitl";
+import type { RequestHandler } from "./$types";
+
+export const POST: RequestHandler = ({ request }) => hitl.fetch(request);
+```
+
+<h2 id="vite">Vite / raw Node</h2>
+
+For Vite SSR or a standalone Node server:
+
+```typescript
+import { createServer } from "node:http";
+import { hitl } from "./lib/hitl";
+
+createServer((req, res) => {
+  if (req.method === "POST" && req.url?.startsWith("/.well-known/hitl/v1")) {
+    void hitl.handler(req, res);
+    return;
+  }
+  res.statusCode = 404;
+  res.end();
+}).listen(3000);
+```
+
+## Security
+
+Set `HITL_SECRET` (or pass `secret` to `new Hitl()`) in production. Workflows must send `Authorization: Bearer <secret>` on internal API calls when configured.

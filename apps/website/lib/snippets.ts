@@ -1,19 +1,3 @@
-import { getPathname } from "@/i18n/navigation";
-import { type Locale } from "@/i18n/routing";
-
-export const docPages = [
-  { slug: "getting-started", titleKey: "docs.gettingStarted.title" },
-  { slug: "installation", titleKey: "docs.installation.title" },
-  { slug: "channels", titleKey: "docs.channels.title" },
-  { slug: "workflow-devkit", titleKey: "docs.workflowDevkit.title" },
-] as const;
-
-export type DocSlug = (typeof docPages)[number]["slug"];
-
-export function docHref(locale: Locale, slug: DocSlug) {
-  return getPathname({ locale, href: `/docs/${slug}` });
-}
-
 export const snippets = {
   install: `npm i @hitl-sdk/hitl`,
   installAiAgent: `npm i @workflow/ai ai`,

@@ -1,0 +1,99 @@
+---
+title: Install
+description: Install the core SDK and compose packages for your workflow engine, state backend, and delivery channels.
+---
+
+# Install
+
+Install the core SDK, then add one package per axis. You do not need every package — compose only what your stack uses.
+
+## Core
+
+```bash
+npm i @hitl-sdk/hitl
+```
+
+`@hitl-sdk/hitl` provides the server, inbox API, field builders, and the internal HTTP API.
+
+## Workflow resolver (pick one)
+
+| Engine | Package | Docs |
+|--------|---------|------|
+| Workflow SDK | `@hitl-sdk/resolver-workflow-sdk` + `workflow` | [Workflow SDK](/docs/workflow-engines/workflow-sdk) |
+| Temporal | `@hitl-sdk/resolver-temporal` + `@temporalio/client` + `@temporalio/workflow` | [Temporal](/docs/workflow-engines/temporal) |
+| Inngest | `@hitl-sdk/resolver-inngest` + `inngest` | [Inngest](/docs/workflow-engines/inngest) |
+
+```bash
+# Workflow SDK (default)
+npm i @hitl-sdk/resolver-workflow-sdk workflow
+
+# Temporal
+npm i @hitl-sdk/resolver-temporal @temporalio/client @temporalio/workflow
+
+# Inngest
+npm i @hitl-sdk/resolver-inngest inngest
+```
+
+If you use Workflow DevKit's Postgres world, run its migrations separately from Hitl state (`npx workflow-postgres-setup`). Hitl tables are managed by `@hitl-sdk/state-pg`.
+
+## State backend (pick one)
+
+In-memory is the default when you omit `state`. Use a persistent backend for production or multi-replica deploys.
+
+| Backend | Package | When to use |
+|---------|---------|-------------|
+| in-memory | built into `@hitl-sdk/hitl` | Local dev, single process |
+| SQLite | `@hitl-sdk/state-sqlite` | Local dev, small deploys, Node 22.13+ |
+| Postgres | `@hitl-sdk/state-pg` + `pg` | Production, existing Postgres |
+| Redis | `@hitl-sdk/state-ioredis` + `ioredis` | Production, existing Redis |
+
+```bash
+npm i @hitl-sdk/state-sqlite
+# or
+npm i @hitl-sdk/state-pg pg
+# or
+npm i @hitl-sdk/state-ioredis ioredis
+```
+
+See [State docs](/docs/state/sqlite) for setup and migrations.
+
+## Delivery (optional add-on)
+
+The **web inbox is always included** — no extra package. Add the Chat SDK adapter only when you need Slack, Teams, Discord, or other chat platforms:
+
+```bash
+npm i @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
+```
+
+Install `@chat-adapter/*` packages for each platform you use. See [Chat SDK adapter](/docs/channels/chat-sdk).
+
+## Choose your stack
+
+Use this table to jump to the pages that **replace steps in the Quickstart** — not separate end-to-end guides.
+
+| Your choice | Quickstart step to change | Doc |
+|-------------|---------------------------|-----|
+| Workflow SDK | Step 4 (client) + resolver in Step 2 | [workflow-engines/workflow-sdk](/docs/workflow-engines/workflow-sdk) |
+| Temporal | Step 4 + resolver in Step 2 | [workflow-engines/temporal](/docs/workflow-engines/temporal) |
+| Inngest | Step 4 + resolver in Step 2 + Inngest serve | [workflow-engines/inngest](/docs/workflow-engines/inngest) |
+| SQLite | Step 2 (`state`) | [state/sqlite](/docs/state/sqlite) |
+| Postgres | Step 2 (`state`) | [state/postgres](/docs/state/postgres) |
+| Redis | Step 2 (`state`) | [state/redis](/docs/state/redis) |
+| Web inbox only | Step 7 (already default) | [channels/web-inbox](/docs/channels/web-inbox) |
+| Slack / Teams / … | Add adapters to Step 2 | [channels/chat-sdk](/docs/channels/chat-sdk) |
+| Next.js | Step 3 | [host-integration#nextjs](/docs/host-integration#nextjs) |
+| Express / Hono / … | Step 3 | [host-integration](/docs/host-integration) |
+
+**Recommended default for new projects:** Workflow SDK + SQLite + web inbox + Next.js — same as the [Quickstart](/docs/quickstart).
+
+## Environment variables
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `HITL_SECRET` | Server | Bearer token for the internal workflow → server API |
+| `HITL_URL` | Workflow / Inngest runtime | Base URL for hitl HTTP calls (when not inferred) |
+| `HITL_POSTGRES_URL` | Server | Postgres connection for `@hitl-sdk/state-pg` |
+| `REDIS_URL` | Server | Redis connection for `@hitl-sdk/state-ioredis` |
+| `TEMPORAL_ADDRESS` | Server | Temporal frontend for `@hitl-sdk/resolver-temporal` |
+
+Without `HITL_SECRET`, the internal API is open in development and a warning is logged once.

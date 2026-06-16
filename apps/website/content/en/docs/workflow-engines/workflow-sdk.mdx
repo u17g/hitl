@@ -1,0 +1,69 @@
+---
+title: Workflow SDK
+description: Bind Hitl to Vercel Workflow SDK — suspend in use workflow functions and resume over a durable step fetch.
+---
+
+# Workflow SDK
+
+Replaces **Quickstart steps 2 and 4** when using [Vercel Workflow SDK](https://workflow-sdk.dev).
+
+Workflow DevKit runs workflows in a separate sandbox from your app server. The workflow client carries no state backend — it suspends and POSTs to the server over a durable `"use step"` fetch.
+
+## Install
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk workflow
+```
+
+## Server (Quickstart step 2)
+
+```typescript
+import { Hitl } from "@hitl-sdk/hitl";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+
+export const hitl = new Hitl({
+  state, // see State docs
+  resolver: workflowResolver(),
+});
+```
+
+Mount `hitl.routeHandlers` at `/.well-known/hitl/v1` — see [Host integration](/docs/host-integration).
+
+## Workflow client (Quickstart step 4)
+
+```typescript
+import type { HitlRequest } from "@hitl-sdk/hitl/core";
+import { createWorkflowSdkHitlClient } from "@hitl-sdk/resolver-workflow-sdk";
+
+async function hitlRequest(req: HitlRequest) {
+  "use step";
+  const res = await fetch(req.url, {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  });
+  return { status: res.status, ok: res.ok, body: await res.text() };
+}
+
+export const { waitForHuman, requestHuman, notify } = createWorkflowSdkHitlClient({
+  request: hitlRequest,
+});
+```
+
+Import `waitForHuman` from this module inside `"use workflow"` functions — not from `@hitl-sdk/hitl` directly.
+
+## Approval flow
+
+1. Workflow calls `waitForHuman` — suspends and POSTs to the server.
+2. Server persists the request, delivers to inbox/adapters, and waits.
+3. Reviewer approves — `workflowResolver` resumes the workflow with the result.
+
+## Postgres world
+
+If you use Workflow DevKit's Postgres world, run its migrations separately from Hitl state:
+
+```bash
+npx workflow-postgres-setup
+```
+
+Hitl tables are managed by `@hitl-sdk/state-pg` — see [Postgres state](/docs/state/postgres).

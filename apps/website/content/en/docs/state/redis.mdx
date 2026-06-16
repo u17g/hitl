@@ -1,0 +1,58 @@
+---
+title: Redis State
+description: Persist approval requests in Redis — bring your own ioredis client, in-process migrations.
+---
+
+# Redis State
+
+Replaces **Quickstart step 2** (`state` option) when you already run Redis for caching or sessions.
+
+## Install
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/state-ioredis ioredis
+```
+
+## Usage (Quickstart step 2)
+
+Migrations run on first operation (or call `ensureSchema()` at deploy time):
+
+```typescript
+import Redis from "ioredis";
+import { Hitl } from "@hitl-sdk/hitl";
+import { IoredisState } from "@hitl-sdk/state-ioredis";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+
+const redis = new Redis(process.env.REDIS_URL);
+const state = new IoredisState(redis);
+await state.ensureSchema();
+
+export const hitl = new Hitl({
+  state,
+  resolver: workflowResolver(),
+});
+```
+
+Custom key prefix:
+
+```typescript
+const state = new IoredisState(redis, { tableName: "custom_approvals" });
+// Redis keys are prefixed with `custom_approvals:`
+```
+
+## Key layout
+
+Default prefix: `hitl:human_requests` (from table name `hitl.human_requests`).
+
+| Purpose | Key pattern |
+|---------|-------------|
+| Human request | `{prefix}:req:{id}` |
+| Token index | `{prefix}:idx:token:{token}` |
+| Status index | `{prefix}:idx:status:{pending\|resolved}` |
+| Timeline | `{prefix}:timeline:{threadId}` |
+
+No setup CLI — migrations run in-process against your Redis instance.
+
+## Migrations
+
+Upgrade `@hitl-sdk/state-ioredis` and call `ensureSchema()` (or let the first operation apply pending migrations).

@@ -1,0 +1,60 @@
+---
+title: Web Inbox
+description: Built-in approval UI channel and programmatic hitl.inbox API — always available, no extra package.
+---
+
+# Web Inbox
+
+The web inbox is **always included** in `new Hitl()` — no adapter package required. Workflows can deliver to it; your app resolves approvals via `hitl.inbox`.
+
+This replaces **Quickstart step 7** when you want a custom inbox UI or REST API. It is not mutually exclusive with the [Chat SDK adapter](/docs/channels/chat-sdk).
+
+## Deliver to the inbox from a workflow
+
+Omit `channel` to use the default inbox, or pass the inbox channel id explicitly:
+
+```typescript
+await waitForHuman({
+  message: "Review this draft?",
+  actions: actions().approve().deny().build(),
+});
+
+// equivalent:
+await waitForHuman({
+  channel: "inbox",
+  message: "Review this draft?",
+  actions: actions().approve().deny().build(),
+});
+```
+
+## List pending requests
+
+```typescript
+const pending = await hitl.inbox.list({ status: "pending" });
+const all = await hitl.inbox.list();
+```
+
+## Resolve a request
+
+```typescript
+await hitl.inbox.resolve(id, {
+  actionId: "approve",
+  by: { name: "you" },
+  feedbacks: { subject: "Updated subject" }, // optional field edits
+});
+```
+
+## Custom REST endpoint (Quickstart step 7)
+
+Wrap `hitl.inbox` in your own routes — the hello-world example exposes `/api/inbox`:
+
+```typescript
+// GET  /api/inbox?status=pending  → hitl.inbox.list
+// POST /api/inbox                 → hitl.inbox.resolve
+```
+
+Build any UI on top: admin panels, mobile apps, or internal tools. The inbox channel stores the request; your handlers drive resolution.
+
+## Batch requests
+
+For multi-step approvals, use `hitl.inbox.resolveBatch` and batch listing APIs — see `@hitl-sdk/hitl` types and the [wait-for-human concepts](/docs/concepts/wait-for-human) page.

@@ -1,0 +1,52 @@
+---
+title: Overview
+description: Human-in-the-loop approval for TypeScript workflows — one waitForHuman primitive, any engine, any channel.
+---
+
+# Overview
+
+Hitl SDK adds human approval to AI agents and durable workflows with a single `waitForHuman` call. Workflows suspend until a reviewer approves, denies, or edits fields — then resume with typed results.
+
+## Beta
+
+Hitl SDK is in beta. APIs may change without notice. Node.js only (22.13+ recommended for SQLite state).
+
+## What you get
+
+- **One primitive** — `waitForHuman`, `requestHuman`, `notify`, reminders, and escalation
+- **Workflow engine agnostic** — Workflow SDK, Temporal, or Inngest
+- **Channel agnostic** — built-in web inbox plus optional Chat SDK adapter (Slack, Teams, Discord, and [more](https://chat-sdk.dev/adapters))
+- **Persistent state** — in-memory (dev), SQLite, Postgres, or Redis
+
+## Two-process architecture
+
+Hitl splits into a **workflow client** and a **server**:
+
+```text
+Workflow (use workflow)          Server (your app)
+─────────────────────           ─────────────────
+waitForHuman()                  new Hitl({ state, resolver, adapters })
+     │                                │
+     │  POST /.well-known/hitl/v1     │
+     └──────────────────────────────► │
+                                        │ deliver to inbox / Slack / …
+     ◄──────────────────────────────┘ │ resolver resumes workflow
+```
+
+- **Workflow side** — engine-specific client (`createWorkflowSdkHitlClient`, etc.). No state or adapters here; only durable suspend + HTTP to the server.
+- **Server side** — `new Hitl({ state, resolver, adapters })`. Owns persistence, channel delivery, and resuming the workflow when a human decides.
+
+The workflow never talks to Slack or Postgres directly. It POSTs to your server's internal API; the server handles everything else.
+
+## Supported matrix
+
+| Axis | Options |
+|------|---------|
+| Workflow engine | [Workflow SDK](https://workflow-sdk.dev), [Temporal](https://temporal.io), [Inngest](https://www.inngest.com) |
+| State | in-memory, SQLite, Postgres, Redis |
+| Delivery | web inbox (built in), Chat SDK adapter |
+| Host | any Node HTTP server — see [Host integration](/docs/host-integration) |
+
+## Next steps
+
+Follow the [Quickstart](/docs/quickstart) to run a complete approval loop end-to-end. If you already know your stack, skip to [Install](/docs/install) to pick packages, then jump to the relevant axis pages.

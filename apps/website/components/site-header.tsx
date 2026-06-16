@@ -35,7 +35,7 @@ export function SiteHeader() {
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             <Link
-              href="/docs/getting-started"
+              href="/docs"
               className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
             >
               {t({ en: "Docs", ja: "ドキュメント" })}

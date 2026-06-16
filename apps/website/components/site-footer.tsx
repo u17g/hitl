@@ -10,10 +10,10 @@ export function SiteFooter() {
     {
       title: t({ en: "Product", ja: "プロダクト" }),
       links: [
-        { label: t({ en: "Getting started", ja: "はじめに" }), href: "/docs/getting-started" },
-        { label: t({ en: "Installation", ja: "インストール" }), href: "/docs/installation" },
-        { label: t({ en: "Channels", ja: "チャネル" }), href: "/docs/channels" },
-        { label: t({ en: "Workflow DevKit", ja: "Workflow DevKit" }), href: "/docs/workflow-devkit" },
+        { label: t({ en: "Overview", ja: "概要" }), href: "/docs/overview" },
+        { label: t({ en: "Quickstart", ja: "クイックスタート" }), href: "/docs/quickstart" },
+        { label: t({ en: "Install", ja: "インストール" }), href: "/docs/install" },
+        { label: t({ en: "Workflow SDK", ja: "Workflow SDK" }), href: "/docs/workflow-engines/workflow-sdk" },
       ],
     },
     {

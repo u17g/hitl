@@ -38,7 +38,7 @@ export function CtaSection() {
               </SectionDescription>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button size="lg" className="rounded-full" asChild>
-                  <Link href="/docs/getting-started">
+                  <Link href="/docs/quickstart">
                     {t({ en: "Read the docs", ja: "ドキュメントを読む" })}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -60,7 +60,7 @@ export function CtaSection() {
               </div>
               <div className="p-4">
                 <CodeBlock
-                  code={`npm i @hitl-sdk/hitl\n\n# Read docs at /docs/getting-started`}
+                  code={`npm i @hitl-sdk/hitl\n\n# Agents: fetch /onboard.md\n# Humans: /docs/quickstart`}
                   filename="terminal"
                 />
               </div>

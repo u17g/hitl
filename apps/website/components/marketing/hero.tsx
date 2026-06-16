@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
 export function Hero() {
   const t = useInlineTranslation();
@@ -32,8 +33,9 @@ export function Hero() {
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Button variant="default" size="lg" asChild>
-            <Link href="/docs/getting-started">
+            <Link href="/docs/quickstart">
               {t({ en: "Get started", ja: "はじめる" })}
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" size="lg" asChild>

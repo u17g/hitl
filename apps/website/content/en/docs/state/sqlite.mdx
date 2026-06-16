@@ -1,0 +1,55 @@
+---
+title: SQLite State
+description: Persist approval requests with Node built-in SQLite — zero runtime dependencies, auto-migrations on open.
+---
+
+# SQLite State
+
+Replaces **Quickstart step 2** (`state` option) when using file-backed persistence locally or on a single Node process.
+
+Requires **Node.js 22.13+** (`node:sqlite`).
+
+## Install
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/state-sqlite
+```
+
+## Setup
+
+Constructing `SqliteState` runs migrations automatically — no separate setup step for most apps:
+
+```typescript
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { Hitl } from "@hitl-sdk/hitl";
+import { SqliteState } from "@hitl-sdk/state-sqlite";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+
+const dbPath = join(process.cwd(), ".hitl", "human_requests.db");
+mkdirSync(join(process.cwd(), ".hitl"), { recursive: true });
+
+export const hitl = new Hitl({
+  state: new SqliteState(new DatabaseSync(dbPath)),
+  resolver: workflowResolver(),
+});
+```
+
+## CLI (optional)
+
+Initialize a database outside your app — CI, scripts, or infra that runs before the server:
+
+```bash
+npx @hitl-sdk/state-sqlite setup --db .hitl/human_requests.db
+npx @hitl-sdk/state-sqlite schema   # export DDL without opening a database
+```
+
+## When to use something else
+
+- **Multi-replica production** — use [Postgres](/docs/state/postgres) or [Redis](/docs/state/redis)
+- **Throwaway local demo** — omit `state` or use `InMemoryState` from `@hitl-sdk/hitl/state`
+
+## Migrations
+
+Schema changes are versioned inside `@hitl-sdk/state-sqlite`. Opening the database applies new migrations idempotently after you upgrade the package.

@@ -1,0 +1,45 @@
+# Docs sidebar navigation (Mintlify-style).
+# Page titles default to MDX frontmatter; override per page with:
+#   - slug: quickstart
+#     title:
+#       en: Custom title
+#       ja: カスタムタイトル
+
+navigation:
+  - group:
+      en: Getting Started
+      ja: はじめに
+    pages:
+      - overview
+      - quickstart
+      - install
+  - group:
+      en: Concepts
+      ja: コンセプト
+    pages:
+      - concepts/wait-for-human
+  - group:
+      en: Workflow Engines
+      ja: ワークフローエンジン
+    pages:
+      - workflow-engines/workflow-sdk
+      - workflow-engines/temporal
+      - workflow-engines/inngest
+  - group:
+      en: State
+      ja: ステート
+    pages:
+      - state/sqlite
+      - state/postgres
+      - state/redis
+  - group:
+      en: Delivery
+      ja: チャンネル
+    pages:
+      - channels/web-inbox
+      - channels/chat-sdk
+  - group:
+      en: Integration
+      ja: インテグレーション
+    pages:
+      - host-integration

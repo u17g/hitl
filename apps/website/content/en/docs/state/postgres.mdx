@@ -1,0 +1,66 @@
+---
+title: Postgres State
+description: Persist approval requests in Postgres — production-ready, bring your own pg pool.
+---
+
+# Postgres State
+
+Replaces **Quickstart step 2** (`state` option) for production deploys with an existing Postgres database.
+
+## Install
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/state-pg pg
+```
+
+## Setup
+
+Run migrations before deploy or on first boot. Default table: `hitl.human_requests`.
+
+```bash
+export HITL_POSTGRES_URL=postgres://user:password@host:5432/database
+npx @hitl-sdk/state-pg setup
+```
+
+`DATABASE_URL` is also accepted. Prefer `HITL_POSTGRES_URL` to keep Hitl persistence explicit.
+
+Export DDL without connecting:
+
+```bash
+npx @hitl-sdk/state-pg schema
+```
+
+## Usage (Quickstart step 2)
+
+```typescript
+import pg from "pg";
+import { Hitl } from "@hitl-sdk/hitl";
+import { PostgresState } from "@hitl-sdk/state-pg";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+
+const pool = new pg.Pool({
+  connectionString: process.env.HITL_POSTGRES_URL ?? process.env.DATABASE_URL,
+});
+
+const state = new PostgresState(pool);
+await state.ensureSchema(); // idempotent; or rely on `setup` at deploy time
+
+export const hitl = new Hitl({
+  state,
+  resolver: workflowResolver(),
+});
+```
+
+`PostgresState` accepts any `PgQueryable` pool — Neon, Supabase, or `pg-mem` work as long as they speak Postgres SQL.
+
+## Workflow DevKit Postgres world
+
+This package only creates **Hitl** tables. If you use Workflow DevKit's Postgres world, run its migrations separately:
+
+```bash
+npx workflow-postgres-setup
+```
+
+## Migrations
+
+Re-run `setup` or `ensureSchema()` after upgrading `@hitl-sdk/state-pg` to apply new migrations idempotently.

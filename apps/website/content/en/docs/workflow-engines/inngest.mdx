@@ -1,0 +1,96 @@
+---
+title: Inngest
+description: Bind Hitl to Inngest — step.invoke for waitForHuman and events for resume.
+---
+
+# Inngest
+
+Replaces **Quickstart steps 2 and 4** (and adds Inngest serve wiring) when using [Inngest](https://www.inngest.com).
+
+## Install
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/resolver-inngest inngest
+```
+
+## Register Hitl functions
+
+```typescript
+// inngest/client.ts
+import { Inngest } from "inngest";
+import { createHitlInngestFunctions } from "@hitl-sdk/resolver-inngest";
+
+export const inngest = new Inngest({ id: "my-app" });
+
+export const { waitForHuman, requestHuman, notify } = createHitlInngestFunctions(inngest);
+```
+
+Include Hitl functions in your serve handler:
+
+```typescript
+// app/api/inngest/route.ts
+import { serve } from "inngest/next";
+import { inngest, waitForHuman, requestHuman, notify } from "@/inngest/client";
+import { inboundLead } from "@/inngest/functions/inbound-lead";
+
+export const { GET, POST } = serve({
+  client: inngest,
+  functions: [inboundLead, waitForHuman, requestHuman, notify],
+});
+```
+
+## Server (Quickstart step 2)
+
+```typescript
+import { Hitl } from "@hitl-sdk/hitl";
+import { inngestResolver } from "@hitl-sdk/resolver-inngest";
+import { inngest } from "@/inngest/client";
+
+export const hitl = new Hitl({
+  state, // see State docs
+  resolver: inngestResolver({ client: inngest }),
+});
+```
+
+Mount `hitl.routeHandlers` — see [Host integration](/docs/host-integration). The same app must serve both Inngest and Hitl HTTP routes.
+
+## Call from your functions (Quickstart step 4 / workflow)
+
+Use `step.invoke` — not the low-level client directly:
+
+```typescript
+import { actions, isResolved, type HumanResult } from "@hitl-sdk/hitl";
+import { inngest, waitForHuman } from "../client";
+
+export const inboundLead = inngest.createFunction(
+  { id: "inbound-lead" },
+  { event: "lead/inbound" },
+  async ({ event, step }) => {
+    const actionsDef = actions().approve().deny().build();
+
+    const approval = (await step.invoke("approve-lead", {
+      function: waitForHuman,
+      data: {
+        message: `Inbound lead: ${event.data.email}`,
+        actions: actionsDef,
+        timeout: "72h",
+      },
+    })) as HumanResult<typeof actionsDef>;
+
+    if (!isResolved(approval, "approve")) return;
+  },
+);
+```
+
+`step.invoke` crosses a JSON boundary — assert `HumanResult<typeof actionsDef>` for typed feedbacks.
+
+## Environment
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `HITL_URL` | Inngest function runtime | Base URL for durable fetch to the Hitl server |
+| `HITL_SECRET` | Inngest function runtime | Bearer token for the internal API |
+
+## Advanced
+
+For tests or custom `step.run` wrappers, use `createInngestHitlClient({ step, url })` — prefer `step.invoke` in application code.
