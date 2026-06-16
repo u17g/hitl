@@ -128,6 +128,9 @@
   }
 
   .install-pill-shell {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
     padding: 1px;
     border-radius: 9999px;
     background: linear-gradient(to top right,
@@ -149,6 +152,9 @@
   }
 
   .install-pill-inner {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
     border-radius: 9999px;
     background: color-mix(in oklch, var(--background) 95%, transparent);
     backdrop-filter: blur(12px);
