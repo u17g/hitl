@@ -1,4 +1,4 @@
-# @hitl-dev/hitl
+# @hitl-sdk/hitl
 
 ## 0.0.5
 

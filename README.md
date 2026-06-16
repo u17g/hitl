@@ -1,9 +1,9 @@
-# HITL SDK
+# HITL sdk
 
 [![npm version](https://img.shields.io/npm/v/@hitl-sdk/hitl)](https://www.npmjs.com/package/@hitl-sdk/hitl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A unified TypeScript SDK for human-in-the-loop approval in AI agents and durable workflows.
+A unified TypeScript SDK for human-in-the-loop approval in your mission ciritcal agentic workflows.
 
 ## Installation
 
