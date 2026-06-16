@@ -14,12 +14,12 @@ export type DocNavPage = {
 
 export type DocNavGroup = {
   group?: InlineTranslations;
-  pages: DocNavPage[];
+  pages: DocNavItem[];
 };
 
 export type DocNavItem = DocNavPage | DocNavGroup;
 
-function isNavGroup(item: DocNavItem): item is DocNavGroup {
+export function isNavGroup(item: DocNavItem): item is DocNavGroup {
   return "pages" in item;
 }
 
@@ -40,10 +40,24 @@ function normalizeNavItem(
   if ("pages" in entry) {
     return {
       group: entry.group,
-      pages: entry.pages.map(normalizePage),
+      pages: entry.pages.map(normalizeNavItem),
     };
   }
   return normalizePage(entry);
+}
+
+function flattenNavItems(items: DocNavItem[]): DocNavPage[] {
+  const flat: DocNavPage[] = [];
+
+  for (const item of items) {
+    if (isNavGroup(item)) {
+      flat.push(...flattenNavItems(item.pages));
+    } else {
+      flat.push(item);
+    }
+  }
+
+  return flat;
 }
 
 function parseDocsNav(): DocNavItem[] {
@@ -74,17 +88,7 @@ export function getDocsNav(): DocNavItem[] {
 }
 
 export function getFlatDocPages(): DocNavPage[] {
-  const flat: DocNavPage[] = [];
-
-  for (const item of getDocsNav()) {
-    if (isNavGroup(item)) {
-      flat.push(...item.pages);
-    } else {
-      flat.push(item);
-    }
-  }
-
-  return flat;
+  return flattenNavItems(getDocsNav());
 }
 
 export function getDocTitle(slug: string, locale: Locale): string {

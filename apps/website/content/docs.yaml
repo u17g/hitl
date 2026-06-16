@@ -13,6 +13,31 @@ navigation:
       - overview
       - quickstart
       - install
+      - group:
+          en: Workflow Engines
+          ja: ワークフローエンジン
+        pages:
+          - workflow-engines/workflow-sdk
+          - workflow-engines/temporal
+          - workflow-engines/inngest
+      - group:
+          en: State
+          ja: ステート
+        pages:
+          - state/sqlite
+          - state/postgres
+          - state/redis
+      - group:
+          en: Delivery
+          ja: チャンネル
+        pages:
+          - channels/web-inbox
+          - channels/chat-sdk
+      - group:
+          en: Integration
+          ja: インテグレーション
+        pages:
+          - host-integration
   - group:
       en: Foundations
       ja: 基礎
@@ -22,28 +47,3 @@ navigation:
       - foundations/actions-and-fields
       - foundations/notifications
       - foundations/timeouts-and-reminders
-  - group:
-      en: Workflow Engines
-      ja: ワークフローエンジン
-    pages:
-      - workflow-engines/workflow-sdk
-      - workflow-engines/temporal
-      - workflow-engines/inngest
-  - group:
-      en: State
-      ja: ステート
-    pages:
-      - state/sqlite
-      - state/postgres
-      - state/redis
-  - group:
-      en: Delivery
-      ja: チャンネル
-    pages:
-      - channels/web-inbox
-      - channels/chat-sdk
-  - group:
-      en: Integration
-      ja: インテグレーション
-    pages:
-      - host-integration
