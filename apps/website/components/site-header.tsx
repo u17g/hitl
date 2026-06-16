@@ -29,13 +29,13 @@ export function SiteHeader() {
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="text-lg font-semibold tracking-tight"
+            className="text-lg font-mono tracking-tight"
           >
-            HITL sdk<span className="ml-1 text-brand text-xs font-medium bg-brand/10 px-1 py-0.5">Beta</span>
+            HITL sdk<span className="ml-2 text-brand text-xs bg-brand/10 px-1 py-0.5">Beta</span>
           </Link>
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+          <nav className="flex items-center gap-4 text-sm text-muted-foreground md:gap-6">
             <Link
-              href="/docs"
+              href="/docs/overview"
               className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
             >
               {t({ en: "Docs", ja: "ドキュメント" })}

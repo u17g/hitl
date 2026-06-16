@@ -40,7 +40,7 @@ export async function generateMetadata({
   return {
     title: t({
       en: "HITL sdk — Human approval layer for your mission critical AI workflows",
-      ja: "HITL sdk — 人の判断とAIを組み合わせ、クリティカルな業務を自動化",
+      ja: "HITL sdk — 人の判断（ヒューマン・イン・ザ・ループ）とAIを組み合わせ、クリティカルな業務を自動化する",
     }),
     description: t({
       en: "A unified TypeScript SDK for human-in-the-loop approval in your mission critical AI workflows. One await, suspend for hours or days, resume when a human approves.",
