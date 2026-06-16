@@ -1,21 +1,31 @@
 ---
-title: Reminders
-description: Schedule same-channel reminders and cross-channel escalations with remind and escalate while waiting for human input.
+title: Timeouts & reminders
+description: Auto-resolve pending approvals with timeout, schedule same-channel reminders with remind, and escalate to fallback channels with escalate.
 ---
 
-# Reminders
+# Timeouts & reminders
 
-Import from `@hitl-sdk/hitl`:
+Control what happens while a [human step](/docs/foundations/human-steps) is pending: auto-resolve after a deadline, nudge the reviewer on the same channel, or escalate to a fallback channel.
+
+## Timeouts
+
+Set `timeout` on `waitForHuman` to auto-resolve when no reviewer acts in time:
 
 ```typescript
-import { remind, escalate } from "@hitl-sdk/hitl";
+const result = await waitForHuman({
+  message: "Approve expense?",
+  actions,
+  timeout: "72h",
+});
 ```
 
-Pass entries to [`waitForHuman`](/docs/foundations/wait-for-human)'s `reminders` option (or the wait phase after [`requestHuman`](/docs/foundations/request-human)). The workflow client owns the durable schedule via `sleep()`; the server only acts if the request is still pending.
+When the deadline passes, the workflow resumes with `HumanResult.type === "TIMED_OUT"`. Only `id` and `externalRef` are set on the result. Use [`isResolved`](/docs/foundations/actions-and-fields) to distinguish timed-out from resolved outcomes.
+
+The workflow client owns the durable timer via `sleep()`. The server marks the request timed out only if it is still pending when the timer fires.
 
 ## Duration
 
-Reminder timings use the `Duration` type:
+Timeout and reminder timings use the `Duration` type:
 
 | Form | Example | Meaning |
 |------|---------|---------|
@@ -26,13 +36,21 @@ Reminder timings use the `Duration` type:
 | `"Nd"` | `"2d"` | days |
 | `"Nw"` | `"1w"` | weeks |
 
-## `remind`
+## Reminders
+
+Import from `@hitl-sdk/hitl`:
+
+```typescript
+import { remind, escalate } from "@hitl-sdk/hitl";
+```
+
+Pass entries to `waitForHuman`'s `reminders` option (or the wait phase after `requestHuman`). The workflow client owns the durable schedule via `sleep()`; the server only acts if the request is still pending.
+
+### `remind`
 
 Same-channel thread reminders while an approval is pending.
 
-### Methods
-
-All return a `RemindEntry` for the `reminders` array.
+All methods return a `RemindEntry` for the `reminders` array.
 
 | Method | Timing |
 |--------|--------|
@@ -44,8 +62,6 @@ All return a `RemindEntry` for the `reminders` array.
 | `remind.weekdaysAt(clock, opts?)` | Weekdays at clock time (skips Sat/Sun by default) |
 
 Default message: `"Reminder: approval still pending"`.
-
-### Example
 
 ```typescript
 import { remind } from "@hitl-sdk/hitl";
@@ -59,11 +75,9 @@ await waitForHuman(pending, {
 });
 ```
 
-## `escalate`
+### `escalate`
 
 Fallback channel notification or re-delivery while pending.
-
-### Signature
 
 ```typescript
 escalate.to(channel: string).after(duration, { message?, mode? })
@@ -80,7 +94,7 @@ escalate.to(channel).weekdaysAt(clock, opts?)
 | `message` | `string` | `"Escalation: approval still pending"` | Escalation body |
 | `mode` | `"notify" \| "redeliver"` | `"notify"` | Notify on fallback channel, or re-send the full approval there |
 
-### Example
+With `mode: "redeliver"`, the server re-sends the full approval message to the escalation channel. With `"notify"` (default), it sends only the escalation message.
 
 ```typescript
 import { remind, escalate } from "@hitl-sdk/hitl";
@@ -95,8 +109,6 @@ await waitForHuman({
   ],
 });
 ```
-
-With `mode: "redeliver"`, the server re-sends the full approval message to the escalation channel. With `"notify"` (default), it sends only the escalation message.
 
 ## Combined schedule
 
@@ -116,5 +128,6 @@ Reminders fire in schedule order. If the human resolves before a reminder fires,
 
 ## See also
 
-- [waitForHuman](/docs/foundations/wait-for-human): `timeout` and `reminders` options
+- [Human steps](/docs/foundations/human-steps): `timeout` and `reminders` options on `waitForHuman`
+- [Actions and fields](/docs/foundations/actions-and-fields): `HumanResult` and `isResolved`
 - [Foundations overview](/docs/foundations/overview): API map

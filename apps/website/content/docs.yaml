@@ -18,11 +18,10 @@ navigation:
       ja: 基礎
     pages:
       - foundations/overview
-      - foundations/wait-for-human
-      - foundations/request-human
-      - foundations/notify
+      - foundations/human-steps
       - foundations/actions-and-fields
-      - foundations/reminders
+      - foundations/notifications
+      - foundations/timeouts-and-reminders
   - group:
       en: Workflow Engines
       ja: ワークフローエンジン

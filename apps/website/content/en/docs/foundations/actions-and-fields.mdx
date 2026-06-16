@@ -5,7 +5,7 @@ description: Build typed approve/deny/custom buttons and reviewer-editable field
 
 # Actions and fields
 
-Import from `@hitl-sdk/hitl`. Safe inside and outside `"use workflow"` functions.
+Import from `@hitl-sdk/hitl`. Safe inside and outside workflow functions.
 
 ```typescript
 import { actions, field, isResolved } from "@hitl-sdk/hitl";
@@ -58,7 +58,7 @@ const approvalActions = actions()
   .build();
 ```
 
-Pass `approvalActions` to [`waitForHuman`](/docs/foundations/wait-for-human) or [`requestHuman`](/docs/foundations/request-human). The builder preserves literal action ids for TypeScript inference on results.
+Pass `approvalActions` to [`waitForHuman`](/docs/foundations/human-steps) or [`requestHuman`](/docs/foundations/human-steps). The builder preserves literal action ids for TypeScript inference on results.
 
 ## `field`
 
@@ -133,5 +133,5 @@ When `type === "TIMED_OUT"`: only `id` and `externalRef` are set.
 
 ## See also
 
-- [waitForHuman](/docs/foundations/wait-for-human): pass actions to the workflow client
+- [Human steps](/docs/foundations/human-steps): pass actions to the workflow client
 - [Foundations overview](/docs/foundations/overview): API map

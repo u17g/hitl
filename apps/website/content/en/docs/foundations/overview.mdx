@@ -5,7 +5,7 @@ description: API map for the workflow client and @hitl-sdk/hitl building blocks.
 
 # Foundations
 
-Hitl SDK splits into two import layers. Use the right one inside `"use workflow"` functions.
+Hitl SDK splits into two import layers. Use the right one in workflow functions.
 
 | Layer | Import from | APIs |
 |-------|-------------|------|
@@ -36,20 +36,23 @@ Use create + wait when reviewers need follow-up messages, multi-step timelines, 
 
 | Page | What it covers |
 |------|----------------|
-| [waitForHuman](/docs/foundations/wait-for-human) | Suspend until a human resolves; timeouts and batch mode |
-| [requestHuman](/docs/foundations/request-human) | Create phase only; returns a pending handle |
-| [notify](/docs/foundations/notify) | Post context to a channel thread while pending |
+| [Human steps](/docs/foundations/human-steps) | `requestHuman`, `waitForHuman`, one-shot vs create+wait, batch mode |
 | [Actions and fields](/docs/foundations/actions-and-fields) | `actions()`, `field.*`, `isResolved`, typed results |
-| [Reminders](/docs/foundations/reminders) | `remind.*` and `escalate.to()` schedules |
+| [Notifications](/docs/foundations/notifications) | `notify`, `TimelineAnchor`, thread chaining |
+| [Timeouts & reminders](/docs/foundations/timeouts-and-reminders) | `timeout`, `remind.*`, `escalate.to()` schedules |
 
 ## Typical flow
 
-```text
-actions() + field.*  →  requestHuman / waitForHuman  →  isResolved(result, "approve")
-                              ↓
-                         notify (optional)
-                              ↓
-                    remind / escalate (optional, on wait)
+```mermaid
+flowchart LR
+  actions["actions() + field.*"]
+  humanStep["requestHuman / waitForHuman"]
+  resolved["isResolved(result, approve)"]
+
+  actions --> humanStep --> resolved
+
+  humanStep -. optional .-> notify["notify"]
+  humanStep -. optional .-> schedules["remind / escalate"]
 ```
 
 See also: [Overview](/docs/overview) for architecture, [Quickstart](/docs/quickstart) for a full end-to-end loop.

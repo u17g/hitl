@@ -1,11 +1,11 @@
 ---
-title: notify
-description: Post a follow-up message to a channel thread while a human request is pending or after it resolves.
+title: Notifications
+description: Post follow-up messages to channel threads with notify. Chain multi-step approvals with TimelineAnchor and after.
 ---
 
-# notify
+# Notifications
 
-Send a contextual message to the reviewer's channel without creating a new approval step.
+Send contextual messages to the reviewer's channel without creating a new approval step. Use `notify` for updates while a request is pending, or to keep a conversation thread across multiple [human steps](/docs/foundations/human-steps).
 
 ## Import
 
@@ -13,17 +13,19 @@ Send a contextual message to the reviewer's channel without creating a new appro
 import { notify } from "@/lib/hitl-client";
 ```
 
-## Signature
+## `notify`
+
+### Signature
 
 ```typescript
 notify(notification: NotifyOptions): Promise<TimelineAnchor>
 ```
 
-## Options
+### Options
 
 `NotifyOptions` is a discriminated union of three shapes:
 
-### Anchor to a prior step (`after`)
+#### Anchor to a prior step (`after`)
 
 ```typescript
 notify({
@@ -34,9 +36,9 @@ notify({
 })
 ```
 
-Posts in the same chat thread as the referenced step. Most common pattern after [`requestHuman`](/docs/foundations/request-human).
+Posts in the same chat thread as the referenced step. Most common pattern after [`requestHuman`](/docs/foundations/human-steps).
 
-### Anchor by id (`on`)
+#### Anchor by id (`on`)
 
 ```typescript
 notify({
@@ -49,7 +51,7 @@ notify({
 
 Use when you have an id but not the full pending object (e.g. from stored context).
 
-### Standalone
+#### Standalone
 
 ```typescript
 notify({
@@ -69,11 +71,11 @@ Delivers to the default channel without threading.
 | `detail` | `Record<string, unknown>` | Opaque metadata (not shown to reviewer by default) |
 | `channel` | `string` | Adapter id or `adapter_id:destination`; defaults to first configured adapter |
 
-## Returns
+### Returns
 
-`TimelineAnchor` (`{ id, externalRef }`). Use as `after` on a subsequent [`requestHuman`](/docs/foundations/request-human) or [`waitForHuman`](/docs/foundations/wait-for-human) call to keep threading.
+`TimelineAnchor` (`{ id, externalRef }`). Use as `after` on a subsequent `requestHuman` or `waitForHuman` call to keep threading.
 
-## Example
+### Example
 
 ```typescript
 import { actions } from "@hitl-sdk/hitl";
@@ -93,7 +95,55 @@ await notify({
 const response = await waitForHuman(pending);
 ```
 
-## Chaining after resolution
+## TimelineAnchor
+
+Pending handles, resolved results, and `notify` return values all implement `TimelineAnchor`:
+
+```typescript
+interface TimelineAnchor {
+  id: string;
+  externalRef: string;
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `id` | Hitl request or batch id |
+| `externalRef` | Adapter-native message ref (empty string when none) |
+
+Pass any anchor as `after` on `requestHuman`, `waitForHuman`, or `notify` to post in the same channel thread.
+
+## Thread chaining
+
+Chain pending steps, notifications, and resolved results in one conversation thread.
+
+### While pending
+
+Post context after creating a request, before waiting:
+
+```typescript
+const pending = await requestHuman({ message: "Approve expense?", actions });
+await notify({ after: pending, message: "Receipt attached in thread" });
+const result = await waitForHuman(pending, { timeout: "72h" });
+```
+
+### Multi-step approvals
+
+Post a follow-up request in the same chat thread after a resolved step:
+
+```typescript
+const first = await waitForHuman({ message: "Initial review?", actions });
+
+const second = await requestHuman({
+  message: "Follow-up: any changes needed?",
+  actions,
+  after: first,
+});
+
+const followUp = await waitForHuman(second);
+```
+
+### After resolution
 
 Notify after a resolved step, then start a follow-up request in the same thread:
 
@@ -114,6 +164,5 @@ const second = await requestHuman({
 
 ## See also
 
-- [requestHuman](/docs/foundations/request-human): create phase before notify
-- [waitForHuman](/docs/foundations/wait-for-human): wait after notify
+- [Human steps](/docs/foundations/human-steps): create and wait for approvals
 - [Foundations overview](/docs/foundations/overview): API map

@@ -112,6 +112,6 @@ If the user asks conceptual questions before installing, fetch:
 
 - https://hitl-sdk.dev/docs/overview
 - https://hitl-sdk.dev/docs/foundations/overview
-- https://hitl-sdk.dev/docs/foundations/wait-for-human
+- https://hitl-sdk.dev/docs/foundations/human-steps
 - https://hitl-sdk.dev
 - https://github.com/u17g/hitl

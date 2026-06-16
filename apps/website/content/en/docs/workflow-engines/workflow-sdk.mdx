@@ -1,6 +1,6 @@
 ---
 title: Workflow SDK
-description: Bind Hitl to Vercel Workflow SDK. Suspend in use workflow functions and resume over a durable step fetch.
+description: Bind Hitl to Vercel Workflow SDK. Suspend in workflow functions and resume over a durable step fetch.
 ---
 
 # Workflow SDK
@@ -54,7 +54,7 @@ export const { waitForHuman, requestHuman, notify } = createWorkflowSdkHitlClien
 });
 ```
 
-Import `waitForHuman` from this module inside `"use workflow"` functions, not from `@hitl-sdk/hitl` directly.
+Import `waitForHuman` from this module in workflow functions, not from `@hitl-sdk/hitl` directly.
 
 ## Approval flow
 
