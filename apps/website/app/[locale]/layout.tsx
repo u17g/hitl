@@ -5,6 +5,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { createInlineTranslator } from "@/i18n/inline-translation";
 import { type Locale, routing } from "@/i18n/routing";
+import { getSiteUrl } from "@/lib/site-url";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -38,6 +39,7 @@ export async function generateMetadata({
   const t = createInlineTranslator(locale as Locale);
 
   return {
+    metadataBase: new URL(getSiteUrl()),
     title: t({
       en: "HITL sdk — Human approval layer for your mission critical AI workflows",
       ja: "HITL sdk — 人の判断（ヒューマン・イン・ザ・ループ）とAIを組み合わせ、クリティカルな業務を自動化する",

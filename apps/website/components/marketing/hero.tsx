@@ -2,6 +2,7 @@
 
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Link } from "@/i18n/navigation";
+import { GetStartedCard } from "@/components/marketing/get-started-card";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
@@ -31,21 +32,13 @@ export function Hero() {
             ja: "ヒューマン・イン・ザ・ループを組み込むための Unified TypeScript SDK",
           })}
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Button variant="default" size="lg" asChild>
+        <GetStartedCard className="mt-8" />
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Button variant="link" size="lg" className="px-0" asChild>
             <Link href="/docs/quickstart">
-              {t({ en: "Get started", ja: "はじめる" })}
+              {t({ en: "or Quick start", ja: "もしくは、クイックスタート" })}
               <ArrowRight className="h-4 w-4" />
             </Link>
-          </Button>
-          <Button variant="outline" size="lg" asChild>
-            <a
-              href="https://github.com/u17g/hitl/tree/main/examples/hello-world"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t({ en: "Document", ja: "ドキュメント" })}
-            </a>
           </Button>
         </div>
       </div>

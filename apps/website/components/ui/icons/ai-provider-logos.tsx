@@ -207,3 +207,39 @@ export function GroqLogo({ className, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function CursorLogo({ className, ...props }: IconProps) {
+  return (
+    <svg
+      role="img"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("h-6 w-6 text-[#111827] dark:text-white", className)}
+      {...props}
+    >
+      <title>Cursor</title>
+      <path
+        fill="currentColor"
+        d="M23.384 18.331a.743.743 0 0 1-.385-.111L12.5 12.112l-9.499 6.108a.748.748 0 0 1-.877-.035.748.748 0 0 1-.111-.923L11.623 1.615a.748.748 0 0 1 1.254 0l9.507 15.646a.748.748 0 0 1 .111.923.746.746 0 0 1-.111.147z"
+      />
+    </svg>
+  );
+}
+
+export function OpenCodeLogo({ className, ...props }: IconProps) {
+  return (
+    <svg
+      role="img"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("h-6 w-6 text-[#211B16] dark:text-white", className)}
+      {...props}
+    >
+      <title>OpenCode</title>
+      <path
+        fill="currentColor"
+        d="M8.5 4.5 4 8v8l4.5 3.5V4.5zm7 0V19.5L20 16V8l-4.5-3.5zM10 6.5v11l4-3 4 3v-11l-4 3-4-3z"
+      />
+    </svg>
+  );
+}

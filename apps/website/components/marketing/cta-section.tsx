@@ -11,6 +11,7 @@ import {
   SectionTitle,
 } from "@/components/section";
 import { Button } from "@/components/ui/button";
+import { GetStartedCard } from "@/components/marketing/get-started-card";
 
 export function CtaSection() {
   const t = useInlineTranslation();
@@ -18,8 +19,8 @@ export function CtaSection() {
   return (
     <Section variant="muted">
       <SectionContainer size="6xl">
-        <div className="parallel-card overflow-hidden">
-          <div className="grid lg:grid-cols-2">
+        <div className="overflow-hidden">
+          <div className="">
             <div className="p-8 md:p-12">
               <p className="parallel-section-label mb-4">
                 {t({ en: "Quick start", ja: "クイックスタート" })}
@@ -36,6 +37,7 @@ export function CtaSection() {
                   ja: "hello-world サンプルで HITL sdk を試せます。",
                 })}
               </SectionDescription>
+              <GetStartedCard className="mt-8" />
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button size="lg" className="rounded-full" asChild>
                   <Link href="/docs/quickstart">
@@ -52,17 +54,6 @@ export function CtaSection() {
                     {t({ en: "Run hello-world", ja: "hello-world を実行" })}
                   </a>
                 </Button>
-              </div>
-            </div>
-            <div className="border-t border-border lg:border-t-0 lg:border-l">
-              <div className="border-b border-border px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                {t({ en: "Agent onboarding", ja: "エージェント向けセットアップ" })}
-              </div>
-              <div className="p-4">
-                <CodeBlock
-                  code={`npm i @hitl-sdk/hitl\n\n# Agents: fetch /onboard.md\n# Humans: /docs/quickstart`}
-                  filename="terminal"
-                />
               </div>
             </div>
           </div>
