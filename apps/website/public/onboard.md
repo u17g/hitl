@@ -94,15 +94,48 @@ Fetch prose from docs: one page per axis, not one page per combination.
 
 **Default when undecided:** Workflow SDK + SQLite + web inbox + Next.js (matches https://github.com/u17g/hitl/tree/main/examples/hello-world).
 
-| Axis | Fetch exactly one |
-|------|-------------------|
-| Overview + tutorial | https://hitl-sdk.dev/docs/overview , https://hitl-sdk.dev/docs/quickstart |
-| Workflow | https://hitl-sdk.dev/docs/workflow-engines/workflow-sdk \| `/temporal` \| `/inngest` |
-| State | https://hitl-sdk.dev/docs/state/sqlite \| `/postgres` \| `/redis` |
-| Delivery | https://hitl-sdk.dev/docs/channels/web-inbox (default) ; + `/channels/chat-sdk` if chat needed |
-| Host | https://hitl-sdk.dev/docs/host-integration#nextjs \| `#express` \| `#hono` \| `#fastify` \| `#nestjs` \| `#nitro` \| `#nuxt` \| `#astro` \| `#sveltekit` \| `#vite` |
-| Install reference | https://hitl-sdk.dev/docs/install |
-| Foundations (optional) | https://hitl-sdk.dev/docs/foundations/overview |
+**Overview + tutorial** (always fetch both):
+
+- https://hitl-sdk.dev/docs/overview
+- https://hitl-sdk.dev/docs/quickstart
+
+**Workflow** (pick one):
+
+- https://hitl-sdk.dev/docs/workflow-engines/workflow-sdk
+- https://hitl-sdk.dev/docs/workflow-engines/temporal
+- https://hitl-sdk.dev/docs/workflow-engines/inngest
+
+**State** (pick one; skip for in-memory):
+
+- https://hitl-sdk.dev/docs/state/sqlite
+- https://hitl-sdk.dev/docs/state/postgres
+- https://hitl-sdk.dev/docs/state/redis
+
+**Delivery**:
+
+- https://hitl-sdk.dev/docs/channels/web-inbox (default; always fetch)
+- https://hitl-sdk.dev/docs/channels/chat-sdk (also fetch if chat platforms are needed)
+
+**Host** (fetch host-integration; use the section matching the user's framework):
+
+- https://hitl-sdk.dev/docs/host-integration#nextjs
+- https://hitl-sdk.dev/docs/host-integration#express
+- https://hitl-sdk.dev/docs/host-integration#hono
+- https://hitl-sdk.dev/docs/host-integration#fastify
+- https://hitl-sdk.dev/docs/host-integration#nestjs
+- https://hitl-sdk.dev/docs/host-integration#nitro
+- https://hitl-sdk.dev/docs/host-integration#nuxt
+- https://hitl-sdk.dev/docs/host-integration#astro
+- https://hitl-sdk.dev/docs/host-integration#sveltekit
+- https://hitl-sdk.dev/docs/host-integration#vite
+
+**Install reference**:
+
+- https://hitl-sdk.dev/docs/install
+
+**Foundations** (optional):
+
+- https://hitl-sdk.dev/docs/foundations/overview
 
 Each axis page describes **what to change** relative to quickstart. Do not expect a standalone end-to-end guide per URL.
 
