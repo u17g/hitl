@@ -5,9 +5,13 @@ description: Deliver approvals to Slack, Teams, Discord, and every Chat SDK plat
 
 # Chat SDK Adapter
 
-Optional channel adapter registered in `new Hitl({ adapters })` on top of the built-in [web inbox](/docs/channels/web-inbox). You can use both: inbox for internal tools, Chat SDK for Slack/Teams.
+Optional channel adapter registered in `new Hitl({ adapters })` on top of the built-in [web inbox](/docs/channels/web-inbox). When a workflow calls `waitForHuman` with a Chat SDK channel, Hitl posts a native approval card (Block Kit, Adaptive Cards, embeds + modal) to Slack, Teams, Discord, or other Chat SDK platforms.
+
+Use both channels together: inbox for internal tools, Chat SDK for where your team already works. Resolution still flows through `hitl.inbox` on the server; the adapter wires Chat SDK interactivity into that API.
 
 ## Install
+
+Install the Hitl adapter, the Chat SDK core, and one `@chat-adapter/*` package per platform you use.
 
 ```bash
 npm i @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
@@ -15,7 +19,13 @@ npm i @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
 
 Install `@chat-adapter/*` for each platform. See the [Chat SDK packages list](https://github.com/vercel/chat/tree/main/packages).
 
+You also need Hitl `state`, a workflow `resolver`, and Chat SDK `state` for the bot (often Redis). See [State](/docs/state/redis) and [Workflow Engines](/docs/workflow-engines/workflow-sdk).
+
 ## Set up the Hitl server with chat adapters
+
+Create a Chat SDK `bot` with platform adapters, then register `createChatSdkAdapter` in `new Hitl({ adapters })`. The `inbox` callback is lazy because `new Hitl()` constructs the inbox after adapters are registered.
+
+Create `lib/hitl.ts` and paste the following. Replace `createSlackAdapter()` and `createRedisState()` with your platforms and Chat SDK state backend.
 
 ```typescript
 // lib/hitl.ts
@@ -44,27 +54,68 @@ export const hitl = new Hitl({
 });
 ```
 
-Mount Chat SDK webhooks separately:
+Set `defaultChannel` to the Slack channel ref your bot should post into when workflows pass `channel: "approvals"` without a destination suffix.
+
+## Register Chat SDK webhooks
+
+Chat SDK owns webhook signature verification and payload parsing. **This step is required** for Slack/Teams/Discord buttons and modals to reach Hitl. Without mounted webhooks, cards render but clicks go nowhere.
+
+Mount the platform webhook on your HTTP server. On plain Node.js, add a route alongside `/.well-known/hitl/v1`:
 
 ```typescript
-// app/api/webhooks/slack/route.ts
-export const POST = bot.webhooks.slack;
+// server.ts
+import { createServer } from "node:http";
+import { hitl } from "./lib/hitl";
+import { bot } from "./lib/chat-bot"; // export `bot` from lib/hitl.ts or a sibling module
+
+createServer((req, res) => {
+  if (req.method === "POST" && req.url === "/webhooks/slack") {
+    void bot.webhooks.slack(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url?.startsWith("/.well-known/hitl/v1")) {
+    void hitl.handler(req, res);
+    return;
+  }
+
+  res.statusCode = 404;
+  res.end();
+}).listen(3000);
 ```
+
+Point your Slack app's interactivity URL at `https://your-host/webhooks/slack`. Add routes for each platform adapter you enable.
+
+Using Next.js, Express, Hono, or Fastify? See [Host integration](/docs/host-integration) for mount patterns on each framework.
 
 ## Route to channels from workflows
 
+Pass a channel key on `waitForHuman` to deliver outside the web inbox. The adapter id (`approvals`) comes from `createChatSdkAdapter({ id: "approvals", ... })`.
+
+Request approval in Slack before sending email:
+
 ```typescript
+const emailDraft = { to: input.email, subject: input.subject, body: input.body };
+
 // Default channel for adapter id "approvals":
-await waitForHuman({ channel: "approvals", message: "Approve?", actions });
+await waitForHuman({
+  channel: "approvals",
+  message: `Send email to: ${input.email}?`,
+  actions: actions().approve().deny().build(),
+});
 
 // Specific Slack channel:
-await waitForHuman({ channel: "approvals:slack:C456", message: "Approve?", actions });
+await waitForHuman({
+  channel: "approvals:slack:C456",
+  message: `Send email to: ${input.email}?`,
+  actions: actions().approve().deny().build(),
+});
 
-// Thread:
+// Thread (everything after adapter id is the Chat SDK destination):
 await waitForHuman({
   channel: "approvals:slack:C123:1710000000.123456",
-  message: "Approve?",
-  actions,
+  message: `Send email to: ${input.email}?`,
+  actions: actions().approve().deny().build(),
 });
 ```
 
@@ -76,6 +127,6 @@ reminders: [escalate.to("approvals:slack:C999").after("1h", { mode: "redeliver" 
 
 ## How it works
 
-`createChatSdkAdapter` registers approve/deny handlers on the Chat SDK bot. Interactivity resolves through `hitl.inbox`, the same API as the web inbox.
+`createChatSdkAdapter` registers approve/deny handlers on the Chat SDK bot. When a reviewer clicks Submit or Deny, the webhook verifies the payload, parses the interaction, and calls `hitl.inbox.resolve` with the same API as the web inbox. Hitl updates `state` and resumes the workflow through your `resolver`.
 
 Multiple adapters can share one `bot`; handlers register only once.

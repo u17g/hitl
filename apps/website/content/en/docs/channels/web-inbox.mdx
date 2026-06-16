@@ -5,36 +5,46 @@ description: Built-in approval UI channel and programmatic hitl.inbox API. Alway
 
 # Web Inbox
 
-The web inbox is **always included** in `new Hitl()`. No adapter package required. Workflows can deliver to it; your app resolves approvals via `hitl.inbox`.
+The web inbox is **always included** in `new Hitl()`. No adapter package required. When a workflow calls `waitForHuman`, the server persists the request in `state` and records it for the inbox channel. Your app lists pending requests and resolves them via `hitl.inbox`.
 
-Build a custom inbox UI or REST API on top of `hitl.inbox`. It is not mutually exclusive with the [Chat SDK adapter](/docs/channels/chat-sdk).
+Use the inbox for internal admin panels, custom REST APIs, or mobile apps. It is not mutually exclusive with the [Chat SDK adapter](/docs/channels/chat-sdk): the same request can be visible in both if you configure delivery that way.
 
 ## Deliver to the inbox from a workflow
 
-Omit `channel` to use the default inbox, or pass the inbox channel id explicitly:
+By default, `waitForHuman` delivers to the inbox channel. Omit `channel` or pass `"inbox"` explicitly. The workflow only POSTs to your Hitl server; it does not render UI or call `hitl.inbox` directly.
+
+In your workflow (after setting up a [workflow client](/docs/workflow-engines/workflow-sdk)), request approval before sending email:
 
 ```typescript
-await waitForHuman({
-  message: "Review this draft?",
+const emailDraft = { to: input.email, subject: input.subject, body: input.body };
+
+const approval = await waitForHuman({
+  message: `Send email to: ${input.email}?`,
   actions: actions().approve().deny().build(),
 });
 
-// equivalent:
-await waitForHuman({
+// equivalent, inbox channel explicit:
+const approval = await waitForHuman({
   channel: "inbox",
-  message: "Review this draft?",
+  message: `Send email to: ${input.email}?`,
   actions: actions().approve().deny().build(),
 });
 ```
 
 ## List pending requests
 
+On the server, `hitl.inbox.list` reads from `state`. Call it from route handlers, scripts, or background jobs that power your UI.
+
 ```typescript
 const pending = await hitl.inbox.list({ status: "pending" });
 const all = await hitl.inbox.list();
 ```
 
+Pass `{ status: "resolved" }` to fetch completed requests. Omit `status` to return both.
+
 ## Resolve a request
+
+When a reviewer approves or denies, call `hitl.inbox.resolve`. Hitl updates `state`, notifies channel adapters, and calls your workflow engine's resolver to resume the suspended run.
 
 ```typescript
 await hitl.inbox.resolve(id, {
@@ -44,16 +54,60 @@ await hitl.inbox.resolve(id, {
 });
 ```
 
-## Custom REST endpoint
+The `id` comes from `hitl.inbox.list`. The `actionId` must match an action you passed in `actions()` when creating the request.
 
-Wrap `hitl.inbox` in your own routes. The hello-world example exposes `/api/inbox`:
+## Expose the inbox API
+
+`hitl.inbox` is a programmatic API, not HTTP. Wrap it in your own routes so a browser or CLI can list and resolve requests. **This step is required** if you want humans to approve without building calls into server code directly.
+
+Add handlers to your HTTP server (or extend `server.ts` from [Host integration](/docs/host-integration)). Example using plain Node.js and JSON:
 
 ```typescript
-// GET  /api/inbox?status=pending  → hitl.inbox.list
-// POST /api/inbox                 → hitl.inbox.resolve
+// server.ts (inbox routes alongside /.well-known/hitl/v1)
+import { createServer } from "node:http";
+import { hitl } from "./lib/hitl";
+
+createServer(async (req, res) => {
+  const url = new URL(req.url ?? "/", "http://localhost");
+
+  if (req.method === "GET" && url.pathname === "/api/inbox") {
+    const status = url.searchParams.get("status");
+    const requests = await hitl.inbox.list(
+      status === "pending" || status === "resolved" ? { status } : undefined,
+    );
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ requests }));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/inbox") {
+    const body = JSON.parse(await readBody(req));
+    const result = await hitl.inbox.resolve(body.id, {
+      actionId: body.actionId,
+      feedbacks: body.feedbacks,
+      by: body.by,
+    });
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ result }));
+    return;
+  }
+
+  // ... mount /.well-known/hitl/v1 here too
+}).listen(3000);
+
+function readBody(req: import("node:http").IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString()));
+    req.on("error", reject);
+  });
+}
 ```
 
-Build any UI on top: admin panels, mobile apps, or internal tools. The inbox channel stores the request; your handlers drive resolution.
+Build any UI on top of these endpoints: admin panels, internal tools, or mobile apps. The inbox channel stores the request; your handlers drive resolution.
+
+Using Next.js, Express, Hono, or Fastify? See [Host integration](/docs/host-integration) for mount patterns on each framework.
 
 ## Batch requests
 

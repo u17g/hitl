@@ -5,19 +5,25 @@ description: Bind Hitl to Vercel Workflow SDK. Suspend in workflow functions and
 
 # Workflow SDK
 
-Bind Hitl to [Vercel Workflow SDK](https://workflow-sdk.dev). This page covers server setup with `workflowResolver` and the workflow-side client that suspends over a durable `"use step"` fetch.
+Bind Hitl to [Vercel Workflow SDK](https://workflow-sdk.dev). Hitl splits work across two processes: workflows suspend and POST to your server, and the server persists requests, delivers to channels, and resumes the run when a human decides. See [Overview](/docs/overview) for the full picture.
 
-Vercel Workflow SDK runs workflows in a separate sandbox from your app server. The workflow client carries no state backend. It suspends and POSTs to the server over a durable `"use step"` fetch.
+Vercel Workflow SDK runs workflows in a separate sandbox from your app server. The workflow client carries no state backend, no adapters, and no channel SDKs. It only suspends, sleeps, and POSTs to the server over a durable `"use step"` fetch. Your server owns everything else.
 
-If you are following the [Quickstart](/docs/quickstart), this page covers the server and workflow client setup.
+If you are following the [Quickstart](/docs/quickstart), this page covers the server and workflow client setup in more detail.
 
 ## Install
+
+Install the core Hitl SDK, the Workflow SDK resolver binding, and the `workflow` peer dependency. State backends and channel adapters are server-only concerns; add those packages when you configure `lib/hitl.ts`, not here.
 
 ```bash
 npm i @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk workflow
 ```
 
 ## Set up the Hitl server
+
+On the server, `new Hitl()` wires persistence, delivery, and the resume path. Pass `workflowResolver()` as the `resolver` option. When a reviewer approves or denies, the server calls WDK's `resumeHook(token, payload)` with the opaque hook token the workflow suspended on. This code runs in plain Node route handlers, never inside `"use workflow"` functions.
+
+Create `lib/hitl.ts` and paste the following:
 
 ```typescript
 // lib/hitl.ts
@@ -30,9 +36,13 @@ export const hitl = new Hitl({
 });
 ```
 
-Mount `hitl.routeHandlers` at `/.well-known/hitl/v1`. See [Host integration](/docs/host-integration).
-
 ## Create the workflow client
+
+Workflow functions cannot import `lib/hitl.ts`. They run in the WDK sandbox and must stay free of server-side dependencies. Instead, create a thin client module that wraps WDK suspend and sleep primitives and delegates HTTP to your own `"use step"` function.
+
+The `"use step"` directive must appear in **your** source file, not inside `@hitl-sdk/resolver-workflow-sdk`. WDK memoizes step results on replay, so the POST that creates a human request runs exactly once even if the workflow restarts. Without a durable step, replays would duplicate inbox rows and channel messages.
+
+Create `lib/hitl-client.ts` and paste the following:
 
 ```typescript
 // lib/hitl-client.ts
@@ -54,12 +64,70 @@ export const { waitForHuman, requestHuman, notify } = createWorkflowSdkHitlClien
 });
 ```
 
-Import `waitForHuman` from this module in workflow functions, not from `@hitl-sdk/hitl` directly.
+Import `waitForHuman`, `requestHuman`, and `notify` from this module inside workflow functions. Do not import them from `@hitl-sdk/hitl` directly; that entry point has no WDK bindings.
 
-## Approval flow
+## Use waitForHuman in a workflow
 
-1. Workflow calls `waitForHuman`, suspends, and POSTs to the server.
-2. Server persists the request, delivers to inbox/adapters, and waits.
-3. Reviewer approves. `workflowResolver` resumes the workflow with the result.
+Inside a `"use workflow"` function, `waitForHuman` creates a WDK hook and suspends the run. A durable step POSTs the request to your Hitl server. The workflow waits at zero cost until a reviewer resolves and `workflowResolver` calls `resumeHook`.
 
-If you use Vercel Workflow SDK, configure its [world](https://workflow-sdk.dev/worlds) separately. Hitl `state` is independent; see [State docs](/docs/state/sqlite).
+After the hook resolves, execution continues below the `await`. Use `isResolved` to narrow the result to a specific action and get typed `feedbacks` from any fields the reviewer edited.
+
+In your workflow file (for example `workflows/send-email.ts`), import `waitForHuman` from `lib/hitl-client.ts` and call it like this:
+
+```typescript
+import { actions, isResolved } from "@hitl-sdk/hitl";
+import { waitForHuman } from "../lib/hitl-client";
+
+export async function sendEmailWorkflow(input: { email: string; subject: string; body: string }) {
+  "use workflow";
+
+  const emailDraft = { to: input.email, subject: input.subject, body: input.body };
+
+  const approval = await waitForHuman({
+    message: `Send email to: ${input.email}?`,
+    actions: actions().approve().deny().build(),
+    timeout: "72h",
+  });
+
+  if (!isResolved(approval, "approve")) return;
+
+  await sendEmail(emailDraft);
+}
+
+async function sendEmail(draft: { to: string; subject: string; body: string }) {
+  "use step";
+  // deliver via your mail provider
+}
+```
+
+## Register /.well-known/hitl/v1
+
+`lib/hitl.ts` alone is not enough. Register the internal API at `/.well-known/hitl/v1` on your HTTP server so workflows can POST. **This step is required.** Without it, `waitForHuman` fails and nothing reaches your Hitl instance.
+
+Create `server.ts` (or add the route to your existing HTTP server) and paste the following. `hitl.handler` accepts Node's `IncomingMessage` and `ServerResponse`, so this works on any plain Node server with no framework required.
+
+```typescript
+// server.ts
+import { createServer } from "node:http";
+import { hitl } from "./lib/hitl";
+
+createServer((req, res) => {
+  if (req.method === "POST" && req.url?.startsWith("/.well-known/hitl/v1")) {
+    void hitl.handler(req, res);
+    return;
+  }
+  res.statusCode = 404;
+  res.end();
+}).listen(3000);
+```
+
+Using Next.js, Express, Hono, or Fastify? See [Host integration](/docs/host-integration) for mount patterns on each framework.
+
+## Environment
+
+WDK [world](https://workflow-sdk.dev/worlds) configuration (where workflows execute and how steps are stored) is separate from Hitl. Your Hitl `state` backend is independent too; see [State docs](/docs/state/sqlite).
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `HITL_URL` | Workflow runtime | Base URL for POSTs to the Hitl server. Defaults to the deployment URL from `getWorkflowMetadata()`. Set this when workflows run in a different environment than the server (local dev, preview deploys). |
+| `HITL_SECRET` | Workflow runtime | Bearer token for the internal API when you configure `secret` on `new Hitl()`. |

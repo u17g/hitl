@@ -5,19 +5,27 @@ description: Bind Hitl to Temporal. Activities for HTTP, signals for resume.
 
 # Temporal
 
-Bind Hitl to [Temporal](https://temporal.io). This page covers server setup with `temporalResolver` and the workflow-side client backed by activities.
+Bind Hitl to [Temporal](https://temporal.io). Hitl uses the same two-process split as [Overview](/docs/overview): workflows suspend and wait, and your server persists requests, delivers to channels, and resumes the run when a human decides.
 
-Temporal splits activity code (I/O) from workflow code (orchestration). Keep them in separate files.
+Temporal forbids network I/O inside workflow code. Replay would re-run side effects and break determinism. Hitl maps suspend to Temporal signals, timers to `sleep`, and HTTP to activities. Keep activity code and workflow code in separate files.
 
-If you are following the [Quickstart](/docs/quickstart), this page covers the server and workflow client setup.
+If you are following the [Quickstart](/docs/quickstart), swap Workflow SDK for the Temporal packages below. The server-side Hitl setup and inbox flow stay the same.
 
 ## Install
+
+Install the core Hitl SDK, the Temporal resolver binding, and Temporal's client and workflow SDK peers. Your Worker (which runs workflows and activities) and your HTTP server (which hosts Hitl routes) are separate deployment concerns, but both need these packages available in their respective bundles.
 
 ```bash
 npm i @hitl-sdk/hitl @hitl-sdk/resolver-temporal @temporalio/client @temporalio/workflow
 ```
 
 ## Set up the Hitl server
+
+On the server, `temporalResolver({ client })` is the resume path. When a reviewer resolves a request, the resolver signals the waiting workflow with the human's decision. You need a Temporal **client** connected to your cluster; the resolver uses it to look up workflow handles and deliver signals.
+
+This mirrors the workflow-side client: the server signals, the workflow receives. Connect with `TEMPORAL_ADDRESS` and `TEMPORAL_NAMESPACE` from your Temporal Cloud or self-hosted cluster.
+
+Create `lib/hitl.ts` (or add to your existing Hitl server module) and paste the following:
 
 ```typescript
 // lib/hitl.ts
@@ -41,8 +49,12 @@ export const hitl = new Hitl({
 
 ## Register the HTTP activity
 
+When `waitForHuman` runs, it POSTs to your Hitl server to create a pending request. That fetch is a side effect and must run in a Temporal **activity**, not in workflow code. If you put `fetch` directly in a workflow, every replay would fire another POST and duplicate inbox rows.
+
+First, create `activities/hitl.ts` and paste the following. Register this file with your Temporal Worker so the activity is available at runtime. The workflow client proxies this activity and calls it whenever Hitl needs to talk to the server.
+
 ```typescript
-// activities/hitl.ts (register with your Worker)
+// activities/hitl.ts
 import type { HitlRequest, HitlResponse } from "@hitl-sdk/hitl/core";
 
 export async function hitlRequestActivity(req: HitlRequest): Promise<HitlResponse> {
@@ -57,8 +69,14 @@ export async function hitlRequestActivity(req: HitlRequest): Promise<HitlRespons
 
 ## Create the workflow client
 
+`createTemporalHitlClient` registers signal handlers for suspend and resume, and routes HTTP through `proxyActivities`. Import this module only from workflow files, never from activities or server code.
+
+**Call `createTemporalHitlClient` once per workflow execution.** Temporal allows signal handlers to be registered only once per run. Calling it at module scope or inside the workflow function body both work, as long as the registration happens exactly once before the first `waitForHuman`.
+
+Next, create `lib/hitl-client.ts` and paste the following. Adjust the import path to `activities/hitl` if your folder layout differs.
+
 ```typescript
-// lib/hitl-client.ts (import in workflows only)
+// lib/hitl-client.ts
 import { proxyActivities } from "@temporalio/workflow";
 import { createTemporalHitlClient } from "@hitl-sdk/resolver-temporal";
 import type * as activities from "../activities/hitl";
@@ -72,31 +90,63 @@ export const { waitForHuman, requestHuman, notify } = createTemporalHitlClient({
 });
 ```
 
-**Call `createTemporalHitlClient` once per workflow execution.** Signal handlers can only be registered once per run.
-
 ## Use waitForHuman in a workflow
+
+Inside a workflow function, `waitForHuman` suspends on a signal and schedules the HTTP activity to create the server request. The workflow then waits at zero cost until the server signals back with the reviewer's decision.
+
+After the signal arrives, execution continues below the `await`. Use `isResolved` to narrow the result to a specific action and get typed `feedbacks` from any fields the reviewer edited.
+
+In your workflow file (for example `workflows/send-email.ts`), import `waitForHuman` from `lib/hitl-client.ts` and call it like this:
 
 ```typescript
 import { actions, isResolved } from "@hitl-sdk/hitl";
 import { waitForHuman } from "../lib/hitl-client";
 
-export async function inboundLead(input: { email: string }) {
+export async function sendEmailWorkflow(input: { email: string; subject: string; body: string }) {
+  const emailDraft = { to: input.email, subject: input.subject, body: input.body };
+
   const approval = await waitForHuman({
-    message: `Inbound lead: ${input.email}`,
+    message: `Send email to: ${input.email}?`,
     actions: actions().approve().deny().build(),
     timeout: "72h",
   });
 
   if (!isResolved(approval, "approve")) return;
-  // approval.feedbacks is typed
+
+  await sendEmail(emailDraft);
 }
 ```
 
+## Register /.well-known/hitl/v1
+
+`lib/hitl.ts` alone is not enough. Register the internal API at `/.well-known/hitl/v1` on your HTTP server so activities can POST. **This step is required.** Without it, `waitForHuman` fails and nothing reaches your Hitl instance.
+
+Create `server.ts` (or add the route to your existing HTTP server) and paste the following. `hitl.handler` accepts Node's `IncomingMessage` and `ServerResponse`, so this works on any plain Node server with no framework required.
+
+```typescript
+// server.ts
+import { createServer } from "node:http";
+import { hitl } from "./lib/hitl";
+
+createServer((req, res) => {
+  if (req.method === "POST" && req.url?.startsWith("/.well-known/hitl/v1")) {
+    void hitl.handler(req, res);
+    return;
+  }
+  res.statusCode = 404;
+  res.end();
+}).listen(3000);
+```
+
+Using Next.js, Express, Hono, or Fastify? See [Host integration](/docs/host-integration) for mount patterns on each framework.
+
 ## Environment
 
-| Variable | Purpose |
-|----------|---------|
-| `TEMPORAL_ADDRESS` | Temporal frontend for `temporalResolver` |
-| `TEMPORAL_NAMESPACE` | Namespace for workflow handles |
+Two runtimes need configuration: the Worker that executes activities, and the server that hosts Hitl routes and the Temporal resolver.
 
-Mount the Hitl server routes. See [Host integration](/docs/host-integration).
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `HITL_URL` | Worker | Base URL the activity uses to POST to the Hitl server. Set when the Worker runs in a different network than your app (local dev, separate cluster). |
+| `HITL_SECRET` | Worker | Bearer token for the internal API when you configure `secret` on `new Hitl()`. |
+| `TEMPORAL_ADDRESS` | Server | Temporal frontend the resolver connects to for signaling workflows. |
+| `TEMPORAL_NAMESPACE` | Server | Namespace for workflow handles the resolver looks up on resume. |

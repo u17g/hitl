@@ -5,17 +5,27 @@ description: Bind Hitl to Inngest. Use step.invoke for waitForHuman and events f
 
 # Inngest
 
-Bind Hitl to [Inngest](https://www.inngest.com). This page covers server setup with `inngestResolver`, Inngest function registration, and calling `waitForHuman` via `step.invoke`.
+Bind Hitl to [Inngest](https://www.inngest.com). Hitl uses the same two-process split as [Overview](/docs/overview): workflows suspend and wait, and your server persists requests, delivers to channels, and resumes the run when a human decides.
 
-If you are following the [Quickstart](/docs/quickstart), this page covers the server and workflow client setup.
+Inngest models each Hitl primitive (`waitForHuman`, `requestHuman`, `notify`) as its own Inngest function with durable steps inside. Parent functions call them via `step.invoke`. When a reviewer resolves, `inngestResolver` on the server sends a resume event back to the waiting function.
+
+If you are following the [Quickstart](/docs/quickstart), swap Workflow SDK for the Inngest packages below. The server-side Hitl setup and inbox flow stay the same.
 
 ## Install
+
+Install the core Hitl SDK, the Inngest resolver binding, and the `inngest` peer dependency. State backends and channel adapters are configured on the server only.
 
 ```bash
 npm i @hitl-sdk/hitl @hitl-sdk/resolver-inngest inngest
 ```
 
 ## Register Hitl functions with Inngest
+
+`createHitlInngestFunctions` registers `waitForHuman`, `requestHuman`, and `notify` as first-class Inngest functions. Each export wraps Hitl's suspend, sleep, and fetch logic in Inngest durable steps. You invoke them from your app functions with `step.invoke`, not by importing a workflow client directly.
+
+Register all three Hitl functions in your `serve()` handler alongside your own functions. Inngest needs them in the same app so invokes and resume events land in one place.
+
+Create `inngest/client.ts` and paste the following:
 
 ```typescript
 // inngest/client.ts
@@ -27,21 +37,27 @@ export const inngest = new Inngest({ id: "my-app" });
 export const { waitForHuman, requestHuman, notify } = createHitlInngestFunctions(inngest);
 ```
 
-Include Hitl functions in your serve handler:
+Then add the Hitl functions to your Inngest serve handler. Create or update `app/api/inngest/route.ts` and paste the following:
 
 ```typescript
 // app/api/inngest/route.ts
 import { serve } from "inngest/next";
 import { inngest, waitForHuman, requestHuman, notify } from "@/inngest/client";
-import { inboundLead } from "@/inngest/functions/inbound-lead";
+import { sendEmail } from "@/inngest/functions/send-email";
 
 export const { GET, POST } = serve({
   client: inngest,
-  functions: [inboundLead, waitForHuman, requestHuman, notify],
+  functions: [sendEmail, waitForHuman, requestHuman, notify],
 });
 ```
 
 ## Set up the Hitl server
+
+On the server, `inngestResolver({ client })` is the resume path. When a reviewer resolves a request in the inbox or via a channel adapter, the resolver sends an Inngest event that unblocks the invoked `waitForHuman` function.
+
+The same deployment must expose both Inngest's serve route (for function execution) and `/.well-known/hitl/v1` (for the durable fetch inside invoked functions). Share the same `inngest` client instance between the resolver and `createHitlInngestFunctions`.
+
+Create `lib/hitl.ts` and paste the following:
 
 ```typescript
 // lib/hitl.ts
@@ -55,45 +71,77 @@ export const hitl = new Hitl({
 });
 ```
 
-Mount `hitl.routeHandlers`. See [Host integration](/docs/host-integration). The same app must serve both Inngest and Hitl HTTP routes.
-
 ## Call waitForHuman from your functions
 
-Use `step.invoke`, not the low-level client directly:
+Do not call a low-level Hitl client directly from app function handlers. Use `step.invoke` to call the registered `waitForHuman` function. Inngest records the invoke as a durable step: if your parent function retries, the wait is not duplicated.
+
+`step.invoke` crosses a JSON boundary, so TypeScript cannot infer `HumanResult` from inline `data`. Pull `actions` into a variable and assert the result type so `isResolved` and `approval.feedbacks` stay typed.
+
+In your app function (for example `inngest/functions/send-email.ts`), call `waitForHuman` via `step.invoke` like this:
 
 ```typescript
 import { actions, isResolved, type HumanResult } from "@hitl-sdk/hitl";
 import { inngest, waitForHuman } from "../client";
 
-export const inboundLead = inngest.createFunction(
-  { id: "inbound-lead" },
-  { event: "lead/inbound" },
+export const sendEmail = inngest.createFunction(
+  { id: "send-email" },
+  { event: "email/send.requested" },
   async ({ event, step }) => {
+    const emailDraft = {
+      to: event.data.email,
+      subject: event.data.subject,
+      body: event.data.body,
+    };
     const actionsDef = actions().approve().deny().build();
 
-    const approval = (await step.invoke("approve-lead", {
+    const approval = (await step.invoke("approve-send", {
       function: waitForHuman,
       data: {
-        message: `Inbound lead: ${event.data.email}`,
+        message: `Send email to: ${event.data.email}?`,
         actions: actionsDef,
         timeout: "72h",
       },
     })) as HumanResult<typeof actionsDef>;
 
     if (!isResolved(approval, "approve")) return;
+
+    await step.run("deliver-email", () => deliverEmail(emailDraft));
   },
 );
 ```
 
-`step.invoke` crosses a JSON boundary. Assert `HumanResult<typeof actionsDef>` for typed feedbacks.
+## Register /.well-known/hitl/v1
+
+`lib/hitl.ts` alone is not enough. Register the internal API at `/.well-known/hitl/v1` on your HTTP server so invoked Hitl functions can POST. **This step is required.** Without it, `waitForHuman` fails and nothing reaches your Hitl instance. Your deployment must expose both this route and your Inngest serve handler.
+
+Create `server.ts` (or add the route to your existing HTTP server) and paste the following. `hitl.handler` accepts Node's `IncomingMessage` and `ServerResponse`, so this works on any plain Node server with no framework required. Mount your Inngest serve handler on the same server (or another reachable URL) as well.
+
+```typescript
+// server.ts
+import { createServer } from "node:http";
+import { hitl } from "./lib/hitl";
+
+createServer((req, res) => {
+  if (req.method === "POST" && req.url?.startsWith("/.well-known/hitl/v1")) {
+    void hitl.handler(req, res);
+    return;
+  }
+  res.statusCode = 404;
+  res.end();
+}).listen(3000);
+```
+
+Using Next.js, Express, Hono, or Fastify? See [Host integration](/docs/host-integration) for mount patterns on each framework.
 
 ## Environment
 
+Invoked Hitl functions run in the Inngest runtime and POST to your Hitl server from inside durable `step.run` calls. Set these on the environment where Inngest executes your functions.
+
 | Variable | Where | Purpose |
 |----------|-------|---------|
-| `HITL_URL` | Inngest function runtime | Base URL for durable fetch to the Hitl server |
-| `HITL_SECRET` | Inngest function runtime | Bearer token for the internal API |
+| `HITL_URL` | Inngest function runtime | Base URL for durable fetch to the Hitl server. Set when Inngest runs against a different host than production (local dev, preview deploys). |
+| `HITL_SECRET` | Inngest function runtime | Bearer token for the internal API when you configure `secret` on `new Hitl()`. |
 
 ## Advanced
 
-For tests or custom `step.run` wrappers, use `createInngestHitlClient({ step, url })`. Prefer `step.invoke` in application code.
+For tests or custom `step.run` wrappers, use `createInngestHitlClient({ step, url })` to wire Hitl primitives manually. Prefer `step.invoke` in application code; it keeps waits as separate Inngest functions with clear step boundaries and resume events.

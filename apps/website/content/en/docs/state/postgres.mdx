@@ -5,9 +5,13 @@ description: Persist approval requests in Postgres. Production-ready, bring your
 
 # Postgres State
 
-Persist approval requests in Postgres for production deploys when you already run a Postgres database. Pass `PostgresState` as the `state` option in `new Hitl()`.
+Persist approval requests in Postgres for production deploys when you already run a Postgres database. When a workflow POSTs to your Hitl server, the server records the request in `state` and keeps it until someone resolves or times out. Pass `PostgresState` as the `state` option in `new Hitl()`.
+
+Postgres fits multi-replica servers: every Hitl instance shares the same pending requests. State lives on the server only; workflow code never touches the database directly. See [Overview](/docs/overview) for the two-process split.
 
 ## Install
+
+Install the core Hitl SDK, the Postgres state package, and the `pg` client. Pick a workflow engine resolver separately; see [Workflow Engines](/docs/workflow-engines/workflow-sdk).
 
 ```bash
 npm i @hitl-sdk/hitl @hitl-sdk/state-pg pg
@@ -15,22 +19,28 @@ npm i @hitl-sdk/hitl @hitl-sdk/state-pg pg
 
 ## Run Postgres migrations
 
-Run migrations before deploy or on first boot. Default table: `hitl.human_requests`.
+Hitl stores human requests in Postgres tables (default: `hitl.human_requests`). Create them before your server handles traffic, either at deploy time or on first boot.
+
+Set a connection URL and run the setup CLI:
 
 ```bash
 export HITL_POSTGRES_URL=postgres://user:password@host:5432/database
 npx @hitl-sdk/state-pg setup
 ```
 
-`DATABASE_URL` is also accepted. Prefer `HITL_POSTGRES_URL` to keep Hitl persistence explicit.
+`DATABASE_URL` is also accepted. Prefer `HITL_POSTGRES_URL` so Hitl persistence stays separate from other app databases and from Workflow SDK's Postgres world.
 
-Export DDL without connecting:
+Export DDL without connecting when you manage migrations by hand:
 
 ```bash
 npx @hitl-sdk/state-pg schema
 ```
 
 ## Set up the Hitl server with Postgres
+
+Create a `pg` pool pointed at the same database you migrated, wrap it in `PostgresState`, and pass it to `new Hitl()`. Call `ensureSchema()` at startup if you did not run `setup` at deploy time; it is idempotent.
+
+Create `lib/hitl.ts` and paste the following. Swap `workflowResolver()` for your engine; the `state` setup stays the same.
 
 ```typescript
 // lib/hitl.ts
@@ -55,6 +65,8 @@ export const hitl = new Hitl({
 `PostgresState` accepts any `PgQueryable` pool. Neon, Supabase, or `pg-mem` work as long as they speak Postgres SQL.
 
 [Vercel Workflow SDK worlds](https://workflow-sdk.dev/worlds) use their own storage and migrations. This package only manages Hitl tables.
+
+You still need to register `/.well-known/hitl/v1` on your HTTP server. See [Host integration](/docs/host-integration) or your workflow engine page.
 
 ## Migrations
 

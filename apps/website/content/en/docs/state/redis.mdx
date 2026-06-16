@@ -5,9 +5,13 @@ description: Persist approval requests in Redis. Bring your own ioredis client, 
 
 # Redis State
 
-Persist approval requests in Redis when you already run Redis for caching or sessions. Pass `IoredisState` as the `state` option in `new Hitl()`.
+Persist approval requests in Redis when you already run Redis for caching or sessions. When a workflow POSTs to your Hitl server, the server records the request in `state` and keeps it until someone resolves or times out. Pass `IoredisState` as the `state` option in `new Hitl()`.
+
+Redis fits multi-replica servers and low-latency lookups. State lives on the server only; workflow code never touches Redis directly. See [Overview](/docs/overview) for the two-process split.
 
 ## Install
+
+Install the core Hitl SDK, the Redis state package, and `ioredis`. You construct and own the Redis connection. Pick a workflow engine resolver separately; see [Workflow Engines](/docs/workflow-engines/workflow-sdk).
 
 ```bash
 npm i @hitl-sdk/hitl @hitl-sdk/state-ioredis ioredis
@@ -15,7 +19,9 @@ npm i @hitl-sdk/hitl @hitl-sdk/state-ioredis ioredis
 
 ## Set up the Hitl server with Redis
 
-Migrations run on first operation (or call `ensureSchema()` at deploy time):
+Migrations run on first operation, or call `ensureSchema()` explicitly at deploy time. Connect to your Redis instance, wrap the client in `IoredisState`, and pass it to `new Hitl()`.
+
+Create `lib/hitl.ts` and paste the following. Swap `workflowResolver()` for your engine; the `state` setup stays the same.
 
 ```typescript
 // lib/hitl.ts
@@ -34,12 +40,18 @@ export const hitl = new Hitl({
 });
 ```
 
-Custom key prefix:
+You still need to register `/.well-known/hitl/v1` on your HTTP server. See [Host integration](/docs/host-integration) or your workflow engine page.
+
+## Custom key prefix
+
+Use a custom prefix when multiple apps share one Redis cluster and you need to isolate keys:
 
 ```typescript
 const state = new IoredisState(redis, { tableName: "custom_approvals" });
 // Redis keys are prefixed with `custom_approvals:`
 ```
+
+The option name matches SQL backends (`tableName`) even though Redis uses key prefixes, not tables.
 
 ## Key layout
 
@@ -52,8 +64,8 @@ Default prefix: `hitl:human_requests` (from table name `hitl.human_requests`).
 | Status index | `{prefix}:idx:status:{pending\|resolved}` |
 | Timeline | `{prefix}:timeline:{threadId}` |
 
-No setup CLI. Migrations run in-process against your Redis instance.
+No setup CLI. Migrations run in-process against your Redis instance when you call `ensureSchema()` or on the first state operation.
 
 ## Migrations
 
-Upgrade `@hitl-sdk/state-ioredis` and call `ensureSchema()` (or let the first operation apply pending migrations).
+Upgrade `@hitl-sdk/state-ioredis` and call `ensureSchema()` (or let the first operation apply pending migrations). Keys are updated idempotently; you do not need to flush Redis on upgrade.

@@ -5,11 +5,15 @@ description: Persist approval requests with Node built-in SQLite. Zero runtime d
 
 # SQLite State
 
-Persist approval requests with file-backed SQLite on a single Node process. Pass `SqliteState` as the `state` option in `new Hitl()`.
+Persist approval requests with file-backed SQLite on a single Node process. When a workflow POSTs to your Hitl server, the server records the request in `state` and keeps it until someone resolves or times out. Pass `SqliteState` as the `state` option in `new Hitl()`.
+
+SQLite fits local development and single-process deploys. State lives on the server only; workflow code never touches the database directly. See [Overview](/docs/overview) for the two-process split.
 
 Requires **Node.js 22.13+** (`node:sqlite`).
 
 ## Install
+
+Install the core Hitl SDK and the SQLite state package. Pick a workflow engine resolver separately; see [Workflow Engines](/docs/workflow-engines/workflow-sdk).
 
 ```bash
 npm i @hitl-sdk/hitl @hitl-sdk/state-sqlite
@@ -17,7 +21,9 @@ npm i @hitl-sdk/hitl @hitl-sdk/state-sqlite
 
 ## Set up the Hitl server with SQLite
 
-Constructing `SqliteState` runs migrations automatically. No separate setup step for most apps:
+Constructing `SqliteState` runs migrations automatically when the database opens. No separate migration step is required for most apps. Create a directory for the database file, then wire `SqliteState` into `new Hitl()`.
+
+Create `lib/hitl.ts` and paste the following. Swap `workflowResolver()` for your engine; the `state` setup stays the same.
 
 ```typescript
 // lib/hitl.ts
@@ -37,20 +43,26 @@ export const hitl = new Hitl({
 });
 ```
 
+You still need to register `/.well-known/hitl/v1` on your HTTP server. See [Host integration](/docs/host-integration) or your workflow engine page.
+
 ## CLI (optional)
 
-Initialize a database outside your app: CI, scripts, or infra that runs before the server:
+Initialize a database outside your app when CI, scripts, or infra runs before the server starts:
 
 ```bash
 npx @hitl-sdk/state-sqlite setup --db .hitl/human_requests.db
 npx @hitl-sdk/state-sqlite schema   # export DDL without opening a database
 ```
 
+Use `schema` when you want to review or hand-apply DDL instead of opening a file at runtime.
+
 ## When to use something else
 
-- **Multi-replica production**: use [Postgres](/docs/state/postgres) or [Redis](/docs/state/redis)
-- **Throwaway local demo**: omit `state` or use `InMemoryState` from `@hitl-sdk/hitl/state`
+SQLite is file-backed and tied to one Node process. Choose a different backend when:
+
+- **Multi-replica production**: use [Postgres](/docs/state/postgres) or [Redis](/docs/state/redis) so every server instance reads the same pending requests
+- **Throwaway local demo**: omit `state` or use `InMemoryState` from `@hitl-sdk/hitl/state` (requests reset on restart)
 
 ## Migrations
 
-Schema changes are versioned inside `@hitl-sdk/state-sqlite`. Opening the database applies new migrations idempotently after you upgrade the package.
+Schema changes are versioned inside `@hitl-sdk/state-sqlite`. Opening the database applies new migrations idempotently after you upgrade the package. No manual DDL is required unless you use the CLI to export schema for review.
