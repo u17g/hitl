@@ -17,7 +17,7 @@ export function CtaSection() {
   const t = useInlineTranslation();
 
   return (
-    <Section variant="muted">
+    <Section className="section-bg-pink">
       <SectionContainer size="6xl">
         <div className="overflow-hidden">
           <div className="">

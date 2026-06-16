@@ -13,7 +13,7 @@ export function Hero() {
 
   return (
     <Section variant="hero" className="bg-background">
-      <div className="px-6 md:px-8 pt-12 md:pt-16">
+      <div className="px-6 md:px-8 pt-12 md:pt-20">
         <h1 className="font-display text-3xl font-medium leading-[1.15] tracking-tight md:text-4xl">
           <span className="text-brand">
             {t({
@@ -43,7 +43,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="hero-visual-bg relative mt-12 w-full min-w-0 overflow-hidden md:mt-16">
+      <div className="hero-visual-bg relative mt-20 w-full min-w-0 overflow-hidden md:mt-16">
         <div className="flex min-h-[420px] w-full min-w-0 items-center justify-center px-2 py-12 sm:px-4 md:py-16">
           <HeroDemo />
         </div>

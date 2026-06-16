@@ -15,7 +15,7 @@ import { snippets } from "@/lib/snippets";
 
 export function CodeWindowChrome({ children, className }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className={cn("w-full bg-zinc-200/70 p-4 dark:bg-zinc-900/60", className)}>
+    <div className={cn("w-full bg-zinc-200/60 p-4 dark:bg-zinc-900/60 backdrop-blur-md", className)}>
       {children}
     </div>
   );
@@ -295,7 +295,7 @@ export function CodeComparison() {
   ];
 
   return (
-    <Section>
+    <Section className="section-bg-purple">
       <SectionContainer size="6xl">
         <SectionHeader>
           <SectionTitle>

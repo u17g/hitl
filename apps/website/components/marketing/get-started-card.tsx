@@ -38,23 +38,9 @@ function useReducedMotion() {
   return reducedMotion;
 }
 
-function useSiteUrl() {
-  const [siteUrl, setSiteUrl] = React.useState(() => {
-    const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
-    if (fromEnv) return fromEnv.replace(/\/$/, "");
-    return "https://hitl-sdk.dev";
-  });
-
-  React.useEffect(() => {
-    setSiteUrl(window.location.origin);
-  }, []);
-
-  return siteUrl;
-}
-
 export function GetStartedCard({ className }: { className?: string }) {
   const t = useInlineTranslation();
-  const siteUrl = useSiteUrl();
+  const siteUrl = "https://hitl-sdk.dev";
   const reducedMotion = useReducedMotion();
   const [selectedAgentId, setSelectedAgentId] = React.useState(
     defaultGetStartedAgentId,
