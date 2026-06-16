@@ -5,9 +5,11 @@ description: Bind Hitl to Vercel Workflow SDK. Suspend in use workflow functions
 
 # Workflow SDK
 
-Replaces **Quickstart steps 2 and 4** when using [Vercel Workflow SDK](https://workflow-sdk.dev).
+Bind Hitl to [Vercel Workflow SDK](https://workflow-sdk.dev). This page covers server setup with `workflowResolver` and the workflow-side client that suspends over a durable `"use step"` fetch.
 
-Workflow DevKit runs workflows in a separate sandbox from your app server. The workflow client carries no state backend. It suspends and POSTs to the server over a durable `"use step"` fetch.
+Vercel Workflow SDK runs workflows in a separate sandbox from your app server. The workflow client carries no state backend. It suspends and POSTs to the server over a durable `"use step"` fetch.
+
+If you are following the [Quickstart](/docs/quickstart), this page covers the server and workflow client setup.
 
 ## Install
 
@@ -15,9 +17,10 @@ Workflow DevKit runs workflows in a separate sandbox from your app server. The w
 npm i @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk workflow
 ```
 
-## Server (Quickstart step 2)
+## Set up the Hitl server
 
 ```typescript
+// lib/hitl.ts
 import { Hitl } from "@hitl-sdk/hitl";
 import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
 
@@ -29,9 +32,10 @@ export const hitl = new Hitl({
 
 Mount `hitl.routeHandlers` at `/.well-known/hitl/v1`. See [Host integration](/docs/host-integration).
 
-## Workflow client (Quickstart step 4)
+## Create the workflow client
 
 ```typescript
+// lib/hitl-client.ts
 import type { HitlRequest } from "@hitl-sdk/hitl/core";
 import { createWorkflowSdkHitlClient } from "@hitl-sdk/resolver-workflow-sdk";
 
@@ -58,12 +62,4 @@ Import `waitForHuman` from this module inside `"use workflow"` functions, not fr
 2. Server persists the request, delivers to inbox/adapters, and waits.
 3. Reviewer approves. `workflowResolver` resumes the workflow with the result.
 
-## Postgres world
-
-If you use Workflow DevKit's Postgres world, run its migrations separately from Hitl state:
-
-```bash
-npx workflow-postgres-setup
-```
-
-Hitl tables are managed by `@hitl-sdk/state-pg`. See [Postgres state](/docs/state/postgres).
+If you use Vercel Workflow SDK, configure its [world](https://workflow-sdk.dev/worlds) separately. Hitl `state` is independent; see [State docs](/docs/state/sqlite).

@@ -107,7 +107,7 @@ export function StackSection() {
       }),
       options: [
         {
-          name: "Workflow DevKit",
+          name: "Vercel Workflow SDK",
           Logo: WorkflowDevKitLogo,
           install: snippets.installResolverWorkflow,
         },

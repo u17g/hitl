@@ -23,7 +23,6 @@ navigation:
       - foundations/notify
       - foundations/actions-and-fields
       - foundations/reminders
-      - foundations/package-exports
   - group:
       en: Workflow Engines
       ja: ワークフローエンジン

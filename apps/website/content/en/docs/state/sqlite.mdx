@@ -5,7 +5,7 @@ description: Persist approval requests with Node built-in SQLite. Zero runtime d
 
 # SQLite State
 
-Replaces **Quickstart step 2** (`state` option) when using file-backed persistence locally or on a single Node process.
+Persist approval requests with file-backed SQLite on a single Node process. Pass `SqliteState` as the `state` option in `new Hitl()`.
 
 Requires **Node.js 22.13+** (`node:sqlite`).
 
@@ -15,11 +15,12 @@ Requires **Node.js 22.13+** (`node:sqlite`).
 npm i @hitl-sdk/hitl @hitl-sdk/state-sqlite
 ```
 
-## Setup
+## Set up the Hitl server with SQLite
 
 Constructing `SqliteState` runs migrations automatically. No separate setup step for most apps:
 
 ```typescript
+// lib/hitl.ts
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";

@@ -5,7 +5,7 @@ description: Persist approval requests in Postgres. Production-ready, bring your
 
 # Postgres State
 
-Replaces **Quickstart step 2** (`state` option) for production deploys with an existing Postgres database.
+Persist approval requests in Postgres for production deploys when you already run a Postgres database. Pass `PostgresState` as the `state` option in `new Hitl()`.
 
 ## Install
 
@@ -13,7 +13,7 @@ Replaces **Quickstart step 2** (`state` option) for production deploys with an e
 npm i @hitl-sdk/hitl @hitl-sdk/state-pg pg
 ```
 
-## Setup
+## Run Postgres migrations
 
 Run migrations before deploy or on first boot. Default table: `hitl.human_requests`.
 
@@ -30,9 +30,10 @@ Export DDL without connecting:
 npx @hitl-sdk/state-pg schema
 ```
 
-## Usage (Quickstart step 2)
+## Set up the Hitl server with Postgres
 
 ```typescript
+// lib/hitl.ts
 import pg from "pg";
 import { Hitl } from "@hitl-sdk/hitl";
 import { PostgresState } from "@hitl-sdk/state-pg";
@@ -53,13 +54,7 @@ export const hitl = new Hitl({
 
 `PostgresState` accepts any `PgQueryable` pool. Neon, Supabase, or `pg-mem` work as long as they speak Postgres SQL.
 
-## Workflow DevKit Postgres world
-
-This package only creates **Hitl** tables. If you use Workflow DevKit's Postgres world, run its migrations separately:
-
-```bash
-npx workflow-postgres-setup
-```
+[Vercel Workflow SDK worlds](https://workflow-sdk.dev/worlds) use their own storage and migrations. This package only manages Hitl tables.
 
 ## Migrations
 

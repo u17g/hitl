@@ -79,7 +79,7 @@ export function LogoStrip() {
   ] as const;
 
   const workflowEngines = [
-    { name: "Workflow DevKit", Logo: WorkflowDevKitLogo },
+    { name: "Vercel Workflow SDK", Logo: WorkflowDevKitLogo },
     { name: "Inngest", Logo: InngestLogo },
     { name: "Temporal", Logo: TemporalLogo },
   ] as const;

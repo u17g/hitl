@@ -5,7 +5,9 @@ description: Bind Hitl to Inngest. Use step.invoke for waitForHuman and events f
 
 # Inngest
 
-Replaces **Quickstart steps 2 and 4** (and adds Inngest serve wiring) when using [Inngest](https://www.inngest.com).
+Bind Hitl to [Inngest](https://www.inngest.com). This page covers server setup with `inngestResolver`, Inngest function registration, and calling `waitForHuman` via `step.invoke`.
+
+If you are following the [Quickstart](/docs/quickstart), this page covers the server and workflow client setup.
 
 ## Install
 
@@ -13,7 +15,7 @@ Replaces **Quickstart steps 2 and 4** (and adds Inngest serve wiring) when using
 npm i @hitl-sdk/hitl @hitl-sdk/resolver-inngest inngest
 ```
 
-## Register Hitl functions
+## Register Hitl functions with Inngest
 
 ```typescript
 // inngest/client.ts
@@ -39,9 +41,10 @@ export const { GET, POST } = serve({
 });
 ```
 
-## Server (Quickstart step 2)
+## Set up the Hitl server
 
 ```typescript
+// lib/hitl.ts
 import { Hitl } from "@hitl-sdk/hitl";
 import { inngestResolver } from "@hitl-sdk/resolver-inngest";
 import { inngest } from "@/inngest/client";
@@ -54,7 +57,7 @@ export const hitl = new Hitl({
 
 Mount `hitl.routeHandlers`. See [Host integration](/docs/host-integration). The same app must serve both Inngest and Hitl HTTP routes.
 
-## Call from your functions (Quickstart step 4 / workflow)
+## Call waitForHuman from your functions
 
 Use `step.invoke`, not the low-level client directly:
 

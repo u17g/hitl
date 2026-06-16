@@ -7,7 +7,7 @@ description: Built-in approval UI channel and programmatic hitl.inbox API. Alway
 
 The web inbox is **always included** in `new Hitl()`. No adapter package required. Workflows can deliver to it; your app resolves approvals via `hitl.inbox`.
 
-This replaces **Quickstart step 7** when you want a custom inbox UI or REST API. It is not mutually exclusive with the [Chat SDK adapter](/docs/channels/chat-sdk).
+Build a custom inbox UI or REST API on top of `hitl.inbox`. It is not mutually exclusive with the [Chat SDK adapter](/docs/channels/chat-sdk).
 
 ## Deliver to the inbox from a workflow
 
@@ -44,7 +44,7 @@ await hitl.inbox.resolve(id, {
 });
 ```
 
-## Custom REST endpoint (Quickstart step 7)
+## Custom REST endpoint
 
 Wrap `hitl.inbox` in your own routes. The hello-world example exposes `/api/inbox`:
 

@@ -34,7 +34,7 @@ npm i @hitl-sdk/resolver-temporal @temporalio/client @temporalio/workflow
 npm i @hitl-sdk/resolver-inngest inngest
 ```
 
-If you use Workflow DevKit's Postgres world, run its migrations separately from Hitl state (`npx workflow-postgres-setup`). Hitl tables are managed by `@hitl-sdk/state-pg`.
+If you use Vercel Workflow SDK, configure its [world](https://workflow-sdk.dev/worlds) (runtime storage and queues) separately from Hitl's `state` backend below.
 
 ## State backend (pick one)
 
@@ -69,20 +69,20 @@ Install `@chat-adapter/*` packages for each platform you use. See [Chat SDK adap
 
 ## Choose your stack
 
-Use this table to jump to the pages that **replace steps in the Quickstart**, not separate end-to-end guides.
+Use this table to jump to the detailed doc for each axis of your stack.
 
-| Your choice | Quickstart step to change | Doc |
-|-------------|---------------------------|-----|
-| Workflow SDK | Step 4 (client) + resolver in Step 2 | [workflow-engines/workflow-sdk](/docs/workflow-engines/workflow-sdk) |
-| Temporal | Step 4 + resolver in Step 2 | [workflow-engines/temporal](/docs/workflow-engines/temporal) |
-| Inngest | Step 4 + resolver in Step 2 + Inngest serve | [workflow-engines/inngest](/docs/workflow-engines/inngest) |
-| SQLite | Step 2 (`state`) | [state/sqlite](/docs/state/sqlite) |
-| Postgres | Step 2 (`state`) | [state/postgres](/docs/state/postgres) |
-| Redis | Step 2 (`state`) | [state/redis](/docs/state/redis) |
-| Web inbox only | Step 7 (already default) | [channels/web-inbox](/docs/channels/web-inbox) |
-| Slack / Teams / … | Add adapters to Step 2 | [channels/chat-sdk](/docs/channels/chat-sdk) |
-| Next.js | Step 3 | [host-integration#nextjs](/docs/host-integration#nextjs) |
-| Express / Hono / … | Step 3 | [host-integration](/docs/host-integration) |
+| Your choice | Covers | Doc |
+|-------------|--------|-----|
+| Workflow SDK | `workflowResolver` + workflow client | [workflow-engines/workflow-sdk](/docs/workflow-engines/workflow-sdk) |
+| Temporal | `temporalResolver` + activity-backed client | [workflow-engines/temporal](/docs/workflow-engines/temporal) |
+| Inngest | `inngestResolver` + `step.invoke` wiring | [workflow-engines/inngest](/docs/workflow-engines/inngest) |
+| SQLite | `state` in `new Hitl()` | [state/sqlite](/docs/state/sqlite) |
+| Postgres | `state` in `new Hitl()` | [state/postgres](/docs/state/postgres) |
+| Redis | `state` in `new Hitl()` | [state/redis](/docs/state/redis) |
+| Web inbox only | Built-in `hitl.inbox` (default) | [channels/web-inbox](/docs/channels/web-inbox) |
+| Slack / Teams / … | Channel adapters in `new Hitl()` | [channels/chat-sdk](/docs/channels/chat-sdk) |
+| Next.js | Internal API route mounting | [host-integration#nextjs](/docs/host-integration#nextjs) |
+| Express / Hono / … | Internal API route mounting | [host-integration](/docs/host-integration) |
 
 **Recommended default for new projects:** Workflow SDK + SQLite + web inbox + Next.js, same as the [Quickstart](/docs/quickstart).
 

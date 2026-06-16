@@ -30,6 +30,7 @@ npm i @hitl-sdk/hitl @hitl-sdk/resolver-workflow-sdk @hitl-sdk/state-sqlite work
 `lib/hitl.ts` holds persistence, the resolver, and the built-in inbox channel:
 
 ```typescript
+// lib/hitl.ts
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";

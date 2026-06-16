@@ -22,8 +22,8 @@ export function SetupSection() {
     {
       title: t({ en: "Install", ja: "インストール" }),
       desc: t({
-        en: "Add the core SDK and the Workflow DevKit binding.",
-        ja: "コア SDK と Workflow DevKit バインディングを追加します。",
+        en: "Add the core SDK and the Vercel Workflow SDK binding.",
+        ja: "コア SDK と Vercel Workflow SDK バインディングを追加します。",
       }),
       code: snippets.install,
       filename: "terminal",

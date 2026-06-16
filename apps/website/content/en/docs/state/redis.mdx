@@ -5,7 +5,7 @@ description: Persist approval requests in Redis. Bring your own ioredis client, 
 
 # Redis State
 
-Replaces **Quickstart step 2** (`state` option) when you already run Redis for caching or sessions.
+Persist approval requests in Redis when you already run Redis for caching or sessions. Pass `IoredisState` as the `state` option in `new Hitl()`.
 
 ## Install
 
@@ -13,11 +13,12 @@ Replaces **Quickstart step 2** (`state` option) when you already run Redis for c
 npm i @hitl-sdk/hitl @hitl-sdk/state-ioredis ioredis
 ```
 
-## Usage (Quickstart step 2)
+## Set up the Hitl server with Redis
 
 Migrations run on first operation (or call `ensureSchema()` at deploy time):
 
 ```typescript
+// lib/hitl.ts
 import Redis from "ioredis";
 import { Hitl } from "@hitl-sdk/hitl";
 import { IoredisState } from "@hitl-sdk/state-ioredis";

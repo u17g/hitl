@@ -22,6 +22,18 @@ function getTextContent(node: ReactNode): string {
   return "";
 }
 
+const FILE_PATH_COMMENT =
+  /^\/\/\s+([a-zA-Z0-9._[\]-]+(?:\/[a-zA-Z0-9._[\]-]+)*\.(?:ts|tsx|js|jsx))(?:\s+\([^)]*\))?\s*\n/;
+
+function extractCodeFilename(code: string): { filename?: string; code: string } {
+  const match = code.match(FILE_PATH_COMMENT);
+  if (!match) return { code };
+  return {
+    filename: match[1],
+    code: code.slice(match[0].length),
+  };
+}
+
 function Pre({
   children,
   ...props
@@ -35,10 +47,12 @@ function Pre({
     const langMatch = codeProps.className?.match(/language-([\w-]+)/);
     if (langMatch?.[1]) {
       const fenceLang = langMatch[1];
-      const code = getTextContent(codeProps.children).replace(/\n$/, "");
+      const rawCode = getTextContent(codeProps.children).replace(/\n$/, "");
+      const { filename: pathFromComment, code: displayCode } =
+        extractCodeFilename(rawCode);
 
       if (fenceLang === "mermaid") {
-        return <MermaidDiagram chart={code} />;
+        return <MermaidDiagram chart={rawCode} />;
       }
 
       if (isPlainFenceLang(fenceLang)) {
@@ -47,24 +61,23 @@ function Pre({
             className="overflow-x-auto rounded border border-border bg-muted/50 p-4 font-mono text-sm leading-relaxed"
             {...props}
           >
-            <code>{code}</code>
+            <code>{rawCode}</code>
           </pre>
         );
       }
 
       const filename =
         props["data-language"] ??
+        pathFromComment ??
         (fenceLang === "bash" ||
         fenceLang === "sh" ||
         fenceLang === "shell"
           ? "terminal"
-          : fenceLang === "typescript" || fenceLang === "tsx"
-            ? "workflow.ts"
-            : undefined);
+          : undefined);
 
       return (
         <CodeBlock
-          code={code}
+          code={displayCode}
           filename={filename}
           lang={fenceLangToShiki(fenceLang)}
         />

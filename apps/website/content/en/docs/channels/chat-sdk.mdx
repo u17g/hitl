@@ -5,7 +5,7 @@ description: Deliver approvals to Slack, Teams, Discord, and every Chat SDK plat
 
 # Chat SDK Adapter
 
-**Adds to Quickstart step 2**: optional channel adapter on top of the built-in [web inbox](/docs/channels/web-inbox). You can use both: inbox for internal tools, Chat SDK for Slack/Teams.
+Optional channel adapter registered in `new Hitl({ adapters })` on top of the built-in [web inbox](/docs/channels/web-inbox). You can use both: inbox for internal tools, Chat SDK for Slack/Teams.
 
 ## Install
 
@@ -15,9 +15,10 @@ npm i @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
 
 Install `@chat-adapter/*` for each platform. See the [Chat SDK packages list](https://github.com/vercel/chat/tree/main/packages).
 
-## Server setup
+## Set up the Hitl server with chat adapters
 
 ```typescript
+// lib/hitl.ts
 import { Hitl } from "@hitl-sdk/hitl";
 import { createChatSdkAdapter } from "@hitl-sdk/adapter-chat-sdk";
 import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
