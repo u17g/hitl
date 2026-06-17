@@ -23,7 +23,7 @@ export function SiteFooter() {
       title: t({ en: "Developers", ja: "Developers" }),
       links: [
         { label: "GitHub", href: "https://github.com/u17g/hitl", external: true },
-        { label: "npm", href: "https://www.npmjs.com/package/hitl", external: true },
+        { label: "npm", href: "https://www.npmjs.com/package/@hitl-sdk/hitl", external: true },
       ],
     },
     {
