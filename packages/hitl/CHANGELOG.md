@@ -1,5 +1,11 @@
 # @hitl-sdk/hitl
 
+## 1.0.0
+
+### Minor Changes
+
+- dd9fee3: support line chat, and new namepsace feat
+
 ## 0.0.5
 
 ### Patch Changes
