@@ -1,5 +1,11 @@
 import { resolveHumanRequest, resolveBatchHumanRequest, type HitlRuntime } from "./core";
-import type { HumanRequestRecord, BatchRecord, InboxListOptions, InboxListResult } from "./state";
+import type {
+  HumanRequestRecord,
+  BatchRecord,
+  InboxCountOptions,
+  InboxListOptions,
+  InboxListResult,
+} from "./state";
 import type { HumanResult, HitlBatchCallback, Reviewer } from "./types";
 
 /** One reviewer decision in a batch resolve. */
@@ -20,6 +26,8 @@ export interface HitlInbox {
    * page size and the previous page's `nextCursor` to fetch the next (older) page.
    */
   list(filter?: InboxListOptions): Promise<InboxListResult>;
+  /** Total number of human requests; filter by status. Use for badges and dashboards. */
+  count(filter?: InboxCountOptions): Promise<number>;
   /** A single human request, or null when the id is unknown. */
   get(id: string): Promise<HumanRequestRecord | null>;
   /** A batch with its items in input order, or null when the id is unknown. */
@@ -41,6 +49,8 @@ export function createInbox(runtime: HitlRuntime): HitlInbox {
   const { state } = runtime;
   return {
     list: (filter) => state.list(filter),
+
+    count: (filter) => state.count(filter),
 
     get: (id) => state.get(id),
 

@@ -3,6 +3,7 @@ import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
+  InboxCountOptions,
   InboxListOptions,
   InboxListResult,
   NewBatchRecord,
@@ -180,6 +181,14 @@ export class IoredisState implements State {
       if (raw) records.push(parseHumanRequest(raw));
     }
     return buildInboxPage(records, limit);
+  }
+
+  async count(filter?: InboxCountOptions): Promise<number> {
+    await this.ready();
+    const indexKey = filter?.status
+      ? this.keys.idxStatus(filter.status)
+      : this.keys.idxAllReq();
+    return this.redis.zcard(indexKey);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

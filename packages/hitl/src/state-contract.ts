@@ -221,6 +221,43 @@ export function describeStateContract(
       expect(new Set(seen)).toEqual(new Set(["p1", "p2", "p3"]));
     });
 
+    it("returns 0 when counting an empty state", async () => {
+      const state = await factory();
+      expect(await state.count()).toBe(0);
+      expect(await state.count({ status: "pending" })).toBe(0);
+    });
+
+    it("counts all records regardless of status", async () => {
+      const state = await factory();
+      await state.create(newRecord("a1"));
+      await state.create(newRecord("a2"));
+      await state.resolve("a1", {
+        type: "RESOLVED",
+        actionId: "approve",
+        id: "a1",
+        externalRef: "",
+        feedbacks: {},
+      });
+
+      expect(await state.count()).toBe(2);
+    });
+
+    it("counts records filtered by status", async () => {
+      const state = await factory();
+      await state.create(newRecord("a1"));
+      await state.create(newRecord("a2"));
+      await state.resolve("a1", {
+        type: "RESOLVED",
+        actionId: "approve",
+        id: "a1",
+        externalRef: "",
+        feedbacks: {},
+      });
+
+      expect(await state.count({ status: "pending" })).toBe(1);
+      expect(await state.count({ status: "resolved" })).toBe(1);
+    });
+
     it("returns null for an unknown external id", async () => {
       const state = await factory();
       expect(await state.findByExternalId("missing")).toBeNull();

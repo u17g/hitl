@@ -100,6 +100,15 @@ describe("HitlInbox read", () => {
     expect((await inbox.list({ status: "resolved" })).items).toEqual([]);
   });
 
+  it("counts approvals and filters by status", async () => {
+    const { runtime, inbox } = makeRuntime();
+    await seedApproval(runtime);
+
+    expect(await inbox.count()).toBe(1);
+    expect(await inbox.count({ status: "pending" })).toBe(1);
+    expect(await inbox.count({ status: "resolved" })).toBe(0);
+  });
+
   it("gets a single approval, returning null for an unknown id", async () => {
     const { runtime, inbox } = makeRuntime();
     const id = await seedApproval(runtime);

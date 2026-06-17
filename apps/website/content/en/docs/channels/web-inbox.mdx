@@ -55,6 +55,16 @@ do {
 } while (cursor);
 ```
 
+## Count requests
+
+`list` returns one page, so use `hitl.inbox.count` for totals — a pending-count badge, a dashboard metric, or a monitoring alert. It runs `COUNT(*)` (SQL) or `ZCARD` (Redis), never loading the records:
+
+```typescript
+const pending = await hitl.inbox.count({ status: "pending" });
+// Omit `status` to count both pending and resolved
+const total = await hitl.inbox.count();
+```
+
 ## Resolve a request
 
 When a reviewer approves or denies, call `hitl.inbox.resolve`. Hitl updates `state`, notifies channel adapters, and calls your workflow engine's resolver to resume the suspended run.

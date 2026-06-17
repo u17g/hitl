@@ -13,6 +13,7 @@ export {
 export type {
   BatchRecord,
   HumanRequestRecord,
+  InboxCountOptions,
   InboxListOptions,
   InboxListResult,
   NewBatchRecord,

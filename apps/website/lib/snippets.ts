@@ -221,6 +221,9 @@ await waitForHuman({
 const { items, nextCursor } = await hitl.inbox.list({ status: "pending", limit: 50 });
 // Pass nextCursor back to fetch the next page
 
+// Count without loading records (e.g. a pending badge)
+const pendingCount = await hitl.inbox.count({ status: "pending" });
+
 // Resolve with optional field edits
 await hitl.inbox.resolve(id, {
   actionId: "approve",

@@ -3,6 +3,7 @@ import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
+  InboxCountOptions,
   InboxListOptions,
   InboxListResult,
   NewBatchRecord,
@@ -200,6 +201,19 @@ export class SqliteState implements State {
       )
       .all(...params, limit + 1) as unknown as HumanRequestRow[];
     return buildInboxPage(rows.map(rowToRecord), limit);
+  }
+
+  async count(filter?: InboxCountOptions): Promise<number> {
+    const params: string[] = [];
+    let where = "";
+    if (filter?.status) {
+      where = "WHERE status = ?";
+      params.push(filter.status);
+    }
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS count FROM ${this.table.sql} ${where}`)
+      .get(...params) as { count: number } | undefined;
+    return row?.count ?? 0;
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

@@ -72,6 +72,11 @@ export interface InboxListOptions {
   cursor?: string;
 }
 
+/** Filter for `State.count` / `inbox.count`. */
+export interface InboxCountOptions {
+  status?: HumanRequestRecord["status"];
+}
+
 /** One page of inbox records, newest-first. */
 export interface InboxListResult {
   items: HumanRequestRecord[];
@@ -135,6 +140,8 @@ export interface State {
   resolve(id: string, result: HumanResult): Promise<void>;
   /** Pending/resolved records, newest-first, one page at a time. */
   list(filter?: InboxListOptions): Promise<InboxListResult>;
+  /** Total number of pending/resolved records; filter by status. */
+  count(filter?: InboxCountOptions): Promise<number>;
   createBatch(record: NewBatchRecord): Promise<void>;
   getBatch(id: string): Promise<BatchRecord | null>;
   setBatchExternalId(id: string, externalId: string, pluginId?: string): Promise<void>;
@@ -213,6 +220,13 @@ export class InMemoryState implements State {
       all = all.filter((r) => isBeforeCursor(r, cur));
     }
     return buildInboxPage(all.slice(0, limit + 1), limit);
+  }
+
+  async count(filter?: InboxCountOptions): Promise<number> {
+    if (!filter?.status) return this.records.size;
+    let n = 0;
+    for (const r of this.records.values()) if (r.status === filter.status) n++;
+    return n;
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

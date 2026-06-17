@@ -2,6 +2,7 @@ import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
+  InboxCountOptions,
   InboxListOptions,
   InboxListResult,
   NewBatchRecord,
@@ -200,6 +201,20 @@ export class PostgresState implements State {
       params,
     );
     return buildInboxPage((rows as HumanRequestRow[]).map(rowToRecord), limit);
+  }
+
+  async count(filter?: InboxCountOptions): Promise<number> {
+    const params: unknown[] = [];
+    let where = "";
+    if (filter?.status) {
+      params.push(filter.status);
+      where = `WHERE status = $${params.length}`;
+    }
+    const { rows } = await this.pool.query(
+      `SELECT COUNT(*)::int AS count FROM ${this.table.sql} ${where}`,
+      params,
+    );
+    return Number((rows[0] as { count: number } | undefined)?.count ?? 0);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {
