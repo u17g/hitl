@@ -17,7 +17,8 @@
     "lint": "turbo run lint",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "publish-packages": "changeset publish"
+    "publish-packages": "changeset publish",
+    "readme:sync": "node scripts/sync-hitl-readme.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

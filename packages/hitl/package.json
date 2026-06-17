@@ -53,6 +53,7 @@
   },
   "scripts": {
     "build": "node ../../scripts/build-lib.mjs",
+    "prepublishOnly": "node ../../scripts/sync-hitl-readme.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

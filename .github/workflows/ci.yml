@@ -72,6 +72,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify README sync
+        run: node scripts/sync-hitl-readme.mjs --check
+
       - name: Typecheck
         run: pnpm typecheck
 
