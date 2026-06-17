@@ -4,6 +4,12 @@
 #     title:
 #       en: Custom title
 #       ja: カスタムタイトル
+#
+# Multiple nav entries can share one slug (platform aliases → same doc):
+#   - slug: channels/chat-sdk
+#     title:
+#       en: Slack
+#       ja: Slack
 
 navigation:
   - group:
@@ -32,7 +38,47 @@ navigation:
           ja: チャンネル
         pages:
           - channels/web-inbox
-          - channels/chat-sdk
+          - slug: channels/chat-sdk
+            title:
+              en: Slack Adapter (Chat SDK)
+              ja: Slack Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Microsoft Teams Adapter (Chat SDK)
+              ja: Microsoft Teams Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Google Chat Adapter (Chat SDK)
+              ja: Google Chat Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Discord Adapter (Chat SDK)
+              ja: Discord Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: GitHub Adapter (Chat SDK)
+              ja: GitHub Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Linear Adapter (Chat SDK)
+              ja: Linear Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Messenger Adapter (Chat SDK)
+              ja: Messenger Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Telegram Adapter (Chat SDK)
+              ja: Telegram Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: WhatsApp Adapter (Chat SDK)
+              ja: WhatsApp Adapter (Chat SDK)
+          - slug: channels/chat-sdk
+            title:
+              en: Twilio Adapter (Chat SDK)
+              ja: Twilio Adapter (Chat SDK)
+          - channels/line
       - group:
           en: Integration
           ja: インテグレーション

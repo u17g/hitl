@@ -4,6 +4,9 @@ import { parse as parseYaml } from "yaml";
 import { type InlineTranslations } from "@/i18n/inline-translation";
 import { type Locale } from "@/i18n/routing";
 import { getDocSource } from "@/lib/docs-content";
+import { navPageKey } from "@/lib/docs-nav-keys";
+
+export { navPageKey } from "@/lib/docs-nav-keys";
 
 const NAV_PATH = path.join(process.cwd(), "content", "docs.yaml");
 
@@ -91,22 +94,58 @@ export function getFlatDocPages(): DocNavPage[] {
   return flattenNavItems(getDocsNav());
 }
 
-export function getDocTitle(slug: string, locale: Locale): string {
-  const navPage = getFlatDocPages().find((p) => p.slug === slug);
-  if (navPage?.title) {
-    return navPage.title[locale];
+export function flattenNavPagesWithKeys(
+  items: DocNavItem[] = getDocsNav(),
+): Array<{ page: DocNavPage; key: string }> {
+  const result: Array<{ page: DocNavPage; key: string }> = [];
+
+  for (const item of items) {
+    if (isNavGroup(item)) {
+      result.push(...flattenNavPagesWithKeys(item.pages));
+    } else {
+      result.push({ page: item, key: navPageKey(item) });
+    }
   }
 
+  return result;
+}
+
+/** Unique slugs in nav order (first entry wins). Used for prev/next pager. */
+export function getUniqueNavDocPages(): DocNavPage[] {
+  const seen = new Set<string>();
+  const unique: DocNavPage[] = [];
+
+  for (const page of getFlatDocPages()) {
+    if (seen.has(page.slug)) continue;
+    seen.add(page.slug);
+    unique.push(page);
+  }
+
+  return unique;
+}
+
+export function resolveNavPageTitle(page: DocNavPage, locale: Locale): string {
+  if (page.title?.[locale]) return page.title[locale];
+  if (page.title?.en) return page.title.en;
+  return getDocTitle(page.slug, locale);
+}
+
+export function getDocTitle(slug: string, locale: Locale): string {
   const doc = getDocSource(locale, slug);
   if (doc?.frontmatter.title) {
     return doc.frontmatter.title;
+  }
+
+  const navPage = getFlatDocPages().find((p) => p.slug === slug);
+  if (navPage?.title) {
+    return navPage.title[locale];
   }
 
   return slug;
 }
 
 export function getAdjacentDocs(slug: string) {
-  const pages = getFlatDocPages();
+  const pages = getUniqueNavDocPages();
   const index = pages.findIndex((p) => p.slug === slug);
 
   return {

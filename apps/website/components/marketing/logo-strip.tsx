@@ -7,6 +7,7 @@ import {
   GitHubChatLogo,
   GoogleChatLogo,
   LinearLogo,
+  LineLogo,
   MessengerLogo,
   MicrosoftTeamsLogo,
   SlackLogo,
@@ -76,6 +77,7 @@ export function LogoStrip() {
     { name: "Twilio", Logo: TwilioLogo },
     { name: "Web", Logo: WebChatLogo },
     { name: "WhatsApp", Logo: WhatsAppLogo },
+    { name: "LINE", Logo: LineLogo },
   ] as const;
 
   const workflowEngines = [

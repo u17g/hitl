@@ -1,7 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { DocsSidebar } from "@/components/docs/docs-sidebar";
 import { type Locale } from "@/i18n/routing";
-import { getDocsNav, getDocTitle, getFlatDocPages } from "@/lib/docs";
+import { getDocsNav, flattenNavPagesWithKeys, resolveNavPageTitle } from "@/lib/docs";
 
 export default async function DocsLayout({
   children,
@@ -15,9 +15,9 @@ export default async function DocsLayout({
 
   const nav = getDocsNav();
   const titles = Object.fromEntries(
-    getFlatDocPages().map((page) => [
-      page.slug,
-      getDocTitle(page.slug, locale as Locale),
+    flattenNavPagesWithKeys(nav).map(({ page, key }) => [
+      key,
+      resolveNavPageTitle(page, locale as Locale),
     ]),
   );
 

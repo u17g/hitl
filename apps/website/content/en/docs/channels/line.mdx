@@ -1,0 +1,197 @@
+---
+title: LINE Adapter
+description: Deliver approvals to LINE users and groups with Flex Messages, postbacks, and LIFF feedback forms.
+---
+
+# LINE Adapter
+
+Optional channel adapter for [LINE Messaging API](https://developers.line.biz/en/docs/messaging-api/) Official Accounts. Register `createLineAdapter` in `new Hitl({ adapters })` to post Flex Message approval cards with postback buttons. Reviewers resolve through `hitl.inbox` via your LINE webhook. Text and multi-field feedback uses a LIFF form served by Hitl.
+
+Use alongside the built-in [web inbox](/docs/channels/web-inbox) or the [Chat SDK adapter](/docs/channels/chat-sdk). For Slack, Teams, Discord, and other Chat SDK platforms, use Chat SDK instead of this package.
+
+## Install
+
+```bash
+npm i @hitl-sdk/adapter-line @line/bot-sdk
+```
+
+`@line/bot-sdk` is a peer dependency. You also need Hitl `state`, a workflow `resolver`, and LINE channel credentials from [LINE Developers Console](https://developers.line.biz/console/).
+
+## Set up the Hitl server with the LINE adapter
+
+Create a LINE bot client, then register `createLineAdapter` in `new Hitl({ adapters })`. The `inbox` callback is lazy because `new Hitl()` constructs the inbox after adapters are registered.
+
+```typescript
+// lib/hitl.ts
+import { Hitl } from "@hitl-sdk/hitl";
+import { LineBotClient } from "@line/bot-sdk";
+import { createLineAdapter } from "@hitl-sdk/adapter-line";
+import { workflowResolver } from "@hitl-sdk/resolver-workflow-sdk";
+
+const client = LineBotClient.fromChannelAccessToken({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN!,
+});
+
+export const hitl = new Hitl({
+  state,
+  resolver: workflowResolver(),
+  adapters: [
+    createLineAdapter({
+      id: "line-approvals",
+      client,
+      defaultChannel: "user:Uxxxxxxxx",
+      inbox: () => hitl.inbox,
+      // Required when actions use text, textarea, or multiple feedback fields:
+      liffId: process.env.LINE_LIFF_ID,
+      feedbackSecret: process.env.LINE_FEEDBACK_SECRET,
+    }),
+  ],
+});
+
+export { client };
+```
+
+Set `defaultChannel` to the LINE destination your bot should use when workflows pass `channel: "line-approvals"` without a suffix. Destinations use `user:Uxxx`, `group:Cxxx`, or `room:Rxxx`.
+
+## Mount the Hitl internal API and LIFF feedback
+
+When `feedbackSecret` is set, the adapter serves LIFF feedback at a fixed path:
+
+```txt
+/.well-known/hitl/v1/channels/line/feedback
+```
+
+Mount the full Hitl internal API so workflows can POST requests and the LIFF form can load:
+
+```typescript
+// Next.js App Router
+// app/.well-known/hitl/v1/[[...path]]/route.ts
+export const { GET, POST } = hitl.routeHandlers;
+```
+
+On Express or raw Node, mount `/.well-known/hitl/v1/*` with `hitl.handler`. See [Host integration](/docs/host-integration).
+
+Create a **dedicated LIFF app** in LINE Developers Console (recommended if you already use LIFF elsewhere). Set its Endpoint URL to:
+
+```txt
+https://{your-domain}/.well-known/hitl/v1/channels/line/feedback
+```
+
+Pass that app's LIFF ID to `createLineAdapter({ liffId })`.
+
+## Register the LINE Messaging API webhook
+
+**This step is required** for Flex postback buttons to reach Hitl. Without a webhook, cards render but clicks go nowhere.
+
+LINE owns webhook signature validation. Mount a route at the URL you register in LINE Console (your choice of path). Do not mount the Messaging API webhook on `/.well-known/hitl/v1`; that path is for Hitl's internal API and LIFF feedback only.
+
+### Express
+
+Use `@line/bot-sdk` middleware for signature validation. Branch postbacks with `parsePostback` so hitl and your own postbacks can coexist:
+
+```typescript
+import express from "express";
+import { middleware } from "@line/bot-sdk";
+import { handlePostbackEvent, parsePostback } from "@hitl-sdk/adapter-line";
+import { hitl, client } from "./lib/hitl";
+
+const app = express();
+
+app.all("/.well-known/hitl/v1/*", (req, res) => {
+  void hitl.handler(req, res);
+});
+
+app.post(
+  "/webhook",
+  middleware({ channelSecret: process.env.LINE_CHANNEL_SECRET! }),
+  async (req, res) => {
+    res.sendStatus(200);
+
+    for (const event of req.body.events ?? []) {
+      if (event.type === "postback") {
+        if (parsePostback(event.postback.data)) {
+          await handlePostbackEvent(event, { client, inbox: hitl.inbox });
+        } else {
+          await handleMyPostback(event);
+        }
+        continue;
+      }
+
+      if (event.type === "message") {
+        await handleMyMessage(event);
+      }
+    }
+  },
+);
+```
+
+Do not apply `express.json()` on `/webhook` before `line.middleware`.
+
+### Next.js, Hono, and other Fetch hosts
+
+Use `createLineWebhookHandler` when you do not have Express middleware. It validates `x-line-signature` from a raw `Request` and processes hitl postbacks:
+
+```typescript
+// app/api/webhooks/line/route.ts
+import { createLineWebhookHandler } from "@hitl-sdk/adapter-line";
+import { hitl, client } from "@/lib/hitl";
+
+export const POST = createLineWebhookHandler({
+  channelSecret: process.env.LINE_CHANNEL_SECRET!,
+  client,
+  inbox: () => hitl.inbox,
+  onFallbackEvent: async (event) => {
+    if (event.type === "postback") {
+      await handleMyPostback(event);
+      return;
+    }
+    if (event.type === "message") {
+      await handleMyMessage(event);
+    }
+  },
+});
+```
+
+`onFallbackEvent` receives non-hitl events and custom postbacks. Omit it when you only need hitl approvals.
+
+## Route to LINE from workflows
+
+Pass a channel key on `waitForHuman`. The adapter id (`line-approvals`) comes from `createLineAdapter({ id: "line-approvals", ... })`.
+
+```typescript
+// Default channel for adapter id "line-approvals":
+await waitForHuman({
+  channel: "line-approvals",
+  message: "Send this email?",
+  actions: actions().approve().deny().build(),
+});
+
+// Specific LINE user:
+await waitForHuman({
+  channel: "line-approvals:user:U456",
+  message: "Send this email?",
+  actions: actions().approve().deny().build(),
+});
+```
+
+Escalation uses the same routing key:
+
+```typescript
+reminders: [escalate.to("line-approvals:user:U999").after("1h", { mode: "redeliver" })],
+```
+
+## Feedback fields
+
+| Field kinds | UX |
+|---|---|
+| None | Postback button resolves immediately |
+| Single `select` or `confirm` | Second Flex message with option buttons |
+| `text`, `textarea`, or multiple fields | LIFF form (`liffId` + `feedbackSecret` on the adapter) |
+
+See [Actions and fields](/docs/foundations/actions-and-fields) for field builders.
+
+## How it works
+
+`createLineAdapter` sends Flex Messages with encoded postback data. When a reviewer taps Approve or Deny, your webhook receives the postback, `handlePostbackEvent` parses it, and calls `hitl.inbox.resolve` with the same API as the web inbox. Hitl updates `state` and resumes the workflow through your `resolver`.
+
+LINE cannot edit sent messages. After resolve, the adapter pushes a follow-up text message with the outcome.

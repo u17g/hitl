@@ -8,10 +8,13 @@ export function docHref(locale: Locale, slug: string) {
 }
 
 export {
+  flattenNavPagesWithKeys,
   getAdjacentDocs,
   getDocsNav,
   getDocTitle,
   getFlatDocPages,
+  navPageKey,
+  resolveNavPageTitle,
   type DocNavGroup,
   type DocNavItem,
   type DocNavPage,

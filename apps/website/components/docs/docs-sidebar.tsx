@@ -9,6 +9,7 @@ import {
   useInlineTranslation,
 } from "@/i18n/use-inline-translation";
 import { type DocNavItem } from "@/lib/docs";
+import { navPageKey } from "@/lib/docs-nav-keys";
 import { cn } from "@/lib/utils";
 
 type DocsSidebarProps = {
@@ -39,16 +40,18 @@ function containsActivePage(items: DocNavItem[], pathname: string): boolean {
 }
 
 function NavLink({
-  slug,
+  page,
+  titleKey,
   titles,
   depth,
 }: {
-  slug: string;
+  page: Extract<DocNavItem, { slug: string }>;
+  titleKey: string;
   titles: Record<string, string>;
   depth: number;
 }) {
   const pathname = usePathname();
-  const href = `/docs/${slug}`;
+  const href = `/docs/${page.slug}`;
   const active = pathname === href || pathname.startsWith(`${href}/`);
 
   return (
@@ -60,7 +63,7 @@ function NavLink({
         active && "text-brand!",
       )}
     >
-      {titles[slug] ?? slug}
+      {titles[titleKey] ?? page.slug}
     </Link>
   );
 }
@@ -165,8 +168,9 @@ function NavSection({
 
         return (
           <NavLink
-            key={item.slug}
-            slug={item.slug}
+            key={navPageKey(item)}
+            page={item}
+            titleKey={navPageKey(item)}
             titles={titles}
             depth={depth}
           />
@@ -199,7 +203,13 @@ export function DocsSidebar({ nav, titles }: DocsSidebarProps) {
         }
 
         return (
-          <NavLink key={item.slug} slug={item.slug} titles={titles} depth={0} />
+          <NavLink
+            key={navPageKey(item)}
+            page={item}
+            titleKey={navPageKey(item)}
+            titles={titles}
+            depth={0}
+          />
         );
       })}
     </nav>
