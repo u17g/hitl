@@ -224,6 +224,9 @@ const { items, nextCursor } = await hitl.inbox.list({ status: "pending", limit: 
 // Count without loading records (e.g. a pending badge)
 const pendingCount = await hitl.inbox.count({ status: "pending" });
 
+// Scope to a namespace (omit to read across all namespaces)
+const teamACount = await hitl.inbox.count({ namespace: "team-a", status: "pending" });
+
 // Resolve with optional field edits
 await hitl.inbox.resolve(id, {
   actionId: "approve",

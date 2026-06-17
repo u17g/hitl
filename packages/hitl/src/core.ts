@@ -45,6 +45,25 @@ export class NotFoundError extends Error {
   override name = "NotFoundError";
 }
 
+/** Default inbox partition when the caller omits `namespace`. */
+export const DEFAULT_NAMESPACE = "global";
+
+const NAMESPACE_PATTERN = /^[A-Za-z0-9_.\-]{1,128}$/;
+
+/**
+ * Validate an optional namespace and fall back to {@link DEFAULT_NAMESPACE}.
+ * The value becomes part of Redis index keys, so reject separators/whitespace.
+ */
+export function resolveNamespace(namespace?: string): string {
+  if (namespace === undefined) return DEFAULT_NAMESPACE;
+  if (!NAMESPACE_PATTERN.test(namespace)) {
+    throw new Error(
+      `Invalid namespace "${namespace}". Use letters, digits, "_", ".", or "-" (max 128 chars).`,
+    );
+  }
+  return namespace;
+}
+
 export interface ResolvedChannel {
   adapter: HitlAdapter;
   /** Normalized routing key stored in state / externalIds. */
@@ -185,6 +204,7 @@ export async function createHumanRequest(
     id,
     token: body.token,
     channel: resolved.channelRef,
+    namespace: resolveNamespace(body.namespace),
     message: body.message,
     actions: body.actions,
     context: body.context,
@@ -278,6 +298,7 @@ export async function createBatchRequest(
   }
 
   const batchId = crypto.randomUUID();
+  const namespace = resolveNamespace(body.namespace);
   const threadRef = await resolveRequestThreadRef(runtime.state, body);
   const items = body.items.map((item, index) => ({
     id: `${batchId}:${index}`,
@@ -297,6 +318,7 @@ export async function createBatchRequest(
       id: item.id,
       token: body.items[index]!.token,
       channel: resolved.channelRef,
+      namespace,
       message: item.message,
       actions: item.actions,
       context: body.context,

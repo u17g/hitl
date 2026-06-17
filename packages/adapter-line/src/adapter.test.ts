@@ -20,6 +20,7 @@ function testHumanRequestRecord(overrides: Partial<HumanRequestRecord> = {}): Hu
     id: "req-1",
     token: "test-token",
     channel: "line-approvals",
+    namespace: "global",
     message: request.message,
     actions: request.actions,
     status: "pending",

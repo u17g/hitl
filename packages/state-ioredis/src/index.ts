@@ -73,6 +73,8 @@ export class IoredisState implements State {
     pipeline.set(this.keys.idxToken(record.token), record.id);
     pipeline.zadd(this.keys.idxStatus("pending"), score, record.id);
     pipeline.zadd(this.keys.idxAllReq(), score, record.id);
+    pipeline.zadd(this.keys.idxNs(record.namespace), score, record.id);
+    pipeline.zadd(this.keys.idxNsStatus(record.namespace, "pending"), score, record.id);
     if (record.batchId !== undefined && record.batchIndex !== undefined) {
       pipeline.zadd(this.keys.idxBatchItems(record.batchId), record.batchIndex, record.id);
     }
@@ -135,12 +137,20 @@ export class IoredisState implements State {
     }
   }
 
+  /** Pick the ZSET that answers a list/count filter: namespace and/or status scoped. */
+  private indexFor(filter?: { status?: "pending" | "resolved"; namespace?: string }): string {
+    if (filter?.namespace) {
+      return filter.status
+        ? this.keys.idxNsStatus(filter.namespace, filter.status)
+        : this.keys.idxNs(filter.namespace);
+    }
+    return filter?.status ? this.keys.idxStatus(filter.status) : this.keys.idxAllReq();
+  }
+
   async list(filter?: InboxListOptions): Promise<InboxListResult> {
     await this.ready();
     const limit = clampInboxLimit(filter?.limit);
-    const indexKey = filter?.status
-      ? this.keys.idxStatus(filter.status)
-      : this.keys.idxAllReq();
+    const indexKey = this.indexFor(filter);
 
     const cursor = filter?.cursor ? decodeInboxCursor(filter.cursor) : null;
     const cursorScore = cursor ? timelineScore(cursor.createdAt) : null;
@@ -185,10 +195,7 @@ export class IoredisState implements State {
 
   async count(filter?: InboxCountOptions): Promise<number> {
     await this.ready();
-    const indexKey = filter?.status
-      ? this.keys.idxStatus(filter.status)
-      : this.keys.idxAllReq();
-    return this.redis.zcard(indexKey);
+    return this.redis.zcard(this.indexFor(filter));
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

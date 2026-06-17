@@ -109,6 +109,16 @@ describe("HitlInbox read", () => {
     expect(await inbox.count({ status: "resolved" })).toBe(0);
   });
 
+  it("counts and lists by namespace, defaulting to global", async () => {
+    const { runtime, inbox } = makeRuntime();
+    await seedApproval(runtime);
+
+    expect(await inbox.count({ namespace: "global" })).toBe(1);
+    expect(await inbox.count({ namespace: "other" })).toBe(0);
+    expect((await inbox.list({ namespace: "global" })).items).toHaveLength(1);
+    expect((await inbox.list({ namespace: "other" })).items).toHaveLength(0);
+  });
+
   it("gets a single approval, returning null for an unknown id", async () => {
     const { runtime, inbox } = makeRuntime();
     const id = await seedApproval(runtime);

@@ -10,6 +10,7 @@ local resolvedKey = KEYS[3]
 local resultJson = ARGV[1]
 local resolvedAt = ARGV[2]
 local id = ARGV[3]
+local prefix = ARGV[4]
 
 local raw = redis.call('GET', reqKey)
 if not raw then return 'missing' end
@@ -24,9 +25,15 @@ record.resolvedAt = resolvedAt
 local score = redis.call('ZSCORE', pendingKey, id)
 if not score then score = 0 end
 
+local ns = record.namespace or 'global'
+local nsPending = prefix .. ':idx:ns:' .. ns .. ':status:pending'
+local nsResolved = prefix .. ':idx:ns:' .. ns .. ':status:resolved'
+
 redis.call('SET', reqKey, cjson.encode(record))
 redis.call('ZREM', pendingKey, id)
 redis.call('ZADD', resolvedKey, score, id)
+redis.call('ZREM', nsPending, id)
+redis.call('ZADD', nsResolved, score, id)
 return 'ok'
 `;
 
@@ -54,6 +61,7 @@ export async function resolveAtomic(
       resultJson,
       resolvedAt,
       id,
+      keys.prefix,
     );
     if (outcome === "ok" || outcome === "missing" || outcome === "resolved") {
       return outcome;
@@ -97,10 +105,13 @@ async function resolveWithWatch(
     const rawScore = await redis.zscore(pendingKey, id);
     const score = rawScore === null ? 0 : Number(rawScore);
 
+    const ns = stored.namespace ?? "global";
     const tx = redis.multi();
     tx.set(reqKey, JSON.stringify(stored));
     tx.zrem(pendingKey, id);
     tx.zadd(resolvedKey, score, id);
+    tx.zrem(keys.idxNsStatus(ns, "pending"), id);
+    tx.zadd(keys.idxNsStatus(ns, "resolved"), score, id);
     const execResult = await tx.exec();
     if (execResult) return "ok";
   }

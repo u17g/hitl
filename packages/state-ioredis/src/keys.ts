@@ -16,6 +16,10 @@ export interface ResolvedKeyPrefix {
   idxStatus(status: "pending" | "resolved"): string;
   /** ZSET of all request ids scored by `createdAt` (ms); powers unfiltered `list`. */
   idxAllReq(): string;
+  /** ZSET of one namespace's request ids scored by `createdAt` (ms); powers `list({ namespace })`. */
+  idxNs(namespace: string): string;
+  /** ZSET of one namespace+status's request ids; powers `list({ namespace, status })`. */
+  idxNsStatus(namespace: string, status: "pending" | "resolved"): string;
   batch(id: string): string;
   idxBatchExt(externalId: string): string;
   idxBatchItems(batchId: string): string;
@@ -55,6 +59,8 @@ export function resolveKeyPrefix(tableName: string): ResolvedKeyPrefix {
     idxExt: (externalId) => `${prefix}:idx:ext:${externalId}`,
     idxStatus: (status) => `${prefix}:idx:status:${status}`,
     idxAllReq: () => `${prefix}:idx:all:req`,
+    idxNs: (namespace) => `${prefix}:idx:ns:${namespace}`,
+    idxNsStatus: (namespace, status) => `${prefix}:idx:ns:${namespace}:status:${status}`,
     batch: (id) => `${prefix}:batch:${id}`,
     idxBatchExt: (externalId) => `${prefix}:idx:batch:ext:${externalId}`,
     idxBatchItems: (batchId) => `${prefix}:idx:batch:${batchId}`,

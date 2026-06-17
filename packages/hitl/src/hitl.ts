@@ -9,6 +9,7 @@ import {
   notifyVia,
   remindHumanRequest,
   remindBatch,
+  resolveNamespace,
   timeoutHumanRequest,
   timeoutBatch,
   type HitlRuntime,
@@ -187,8 +188,9 @@ async function handleInternalApi(
         }
         try {
           validateActions(create.actions);
+          resolveNamespace(create.namespace);
         } catch (error) {
-          return json({ error: error instanceof Error ? error.message : "Invalid actions" }, 400);
+          return json({ error: error instanceof Error ? error.message : "Invalid request" }, 400);
         }
         const result = await createHumanRequest(runtime, {
           token: create.token,
@@ -196,6 +198,7 @@ async function handleInternalApi(
           actions: create.actions,
           context: create.context,
           channel: create.channel,
+          namespace: create.namespace,
           after: create.after,
         });
         return json(result, 201);
@@ -210,14 +213,16 @@ async function handleInternalApi(
         }
         try {
           validateActions(create.actions);
+          resolveNamespace(create.namespace);
         } catch (error) {
-          return json({ error: error instanceof Error ? error.message : "Invalid actions" }, 400);
+          return json({ error: error instanceof Error ? error.message : "Invalid request" }, 400);
         }
         const result = await createBatchRequest(runtime, {
           message: create.message,
           channel: create.channel,
           actions: create.actions,
           context: create.context,
+          namespace: create.namespace,
           defaultsActionId: create.defaultsActionId,
           after: create.after,
           items: create.items,

@@ -42,6 +42,7 @@ interface HumanRequestRow {
   id: string;
   token: string;
   channel: string;
+  namespace: string;
   message: string;
   fields: string;
   actions: string | null;
@@ -104,13 +105,14 @@ export class SqliteState implements State {
     this.db
       .prepare(
         `INSERT INTO ${this.table.sql}
-           (id, token, channel, message, fields, actions, context, status, created_at, batch_id, batch_index)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+           (id, token, channel, namespace, message, fields, actions, context, status, created_at, batch_id, batch_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
       )
       .run(
         record.id,
         record.token,
         record.channel,
+        record.namespace,
         record.message,
         "{}",
         JSON.stringify(record.actions),
@@ -187,6 +189,10 @@ export class SqliteState implements State {
       conditions.push(`status = ?`);
       params.push(filter.status);
     }
+    if (filter?.namespace) {
+      conditions.push(`namespace = ?`);
+      params.push(filter.namespace);
+    }
     if (filter?.cursor) {
       const cur = decodeInboxCursor(filter.cursor);
       conditions.push(`(created_at, id) < (?, ?)`);
@@ -205,11 +211,16 @@ export class SqliteState implements State {
 
   async count(filter?: InboxCountOptions): Promise<number> {
     const params: string[] = [];
-    let where = "";
+    const conditions: string[] = [];
     if (filter?.status) {
-      where = "WHERE status = ?";
+      conditions.push("status = ?");
       params.push(filter.status);
     }
+    if (filter?.namespace) {
+      conditions.push("namespace = ?");
+      params.push(filter.namespace);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const row = this.db
       .prepare(`SELECT COUNT(*) AS count FROM ${this.table.sql} ${where}`)
       .get(...params) as { count: number } | undefined;
@@ -337,6 +348,7 @@ function rowToRecord(row: HumanRequestRow): HumanRequestRecord {
     id: row.id,
     token: row.token,
     channel: row.channel,
+    namespace: row.namespace ?? "global",
     message: row.message,
     actions: parseActions(row),
     context: row.context === null ? undefined : JSON.parse(row.context),

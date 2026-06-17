@@ -160,7 +160,7 @@ describe("createHumanRequest", () => {
   it("finishes the delivery when a retry finds a record without an externalId", async () => {
     const { runtime, state, adapters } = makeRuntime();
     // Simulate a crash between create and send: the record exists, no externalId.
-    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", message: "m", actions: approvalActions });
+    await state.create({ id: "a1", token: "tok_1", channel: "lead-approvals", namespace: "global", message: "m", actions: approvalActions });
 
     const { id } = await createHumanRequest(runtime, { token: "tok_1", message: "m", actions: approvalActions });
 

@@ -7,6 +7,7 @@ import { migration006RenameHumanRequests } from "./006-rename-human-requests.js"
 import { migration007RenameBatchTitleToMessage } from "./007-rename-batch-title-to-message.js";
 import { migration008NotifyDeliveries } from "./008-notify-deliveries.js";
 import { migration009InboxIndex } from "./009-inbox-index.js";
+import { migration010Namespace } from "./010-namespace.js";
 import type { Migration } from "./types.js";
 
 /** Ordered, append-only migrations. Add new files and entries here. */
@@ -20,6 +21,7 @@ export const MIGRATIONS: readonly Migration[] = [
   migration007RenameBatchTitleToMessage,
   migration008NotifyDeliveries,
   migration009InboxIndex,
+  migration010Namespace,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

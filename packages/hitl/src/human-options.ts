@@ -26,6 +26,8 @@ export interface RequestHumanOptions<Actions extends readonly HumanActionDef[]> 
   context?: Record<string, unknown>;
   /** Adapter id or `adapter_id:destination`; defaults to the first configured adapter. */
   channel?: string;
+  /** Logical inbox partition for `inbox.list`/`inbox.count`; defaults to `"global"`. */
+  namespace?: string;
   /** Post under the same chat thread as a prior human step or notify. */
   after?: HumanResult<Actions> | TimelineAnchor;
 }

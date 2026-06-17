@@ -65,6 +65,30 @@ const pending = await hitl.inbox.count({ status: "pending" });
 const total = await hitl.inbox.count();
 ```
 
+## Namespaces
+
+A request belongs to a **namespace** — a logical partition of the inbox. Use it to keep separate teams, tenants, or workflows out of each other's lists. Set it when you create the request from a workflow; it defaults to `"global"`:
+
+```typescript
+const approval = await waitForHuman({
+  namespace: "team-a",
+  message: `Send email to: ${input.email}?`,
+  actions: actions().approve().deny().build(),
+});
+```
+
+Then scope `list` and `count` with the same `namespace`. Omit it to read **across all namespaces** (the default), so existing callers are unaffected:
+
+```typescript
+const teamA = await hitl.inbox.list({ namespace: "team-a", status: "pending" });
+const teamACount = await hitl.inbox.count({ namespace: "team-a" });
+
+// No `namespace` → every namespace, exactly as before
+const everything = await hitl.inbox.count();
+```
+
+`namespace` combines with `status` and pagination. It is indexed (a composite SQL index, a per-namespace Redis `ZSET`), so filtering stays efficient. Allowed characters are letters, digits, `_`, `.`, and `-` (max 128); other values are rejected with a 400.
+
 ## Resolve a request
 
 When a reviewer approves or denies, call `hitl.inbox.resolve`. Hitl updates `state`, notifies channel adapters, and calls your workflow engine's resolver to resume the suspended run.

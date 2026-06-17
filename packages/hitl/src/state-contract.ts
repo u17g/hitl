@@ -24,11 +24,12 @@ export function describeStateContract(
 ): void {
   const { describe, it, expect } = api;
 
-  function newRecord(id: string): NewHumanRequestRecord {
+  function newRecord(id: string, namespace = "global"): NewHumanRequestRecord {
     return {
       id,
       token: `tok_${id}`,
       channel: "lead-approvals",
+      namespace,
       message: "Inbound lead",
       actions: actions()
         .approve({ fields: { subject: field.textField({ label: "Subject" }) } })
@@ -256,6 +257,83 @@ export function describeStateContract(
 
       expect(await state.count({ status: "pending" })).toBe(1);
       expect(await state.count({ status: "resolved" })).toBe(1);
+    });
+
+    it("defaults namespace and reads across all namespaces when unfiltered", async () => {
+      const state = await factory();
+      await state.create(newRecord("a1"));
+      await state.create(newRecord("a2", "team-a"));
+
+      expect((await state.get("a1"))?.namespace).toBe("global");
+      expect((await state.get("a2"))?.namespace).toBe("team-a");
+      expect((await state.list()).items.map((r) => r.id).sort()).toEqual(["a1", "a2"]);
+      expect(await state.count()).toBe(2);
+    });
+
+    it("lists records filtered by namespace", async () => {
+      const state = await factory();
+      await state.create(newRecord("a1", "team-a"));
+      await state.create(newRecord("a2", "team-b"));
+      await state.create(newRecord("a3", "team-a"));
+
+      expect((await state.list({ namespace: "team-a" })).items.map((r) => r.id).sort()).toEqual([
+        "a1",
+        "a3",
+      ]);
+      expect((await state.list({ namespace: "team-b" })).items.map((r) => r.id)).toEqual(["a2"]);
+      expect((await state.list({ namespace: "team-c" })).items).toEqual([]);
+    });
+
+    it("counts records filtered by namespace", async () => {
+      const state = await factory();
+      await state.create(newRecord("a1", "team-a"));
+      await state.create(newRecord("a2", "team-b"));
+      await state.create(newRecord("a3", "team-a"));
+
+      expect(await state.count({ namespace: "team-a" })).toBe(2);
+      expect(await state.count({ namespace: "team-b" })).toBe(1);
+      expect(await state.count({ namespace: "team-c" })).toBe(0);
+    });
+
+    it("combines namespace and status filters", async () => {
+      const state = await factory();
+      await state.create(newRecord("a1", "team-a"));
+      await state.create(newRecord("a2", "team-a"));
+      await state.create(newRecord("b1", "team-b"));
+      await state.resolve("a1", {
+        type: "RESOLVED",
+        actionId: "approve",
+        id: "a1",
+        externalRef: "",
+        feedbacks: {},
+      });
+
+      expect(await state.count({ namespace: "team-a" })).toBe(2);
+      expect(await state.count({ namespace: "team-a", status: "pending" })).toBe(1);
+      expect(await state.count({ namespace: "team-a", status: "resolved" })).toBe(1);
+      expect(await state.count({ namespace: "team-b", status: "pending" })).toBe(1);
+      expect(
+        (await state.list({ namespace: "team-a", status: "pending" })).items.map((r) => r.id),
+      ).toEqual(["a2"]);
+      expect(
+        (await state.list({ namespace: "team-a", status: "resolved" })).items.map((r) => r.id),
+      ).toEqual(["a1"]);
+    });
+
+    it("paginates within a namespace filter", async () => {
+      const state = await factory();
+      for (const id of ["a1", "a2", "a3"]) await state.create(newRecord(id, "team-a"));
+      for (const id of ["b1", "b2"]) await state.create(newRecord(id, "team-b"));
+
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await state.list({ namespace: "team-a", limit: 2, cursor });
+        seen.push(...page.items.map((r) => r.id));
+        cursor = page.nextCursor;
+      } while (cursor);
+
+      expect(new Set(seen)).toEqual(new Set(["a1", "a2", "a3"]));
     });
 
     it("returns null for an unknown external id", async () => {

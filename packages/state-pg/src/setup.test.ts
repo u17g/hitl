@@ -19,6 +19,7 @@ describe("setup command", () => {
       id: "a1",
       token: "tok_a1",
       channel: "lead-approvals",
+      namespace: "global",
       message: "Approve?",
       actions: actions().approve().build(),
     });
@@ -34,6 +35,7 @@ describe("setup command", () => {
       id: "a1",
       token: "tok_a1",
       channel: "lead-approvals",
+      namespace: "global",
       message: "Approve?",
       actions: actions().approve().build(),
     });

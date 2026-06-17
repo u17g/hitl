@@ -20,6 +20,7 @@ function newRecord(id: string) {
     id,
     token: `tok_${id}`,
     channel: "lead-approvals",
+    namespace: "global",
     message: "Inbound lead",
     actions: actions().approve().build(),
   };

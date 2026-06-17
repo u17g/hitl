@@ -41,6 +41,7 @@ interface HumanRequestRow {
   id: string;
   token: string;
   channel: string;
+  namespace: string;
   message: string;
   fields: Record<string, unknown>;
   actions: HumanActions | null;
@@ -101,12 +102,13 @@ export class PostgresState implements State {
   async create(record: NewHumanRequestRecord): Promise<void> {
     await this.pool.query(
       `INSERT INTO ${this.table.sql}
-         (id, token, channel, message, fields, actions, context, status, created_at, batch_id, batch_index)
-       VALUES ($1, $2, $3, $4, '{}'::jsonb, $5::jsonb, $6::jsonb, 'pending', $7, $8, $9)`,
+         (id, token, channel, namespace, message, fields, actions, context, status, created_at, batch_id, batch_index)
+       VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, $6::jsonb, $7::jsonb, 'pending', $8, $9, $10)`,
       [
         record.id,
         record.token,
         record.channel,
+        record.namespace,
         record.message,
         JSON.stringify(record.actions),
         record.context === undefined ? null : JSON.stringify(record.context),
@@ -187,6 +189,10 @@ export class PostgresState implements State {
       params.push(filter.status);
       conditions.push(`status = $${params.length}`);
     }
+    if (filter?.namespace) {
+      params.push(filter.namespace);
+      conditions.push(`namespace = $${params.length}`);
+    }
     if (filter?.cursor) {
       const cur = decodeInboxCursor(filter.cursor);
       params.push(cur.createdAt, cur.id);
@@ -205,11 +211,16 @@ export class PostgresState implements State {
 
   async count(filter?: InboxCountOptions): Promise<number> {
     const params: unknown[] = [];
-    let where = "";
+    const conditions: string[] = [];
     if (filter?.status) {
       params.push(filter.status);
-      where = `WHERE status = $${params.length}`;
+      conditions.push(`status = $${params.length}`);
     }
+    if (filter?.namespace) {
+      params.push(filter.namespace);
+      conditions.push(`namespace = $${params.length}`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     const { rows } = await this.pool.query(
       `SELECT COUNT(*)::int AS count FROM ${this.table.sql} ${where}`,
       params,
@@ -319,6 +330,7 @@ function rowToRecord(row: HumanRequestRow): HumanRequestRecord {
     id: row.id,
     token: row.token,
     channel: row.channel,
+    namespace: row.namespace ?? "global",
     message: row.message,
     actions,
     context: row.context ?? undefined,

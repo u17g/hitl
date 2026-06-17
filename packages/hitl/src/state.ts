@@ -8,6 +8,8 @@ export interface NewHumanRequestRecord {
   /** Opaque engine resume token (WDK hook token, Temporal signal, ...). */
   token: string;
   channel: string;
+  /** Logical inbox partition; defaults to `"global"` and set by the server on create. */
+  namespace: string;
   message: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
@@ -66,6 +68,8 @@ export interface HumanRequestRecord extends NewHumanRequestRecord {
 /** Filter and page controls for `State.list` / `inbox.list`. */
 export interface InboxListOptions {
   status?: HumanRequestRecord["status"];
+  /** Restrict to one namespace; omit to read across all namespaces. */
+  namespace?: string;
   /** Page size; clamped to [1, {@link MAX_INBOX_LIMIT}], default {@link DEFAULT_INBOX_LIMIT}. */
   limit?: number;
   /** Opaque cursor from a previous page's `nextCursor`; pages newest-first. */
@@ -75,6 +79,8 @@ export interface InboxListOptions {
 /** Filter for `State.count` / `inbox.count`. */
 export interface InboxCountOptions {
   status?: HumanRequestRecord["status"];
+  /** Restrict to one namespace; omit to count across all namespaces. */
+  namespace?: string;
 }
 
 /** One page of inbox records, newest-first. */
@@ -214,6 +220,7 @@ export class InMemoryState implements State {
     const limit = clampInboxLimit(filter?.limit);
     let all = [...this.records.values()];
     if (filter?.status) all = all.filter((r) => r.status === filter.status);
+    if (filter?.namespace) all = all.filter((r) => r.namespace === filter.namespace);
     all.sort(compareRecordsDesc);
     if (filter?.cursor) {
       const cur = decodeInboxCursor(filter.cursor);
@@ -223,9 +230,13 @@ export class InMemoryState implements State {
   }
 
   async count(filter?: InboxCountOptions): Promise<number> {
-    if (!filter?.status) return this.records.size;
+    if (!filter?.status && !filter?.namespace) return this.records.size;
     let n = 0;
-    for (const r of this.records.values()) if (r.status === filter.status) n++;
+    for (const r of this.records.values()) {
+      if (filter?.status && r.status !== filter.status) continue;
+      if (filter?.namespace && r.namespace !== filter.namespace) continue;
+      n++;
+    }
     return n;
   }
 

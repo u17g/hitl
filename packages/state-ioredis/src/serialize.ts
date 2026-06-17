@@ -15,6 +15,7 @@ export interface StoredHumanRequest {
   id: string;
   token: string;
   channel: string;
+  namespace: string;
   message: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
@@ -61,6 +62,7 @@ export function newHumanRequest(record: NewHumanRequestRecord, createdAt: string
     id: record.id,
     token: record.token,
     channel: record.channel,
+    namespace: record.namespace,
     message: record.message,
     actions: record.actions,
     context: record.context,
@@ -101,6 +103,7 @@ export function parseHumanRequest(raw: string): HumanRequestRecord {
     id: stored.id,
     token: stored.token,
     channel: stored.channel,
+    namespace: stored.namespace ?? "global",
     message: stored.message,
     actions: normalizeActions(stored.actions),
     context: stored.context,

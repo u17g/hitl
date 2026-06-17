@@ -23,6 +23,7 @@ describe("postgres migrations", () => {
       "007_rename_batch_title_to_message",
       "008_notify_deliveries",
       "009_inbox_index",
+      "010_namespace",
     ]);
   });
 
@@ -51,6 +52,7 @@ describe("postgres migrations", () => {
       "007_rename_batch_title_to_message",
       "008_notify_deliveries",
       "009_inbox_index",
+      "010_namespace",
     ]);
   });
 

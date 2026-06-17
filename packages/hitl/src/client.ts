@@ -168,6 +168,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       actions: opts.actions,
       context: opts.context,
       channel: opts.channel,
+      namespace: opts.namespace,
       after: opts.after ? { id: opts.after.id } : undefined,
     });
 
@@ -196,6 +197,7 @@ export function createHitlClient(options: CreateHitlClientOptions): HitlClient {
       channel: opts.channel,
       actions: opts.actions,
       context: opts.context,
+      namespace: opts.namespace,
       defaultsActionId: opts.defaultsActionId,
       after: opts.after ? { id: opts.after.id } : undefined,
       items: opts.items.map((item, index) => ({

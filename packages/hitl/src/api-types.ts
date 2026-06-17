@@ -15,6 +15,8 @@ export interface CreateRequestBody {
   context?: Record<string, unknown>;
   /** Adapter id or `adapter_id:destination`; defaults to the first configured adapter. */
   channel?: string;
+  /** Logical inbox partition; defaults to `"global"`. */
+  namespace?: string;
   /** Post under the same chat thread as a prior human step or notify. */
   after?: { id: string };
 }
@@ -38,6 +40,8 @@ export interface CreateBatchBody {
   channel?: string;
   actions: HumanActions;
   context?: Record<string, unknown>;
+  /** Logical inbox partition; defaults to `"global"`. */
+  namespace?: string;
   /** Target action for per-item defaults when no submit action exists. */
   defaultsActionId?: string;
   items: CreateBatchItemBody[];

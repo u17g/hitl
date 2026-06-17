@@ -18,4 +18,5 @@ export interface RedisMigrator {
   get(key: string): Promise<string | null>;
   del(...keys: string[]): Promise<number>;
   zadd(key: string, score: number, member: string): Promise<number | string>;
+  zrange(key: string, start: number, stop: number, withScores: "WITHSCORES"): Promise<string[]>;
 }

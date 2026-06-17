@@ -29,6 +29,7 @@ function newRecord(id: string): NewHumanRequestRecord {
     id,
     token: `tok_${id}`,
     channel: "lead-approvals",
+    namespace: "global",
     message: "Inbound lead",
     actions: actions()
       .approve({ fields: { subject: field.textField({ label: "Subject" }) } })
