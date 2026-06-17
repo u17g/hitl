@@ -3,6 +3,8 @@ import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
+  InboxListOptions,
+  InboxListResult,
   NewBatchRecord,
   NewHumanRequestRecord,
   NewNotifyDeliveryRecord,
@@ -11,7 +13,12 @@ import type {
   TimelineEntry,
 } from "@hitl-sdk/hitl/state";
 import type { HumanActions } from "@hitl-sdk/hitl/state";
-import { normalizeActions } from "@hitl-sdk/hitl/state";
+import {
+  buildInboxPage,
+  clampInboxLimit,
+  decodeInboxCursor,
+  normalizeActions,
+} from "@hitl-sdk/hitl/state";
 import { applyMigrations } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";
@@ -171,13 +178,28 @@ export class SqliteState implements State {
     }
   }
 
-  async list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]> {
-    const rows = (
-      filter?.status
-        ? this.db.prepare(`SELECT * FROM ${this.table.sql} WHERE status = ?`).all(filter.status)
-        : this.db.prepare(`SELECT * FROM ${this.table.sql}`).all()
-    ) as unknown as HumanRequestRow[];
-    return rows.map(rowToRecord);
+  async list(filter?: InboxListOptions): Promise<InboxListResult> {
+    const limit = clampInboxLimit(filter?.limit);
+    const conditions: string[] = [];
+    const params: string[] = [];
+    if (filter?.status) {
+      conditions.push(`status = ?`);
+      params.push(filter.status);
+    }
+    if (filter?.cursor) {
+      const cur = decodeInboxCursor(filter.cursor);
+      conditions.push(`(created_at, id) < (?, ?)`);
+      params.push(cur.createdAt, cur.id);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM ${this.table.sql} ${where}
+         ORDER BY created_at DESC, id DESC
+         LIMIT ?`,
+      )
+      .all(...params, limit + 1) as unknown as HumanRequestRow[];
+    return buildInboxPage(rows.map(rowToRecord), limit);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

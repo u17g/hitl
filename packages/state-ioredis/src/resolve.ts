@@ -21,9 +21,12 @@ record.status = 'resolved'
 record.result = cjson.decode(resultJson)
 record.resolvedAt = resolvedAt
 
+local score = redis.call('ZSCORE', pendingKey, id)
+if not score then score = 0 end
+
 redis.call('SET', reqKey, cjson.encode(record))
-redis.call('SREM', pendingKey, id)
-redis.call('SADD', resolvedKey, id)
+redis.call('ZREM', pendingKey, id)
+redis.call('ZADD', resolvedKey, score, id)
 return 'ok'
 `;
 
@@ -91,10 +94,13 @@ async function resolveWithWatch(
     stored.result = result;
     stored.resolvedAt = resolvedAt;
 
+    const rawScore = await redis.zscore(pendingKey, id);
+    const score = rawScore === null ? 0 : Number(rawScore);
+
     const tx = redis.multi();
     tx.set(reqKey, JSON.stringify(stored));
-    tx.srem(pendingKey, id);
-    tx.sadd(resolvedKey, id);
+    tx.zrem(pendingKey, id);
+    tx.zadd(resolvedKey, score, id);
     const execResult = await tx.exec();
     if (execResult) return "ok";
   }

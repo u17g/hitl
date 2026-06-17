@@ -1,6 +1,6 @@
 import { field } from "./fields";
 import { actions } from "./human-actions-builder";
-import type { NewHumanRequestRecord, NewBatchRecord, State } from "./state";
+import type { HumanRequestRecord, NewHumanRequestRecord, NewBatchRecord, State } from "./state";
 
 /**
  * Test-runner hooks injected by the caller so this module stays free of any
@@ -142,10 +142,10 @@ export function describeStateContract(
       });
 
       const pending = await state.list({ status: "pending" });
-      expect(pending.map((r) => r.id)).toEqual(["a2"]);
+      expect(pending.items.map((r) => r.id)).toEqual(["a2"]);
 
       const all = await state.list();
-      expect(all).toHaveLength(2);
+      expect(all.items).toHaveLength(2);
     });
 
     it("lists resolved records only", async () => {
@@ -161,7 +161,64 @@ export function describeStateContract(
       });
 
       const resolved = await state.list({ status: "resolved" });
-      expect(resolved.map((r) => r.id)).toEqual(["a1"]);
+      expect(resolved.items.map((r) => r.id)).toEqual(["a1"]);
+    });
+
+    it("pages results newest-first via limit and cursor", async () => {
+      const state = await factory();
+      const ids = ["a1", "a2", "a3", "a4", "a5"];
+      for (const id of ids) await state.create(newRecord(id));
+
+      const seen: HumanRequestRecord[] = [];
+      let cursor: string | undefined;
+      let pages = 0;
+      let lastCursor: string | undefined;
+      do {
+        const page = await state.list({ limit: 2, cursor });
+        expect(page.items.length).toBeLessThanOrEqual(2);
+        seen.push(...page.items);
+        lastCursor = page.nextCursor;
+        cursor = page.nextCursor;
+        expect(++pages).toBeLessThan(10); // guard against runaway loops
+      } while (cursor);
+
+      // Covers everything exactly once.
+      expect(seen.map((r) => r.id).sort()).toEqual([...ids].sort());
+      expect(new Set(seen.map((r) => r.id)).size).toBe(ids.length);
+      // Last page exposes no further cursor.
+      expect(lastCursor).toBeUndefined();
+      // Globally newest-first: non-increasing in (createdAt desc, id desc).
+      for (let i = 1; i < seen.length; i++) {
+        const prev = seen[i - 1]!;
+        const curr = seen[i]!;
+        const ordered =
+          prev.createdAt > curr.createdAt ||
+          (prev.createdAt === curr.createdAt && prev.id >= curr.id);
+        expect(ordered).toBe(true);
+      }
+    });
+
+    it("paginates within a status filter", async () => {
+      const state = await factory();
+      for (const id of ["p1", "p2", "p3"]) await state.create(newRecord(id));
+      await state.create(newRecord("r1"));
+      await state.resolve("r1", {
+        type: "RESOLVED",
+        actionId: "approve",
+        id: "r1",
+        externalRef: "",
+        feedbacks: {},
+      });
+
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await state.list({ status: "pending", limit: 2, cursor });
+        seen.push(...page.items.map((r) => r.id));
+        cursor = page.nextCursor;
+      } while (cursor);
+
+      expect(new Set(seen)).toEqual(new Set(["p1", "p2", "p3"]));
     });
 
     it("returns null for an unknown external id", async () => {

@@ -63,6 +63,67 @@ export interface HumanRequestRecord extends NewHumanRequestRecord {
   resolvedAt?: string;
 }
 
+/** Filter and page controls for `State.list` / `inbox.list`. */
+export interface InboxListOptions {
+  status?: HumanRequestRecord["status"];
+  /** Page size; clamped to [1, {@link MAX_INBOX_LIMIT}], default {@link DEFAULT_INBOX_LIMIT}. */
+  limit?: number;
+  /** Opaque cursor from a previous page's `nextCursor`; pages newest-first. */
+  cursor?: string;
+}
+
+/** One page of inbox records, newest-first. */
+export interface InboxListResult {
+  items: HumanRequestRecord[];
+  /** Cursor for the next (older) page; absent on the last page. */
+  nextCursor?: string;
+}
+
+export const DEFAULT_INBOX_LIMIT = 50;
+export const MAX_INBOX_LIMIT = 10_000;
+
+/** Default to {@link DEFAULT_INBOX_LIMIT}; clamp anything else to [1, {@link MAX_INBOX_LIMIT}]. */
+export function clampInboxLimit(limit?: number): number {
+  if (limit === undefined || !Number.isFinite(limit) || limit < 1) return DEFAULT_INBOX_LIMIT;
+  return Math.min(Math.floor(limit), MAX_INBOX_LIMIT);
+}
+
+/** Opaque page cursor over `(createdAt, id)`. Inverse of {@link decodeInboxCursor}. */
+export function encodeInboxCursor(createdAt: string, id: string): string {
+  return Buffer.from(`${createdAt}|${id}`, "utf8").toString("base64url");
+}
+
+export function decodeInboxCursor(cursor: string): { createdAt: string; id: string } {
+  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+  const sep = decoded.indexOf("|");
+  if (sep === -1) throw new Error(`Invalid inbox cursor "${cursor}"`);
+  return { createdAt: decoded.slice(0, sep), id: decoded.slice(sep + 1) };
+}
+
+/**
+ * Build a page from rows already ordered newest-first and over-fetched by one
+ * (i.e. `limit + 1`). The extra row signals (and seeds) the next page.
+ */
+export function buildInboxPage(rows: HumanRequestRecord[], limit: number): InboxListResult {
+  if (rows.length <= limit) return { items: rows };
+  const items = rows.slice(0, limit);
+  const last = items[items.length - 1]!;
+  return { items, nextCursor: encodeInboxCursor(last.createdAt, last.id) };
+}
+
+/** Newest-first order: `createdAt` desc, then `id` desc as a stable tiebreaker. */
+function compareRecordsDesc(a: HumanRequestRecord, b: HumanRequestRecord): number {
+  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+  if (a.id !== b.id) return a.id < b.id ? 1 : -1;
+  return 0;
+}
+
+/** True when `r` sorts strictly after the cursor position (i.e. belongs to a later page). */
+function isBeforeCursor(r: HumanRequestRecord, cur: { createdAt: string; id: string }): boolean {
+  if (r.createdAt !== cur.createdAt) return r.createdAt < cur.createdAt;
+  return r.id < cur.id;
+}
+
 /** Persistence for pending/resolved human requests; powers the inbox and audit. */
 export interface State {
   create(record: NewHumanRequestRecord): Promise<void>;
@@ -72,7 +133,8 @@ export interface State {
   findByToken(token: string): Promise<HumanRequestRecord | null>;
   setExternalId(id: string, externalId: string, pluginId?: string): Promise<void>;
   resolve(id: string, result: HumanResult): Promise<void>;
-  list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]>;
+  /** Pending/resolved records, newest-first, one page at a time. */
+  list(filter?: InboxListOptions): Promise<InboxListResult>;
   createBatch(record: NewBatchRecord): Promise<void>;
   getBatch(id: string): Promise<BatchRecord | null>;
   setBatchExternalId(id: string, externalId: string, pluginId?: string): Promise<void>;
@@ -141,10 +203,16 @@ export class InMemoryState implements State {
     record.resolvedAt = new Date().toISOString();
   }
 
-  async list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]> {
-    const all = [...this.records.values()];
-    if (!filter?.status) return all;
-    return all.filter((r) => r.status === filter.status);
+  async list(filter?: InboxListOptions): Promise<InboxListResult> {
+    const limit = clampInboxLimit(filter?.limit);
+    let all = [...this.records.values()];
+    if (filter?.status) all = all.filter((r) => r.status === filter.status);
+    all.sort(compareRecordsDesc);
+    if (filter?.cursor) {
+      const cur = decodeInboxCursor(filter.cursor);
+      all = all.filter((r) => isBeforeCursor(r, cur));
+    }
+    return buildInboxPage(all.slice(0, limit + 1), limit);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

@@ -36,7 +36,7 @@ describe("public API", () => {
 
     const requestId = await (async () => {
       for (;;) {
-        const [record] = await hitl.state.list({ status: "pending" });
+        const [record] = (await hitl.state.list({ status: "pending" })).items;
         if (record) return record.id;
         await new Promise((r) => setTimeout(r, 1));
       }
@@ -111,7 +111,7 @@ describe("public API", () => {
 
     const batchId = await (async () => {
       for (;;) {
-        const [record] = await hitl.state.list({ status: "pending" });
+        const [record] = (await hitl.state.list({ status: "pending" })).items;
         if (record?.batchId) return record.batchId;
         await new Promise((r) => setTimeout(r, 1));
       }

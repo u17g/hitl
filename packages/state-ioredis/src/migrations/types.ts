@@ -14,4 +14,8 @@ export interface Migration {
 export interface RedisMigrator {
   sadd(key: string, ...members: string[]): Promise<number>;
   smembers(key: string): Promise<string[]>;
+  type(key: string): Promise<string>;
+  get(key: string): Promise<string | null>;
+  del(...keys: string[]): Promise<number>;
+  zadd(key: string, score: number, member: string): Promise<number | string>;
 }

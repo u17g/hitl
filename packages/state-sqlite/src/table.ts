@@ -7,6 +7,9 @@ export interface ResolvedTable {
   tableName: string;
   sql: string;
   indexName: string;
+  /** Keyset paging indexes for `list`: `(status, created_at, id)` and `(created_at, id)`. */
+  listStatusIndexName: string;
+  listCreatedIndexName: string;
   /** Companion table grouping batch items, e.g. `"hitl.human_requests_batches"`. */
   batchesSql: string;
   batchIdIndexName: string;
@@ -36,6 +39,8 @@ export function resolveTableName(tableName: string): ResolvedTable {
       tableName,
       sql: `"${schema}.${table}"`,
       indexName: `${schema}_${table}_external_id_idx`,
+      listStatusIndexName: `${schema}_${table}_list_status_idx`,
+      listCreatedIndexName: `${schema}_${table}_list_created_idx`,
       batchesSql: `"${schema}.${table}_batches"`,
       batchIdIndexName: `${schema}_${table}_batch_id_idx`,
       timelineSql: `"${schema}.${table}_timeline"`,
@@ -51,6 +56,8 @@ export function resolveTableName(tableName: string): ResolvedTable {
     tableName,
     sql: tableName,
     indexName: `${tableName}_external_id_idx`,
+    listStatusIndexName: `${tableName}_list_status_idx`,
+    listCreatedIndexName: `${tableName}_list_created_idx`,
     batchesSql: `${tableName}_batches`,
     batchIdIndexName: `${tableName}_batch_id_idx`,
     timelineSql: `${tableName}_timeline`,

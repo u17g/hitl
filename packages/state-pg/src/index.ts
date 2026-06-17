@@ -2,6 +2,8 @@ import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
+  InboxListOptions,
+  InboxListResult,
   NewBatchRecord,
   NewHumanRequestRecord,
   NewNotifyDeliveryRecord,
@@ -10,7 +12,12 @@ import type {
   TimelineEntry,
 } from "@hitl-sdk/hitl/state";
 import type { HumanActions } from "@hitl-sdk/hitl/state";
-import { normalizeActions } from "@hitl-sdk/hitl/state";
+import {
+  buildInboxPage,
+  clampInboxLimit,
+  decodeInboxCursor,
+  normalizeActions,
+} from "@hitl-sdk/hitl/state";
 import { applyMigrations, type PgQueryable } from "./migrate.js";
 import { schemaSql as buildSchemaSql } from "./schema-sql.js";
 import { DEFAULT_TABLE, resolveTableName } from "./table.js";
@@ -171,11 +178,28 @@ export class PostgresState implements State {
     }
   }
 
-  async list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]> {
-    const { rows } = filter?.status
-      ? await this.pool.query(`SELECT * FROM ${this.table.sql} WHERE status = $1`, [filter.status])
-      : await this.pool.query(`SELECT * FROM ${this.table.sql}`);
-    return (rows as HumanRequestRow[]).map(rowToRecord);
+  async list(filter?: InboxListOptions): Promise<InboxListResult> {
+    const limit = clampInboxLimit(filter?.limit);
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    if (filter?.status) {
+      params.push(filter.status);
+      conditions.push(`status = $${params.length}`);
+    }
+    if (filter?.cursor) {
+      const cur = decodeInboxCursor(filter.cursor);
+      params.push(cur.createdAt, cur.id);
+      conditions.push(`(created_at, id) < ($${params.length - 1}, $${params.length})`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    params.push(limit + 1);
+    const { rows } = await this.pool.query(
+      `SELECT * FROM ${this.table.sql} ${where}
+       ORDER BY created_at DESC, id DESC
+       LIMIT $${params.length}`,
+      params,
+    );
+    return buildInboxPage((rows as HumanRequestRow[]).map(rowToRecord), limit);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {

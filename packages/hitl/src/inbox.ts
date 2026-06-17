@@ -1,5 +1,5 @@
 import { resolveHumanRequest, resolveBatchHumanRequest, type HitlRuntime } from "./core";
-import type { HumanRequestRecord, BatchRecord } from "./state";
+import type { HumanRequestRecord, BatchRecord, InboxListOptions, InboxListResult } from "./state";
 import type { HumanResult, HitlBatchCallback, Reviewer } from "./types";
 
 /** One reviewer decision in a batch resolve. */
@@ -15,8 +15,11 @@ export interface BatchDecision {
  * own HTTP handlers (or wire the Chat SDK bot) on top of these methods.
  */
 export interface HitlInbox {
-  /** Pending and resolved human requests, newest-first; filter by status. */
-  list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]>;
+  /**
+   * One page of human requests, newest-first; filter by status. Pass `limit` for
+   * page size and the previous page's `nextCursor` to fetch the next (older) page.
+   */
+  list(filter?: InboxListOptions): Promise<InboxListResult>;
   /** A single human request, or null when the id is unknown. */
   get(id: string): Promise<HumanRequestRecord | null>;
   /** A batch with its items in input order, or null when the id is unknown. */

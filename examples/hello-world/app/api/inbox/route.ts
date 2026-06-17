@@ -1,12 +1,16 @@
 import { hitl } from "@/lib/hitl";
 
 export async function GET(req: Request) {
-  const status = new URL(req.url).searchParams.get("status");
-  const requests = await hitl.inbox.list(
-    status === "pending" || status === "resolved" ? { status } : undefined,
-  );
+  const params = new URL(req.url).searchParams;
+  const status = params.get("status");
+  // Returns one page, newest-first: { items, nextCursor }
+  const page = await hitl.inbox.list({
+    status: status === "pending" || status === "resolved" ? status : undefined,
+    limit: params.get("limit") ? Number(params.get("limit")) : undefined,
+    cursor: params.get("cursor") ?? undefined,
+  });
 
-  return Response.json({ requests });
+  return Response.json(page);
 }
 
 export async function POST(req: Request) {

@@ -242,16 +242,16 @@ export function DemoPanel() {
       fetch("/api/inbox?status=pending"),
       fetch("/api/inbox?status=resolved"),
     ]);
-    const pendingBody = await readJson<{ requests: HumanRequestRecord[] }>(pendingRes);
-    const resolvedBody = await readJson<{ requests: HumanRequestRecord[] }>(resolvedRes);
+    const pendingBody = await readJson<{ items: HumanRequestRecord[] }>(pendingRes);
+    const resolvedBody = await readJson<{ items: HumanRequestRecord[] }>(resolvedRes);
     setPending(
-      pendingBody.requests.map((item) => ({
+      pendingBody.items.map((item) => ({
         ...item,
         actions: normalizeActions(item.actions),
       })),
     );
     setResolved(
-      resolvedBody.requests.slice(0, 8).map((item) => ({
+      resolvedBody.items.slice(0, 8).map((item) => ({
         ...item,
         actions: normalizeActions(item.actions),
       })),

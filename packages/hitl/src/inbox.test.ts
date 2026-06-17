@@ -95,9 +95,9 @@ describe("HitlInbox read", () => {
     const { runtime, inbox } = makeRuntime();
     const id = await seedApproval(runtime);
 
-    expect((await inbox.list()).map((a) => a.id)).toEqual([id]);
-    expect((await inbox.list({ status: "pending" })).map((a) => a.id)).toEqual([id]);
-    expect(await inbox.list({ status: "resolved" })).toEqual([]);
+    expect((await inbox.list()).items.map((a) => a.id)).toEqual([id]);
+    expect((await inbox.list({ status: "pending" })).items.map((a) => a.id)).toEqual([id]);
+    expect((await inbox.list({ status: "resolved" })).items).toEqual([]);
   });
 
   it("gets a single approval, returning null for an unknown id", async () => {

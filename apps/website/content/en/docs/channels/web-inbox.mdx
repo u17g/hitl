@@ -35,11 +35,25 @@ Omit `channel` to use the inbox by default. Passing `channel: "inbox"` is equiva
 On the server, `hitl.inbox.list` reads from `state`. Call it from route handlers, scripts, or background jobs that power your UI.
 
 ```typescript
-const pending = await hitl.inbox.list({ status: "pending" });
-const all = await hitl.inbox.list();
+const { items, nextCursor } = await hitl.inbox.list({ status: "pending" });
+// Omit `status` to include both pending and resolved (still one page)
+const firstPage = await hitl.inbox.list();
 ```
 
-Pass `{ status: "resolved" }` to fetch completed requests. Omit `status` to return both.
+`list` returns **one page**, newest-first: `{ items, nextCursor }` — never the full set. Pass `{ status: "resolved" }` to fetch completed requests, or omit `status` to return both statuses. To walk every request, page with `nextCursor` (see below).
+
+Page through results with `limit` (default 50, max 10,000) and the previous page's `nextCursor`. When `nextCursor` is `undefined` you've reached the last page:
+
+```typescript
+let cursor: string | undefined;
+do {
+  const page = await hitl.inbox.list({ status: "pending", limit: 50, cursor });
+  for (const request of page.items) {
+    // ...render or process each request
+  }
+  cursor = page.nextCursor;
+} while (cursor);
+```
 
 ## Resolve a request
 
@@ -71,11 +85,14 @@ createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/inbox") {
     const status = url.searchParams.get("status");
-    const requests = await hitl.inbox.list(
-      status === "pending" || status === "resolved" ? { status } : undefined,
-    );
+    const limit = url.searchParams.get("limit");
+    const page = await hitl.inbox.list({
+      status: status === "pending" || status === "resolved" ? status : undefined,
+      limit: limit ? Number(limit) : undefined,
+      cursor: url.searchParams.get("cursor") ?? undefined,
+    });
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ requests }));
+    res.end(JSON.stringify(page)); // { items, nextCursor }
     return;
   }
 

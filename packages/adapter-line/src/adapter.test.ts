@@ -44,7 +44,7 @@ function fakeClient() {
 function fakeInbox(opts?: { record?: HumanRequestRecord | null }): HitlInbox {
   const record = opts?.record ?? null;
   return {
-    list: vi.fn<HitlInbox["list"]>(async () => []),
+    list: vi.fn<HitlInbox["list"]>(async () => ({ items: [] })),
     get: vi.fn<HitlInbox["get"]>(async () => record),
     getBatch: vi.fn<HitlInbox["getBatch"]>(async () => null),
     resolve: vi.fn<HitlInbox["resolve"]>(async () => ({

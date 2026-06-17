@@ -3,6 +3,8 @@ import type { HumanResult } from "@hitl-sdk/hitl";
 import type {
   BatchRecord,
   HumanRequestRecord,
+  InboxListOptions,
+  InboxListResult,
   NewBatchRecord,
   NewHumanRequestRecord,
   NewNotifyDeliveryRecord,
@@ -10,6 +12,7 @@ import type {
   State,
   TimelineEntry,
 } from "@hitl-sdk/hitl/state";
+import { buildInboxPage, clampInboxLimit, decodeInboxCursor } from "@hitl-sdk/hitl/state";
 import { applyMigrations } from "./migrate.js";
 import { DEFAULT_PREFIX, DEFAULT_TABLE, resolveKeyPrefix, type ResolvedKeyPrefix } from "./keys.js";
 import { SCHEMA_VERSION } from "./migrations/index.js";
@@ -63,11 +66,12 @@ export class IoredisState implements State {
     await this.ready();
     const createdAt = new Date().toISOString();
     const stored = newHumanRequest(record, createdAt);
+    const score = timelineScore(createdAt);
     const pipeline = this.redis.pipeline();
     pipeline.set(this.keys.req(record.id), JSON.stringify(stored));
     pipeline.set(this.keys.idxToken(record.token), record.id);
-    pipeline.sadd(this.keys.idxStatus("pending"), record.id);
-    pipeline.sadd(this.keys.idxAllReq(), record.id);
+    pipeline.zadd(this.keys.idxStatus("pending"), score, record.id);
+    pipeline.zadd(this.keys.idxAllReq(), score, record.id);
     if (record.batchId !== undefined && record.batchIndex !== undefined) {
       pipeline.zadd(this.keys.idxBatchItems(record.batchId), record.batchIndex, record.id);
     }
@@ -130,20 +134,52 @@ export class IoredisState implements State {
     }
   }
 
-  async list(filter?: { status?: HumanRequestRecord["status"] }): Promise<HumanRequestRecord[]> {
+  async list(filter?: InboxListOptions): Promise<InboxListResult> {
     await this.ready();
-    const ids = filter?.status
-      ? await this.redis.smembers(this.keys.idxStatus(filter.status))
-      : await this.redis.smembers(this.keys.idxAllReq());
-    if (ids.length === 0) return [];
+    const limit = clampInboxLimit(filter?.limit);
+    const indexKey = filter?.status
+      ? this.keys.idxStatus(filter.status)
+      : this.keys.idxAllReq();
 
-    const keys = ids.map((id) => this.keys.req(id));
-    const values = await this.redis.mget(...keys);
+    const cursor = filter?.cursor ? decodeInboxCursor(filter.cursor) : null;
+    const cursorScore = cursor ? timelineScore(cursor.createdAt) : null;
+    const max = cursorScore === null ? "+inf" : String(cursorScore);
+
+    // Pull ids newest-first (score desc, then member desc within a score),
+    // skipping anything at-or-before the cursor, until we have limit+1.
+    const want = limit + 1;
+    const ids: string[] = [];
+    const window = Math.max(want, 64);
+    let offset = 0;
+    for (;;) {
+      const rows = await this.redis.zrevrangebyscore(
+        indexKey,
+        max,
+        "-inf",
+        "WITHSCORES",
+        "LIMIT",
+        offset,
+        window,
+      );
+      if (rows.length === 0) break;
+      for (let i = 0; i < rows.length; i += 2) {
+        const id = rows[i]!;
+        const score = Number(rows[i + 1]!);
+        if (cursor && !isAfterCursor(score, id, cursorScore!, cursor.id)) continue;
+        ids.push(id);
+        if (ids.length >= want) break;
+      }
+      if (ids.length >= want || rows.length / 2 < window) break;
+      offset += window;
+    }
+    if (ids.length === 0) return { items: [] };
+
+    const values = await this.redis.mget(...ids.map((id) => this.keys.req(id)));
     const records: HumanRequestRecord[] = [];
     for (const raw of values) {
       if (raw) records.push(parseHumanRequest(raw));
     }
-    return records;
+    return buildInboxPage(records, limit);
   }
 
   async createBatch(record: NewBatchRecord): Promise<void> {
@@ -267,4 +303,10 @@ export class IoredisState implements State {
     }
     await pipeline.exec();
   }
+}
+
+/** True when `(score, id)` sorts strictly after the cursor in `(createdAt desc, id desc)` order. */
+function isAfterCursor(score: number, id: string, cursorScore: number, cursorId: string): boolean {
+  if (score !== cursorScore) return score < cursorScore;
+  return id < cursorId;
 }

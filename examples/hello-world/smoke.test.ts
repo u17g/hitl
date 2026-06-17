@@ -24,7 +24,7 @@ describe("hello-world smoke", () => {
 
     const record = await (async () => {
       for (;;) {
-        const [item] = await hitl.state.list({ status: "pending" });
+        const [item] = (await hitl.state.list({ status: "pending" })).items;
         if (item) return item;
         await new Promise((r) => setTimeout(r, 1));
       }

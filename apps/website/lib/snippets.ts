@@ -217,8 +217,9 @@ await waitForHuman({
   message: "Approve?",
   actions,
 });`,
-  inboxApi: `// List pending human requests
-const pending = await hitl.inbox.list({ status: "pending" });
+  inboxApi: `// List pending human requests, one page at a time (newest-first)
+const { items, nextCursor } = await hitl.inbox.list({ status: "pending", limit: 50 });
+// Pass nextCursor back to fetch the next page
 
 // Resolve with optional field edits
 await hitl.inbox.resolve(id, {

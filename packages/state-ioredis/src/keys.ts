@@ -12,7 +12,9 @@ export interface ResolvedKeyPrefix {
   req(id: string): string;
   idxToken(token: string): string;
   idxExt(externalId: string): string;
+  /** ZSET of request ids scored by `createdAt` (ms); powers newest-first `list`. */
   idxStatus(status: "pending" | "resolved"): string;
+  /** ZSET of all request ids scored by `createdAt` (ms); powers unfiltered `list`. */
   idxAllReq(): string;
   batch(id: string): string;
   idxBatchExt(externalId: string): string;

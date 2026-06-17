@@ -32,13 +32,13 @@ describe("Hitl with SqliteState", () => {
         .build(),
     });
     const requestId = await vi.waitFor(async () => {
-      const [record] = await hitl.state.list({ status: "pending" });
+      const [record] = (await hitl.state.list({ status: "pending" })).items;
       expect(record).toBeTruthy();
       return record!.id;
     });
 
     const pending = await hitl.inbox.list({ status: "pending" });
-    expect(pending.map((a) => a.id)).toEqual([requestId]);
+    expect(pending.items.map((a) => a.id)).toEqual([requestId]);
 
     await hitl.inbox.resolve(requestId, { actionId: "approve" });
     expect(await promise).toMatchObject({ type: "RESOLVED", actionId: "approve", id: requestId });

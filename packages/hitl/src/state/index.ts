@@ -2,9 +2,19 @@
 export { createInbox } from "../inbox";
 export type { BatchDecision, HitlInbox } from "../inbox";
 export { InMemoryState } from "../state";
+export {
+  DEFAULT_INBOX_LIMIT,
+  MAX_INBOX_LIMIT,
+  clampInboxLimit,
+  encodeInboxCursor,
+  decodeInboxCursor,
+  buildInboxPage,
+} from "../state";
 export type {
   BatchRecord,
   HumanRequestRecord,
+  InboxListOptions,
+  InboxListResult,
   NewBatchRecord,
   NewHumanRequestRecord,
   NewNotifyDeliveryRecord,

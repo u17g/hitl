@@ -321,13 +321,13 @@ describe("inbox facade", () => {
     const { hitl } = setup();
     const id = await createRequest(hitl);
 
-    const pending = (await hitl.inbox.list({ status: "pending" })).map((a) => a.id);
+    const pending = (await hitl.inbox.list({ status: "pending" })).items.map((a) => a.id);
     expect(pending).toEqual([id]);
 
     await hitl.inbox.resolve(id, { actionId: "approve" });
 
     const stillPending = await hitl.inbox.list({ status: "pending" });
-    expect(stillPending).toEqual([]);
+    expect(stillPending.items).toEqual([]);
   });
 
   it("returns a batch with its items", async () => {

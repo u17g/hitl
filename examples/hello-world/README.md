@@ -50,7 +50,7 @@ curl -s -X POST http://localhost:3000/api/run \
 curl -s 'http://localhost:3000/api/inbox?status=pending'
 ```
 
-Copy the `id` from the first request in the `requests` array.
+Copy the `id` from the first request in the `items` array. The response is one page, newest-first: `{ items, nextCursor }` — pass `?limit=` and `?cursor=<nextCursor>` to page further.
 
 **3. Submit**
 
