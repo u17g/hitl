@@ -84,11 +84,11 @@ await sendEmail({
   body: edits?.body ?? input.draft.body,
 });`,
   withHitl: `const approval = await waitForHuman({
-  message: \`Inbound lead: \${input.email}\`,
+  message: \`Draft email to \${input.email} ready for your review.\`,
   actions: actions()
     .approve({ fields: { subject, body } })
+    .deny()
     .build(),
-  timeout: "72h",
 });
 
 if (isResolved(approval, "approve")) {
