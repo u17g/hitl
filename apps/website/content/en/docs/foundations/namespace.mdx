@@ -1,0 +1,85 @@
+---
+title: Namespaces
+description: Partition the inbox with an optional namespace on each human request. Filter list and count by team, tenant, or workflow.
+---
+
+# Namespaces
+
+A **namespace** is a logical partition of the inbox. Every human request belongs to exactly one, set when you create it and defaulting to `"global"`. Use namespaces to keep separate teams, tenants, or workflows out of each other's lists without running separate Hitl servers or state stores.
+
+Namespaces are a query dimension, not an access boundary: they scope what [`inbox.list`](/docs/channels/web-inbox) and `inbox.count` return, alongside `status`. They do not authorize callers — enforce who can read which namespace in your own routes.
+
+## Set a namespace when creating
+
+Pass `namespace` to [`requestHuman` or `waitForHuman`](/docs/foundations/human-steps). Omit it and the request is stored under `"global"`, so existing workflows are unaffected.
+
+```typescript
+import { actions } from "@hitl-sdk/hitl";
+import { waitForHuman } from "@/lib/hitl-client";
+
+const approval = await waitForHuman({
+  namespace: "team-a",
+  message: "Send this email?",
+  actions: actions().approve().deny().build(),
+  timeout: "72h",
+});
+```
+
+In batch mode the namespace applies to every item in the batch:
+
+```typescript
+const results = await waitForHuman({
+  namespace: "billing",
+  actions,
+  items: [{ message: "Refund #1" }, { message: "Refund #2" }],
+});
+```
+
+## Filter list and count
+
+On the server, scope [`hitl.inbox.list`](/docs/channels/web-inbox) and `hitl.inbox.count` with the same `namespace`. **Omit it to read across all namespaces** — the default, matching pre-namespace behavior:
+
+```typescript
+// One namespace
+const teamA = await hitl.inbox.list({ namespace: "team-a", status: "pending" });
+const teamAPending = await hitl.inbox.count({ namespace: "team-a", status: "pending" });
+
+// Every namespace (no `namespace` key)
+const everything = await hitl.inbox.count();
+```
+
+The two filters are asymmetric by design:
+
+| | Omitted |
+|---|---|
+| **On create** | Stored as `"global"` |
+| **On `list` / `count`** | Reads/counts across **all** namespaces |
+
+`namespace` composes with `status` and cursor pagination. Counting a namespace without a `status` includes both pending and resolved requests.
+
+## Validation
+
+A namespace becomes part of the storage index keys, so values are restricted to letters, digits, `_`, `.`, and `-`, up to 128 characters. An invalid namespace is rejected when the request is created (HTTP `400` at the server boundary).
+
+```typescript
+"team-a"        // ok
+"tenant_42"     // ok
+"acme.eu"       // ok
+"team:a"        // rejected — no colons
+"with space"    // rejected — no whitespace
+```
+
+## Performance
+
+Filtering by namespace stays efficient at scale — it does not scan the whole inbox:
+
+- **Postgres / SQLite** — a composite index `(namespace, status, created_at, id)` covers both namespace-only and namespace + status queries, and powers keyset pagination.
+- **Redis** — a per-namespace sorted set answers `list` (newest-first paging) and `count` (`ZCARD`, O(1)).
+
+No application changes are needed when you adopt namespaces: the schema migration adds the column/indexes and backfills existing records to `"global"`.
+
+## See also
+
+- [Human steps](/docs/foundations/human-steps): create options including `namespace`
+- [Web inbox](/docs/channels/web-inbox): `inbox.list` / `inbox.count` and exposing the inbox API
+- [Foundations overview](/docs/foundations/overview): API map

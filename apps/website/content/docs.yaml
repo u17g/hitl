@@ -91,5 +91,6 @@ navigation:
       - foundations/overview
       - foundations/human-steps
       - foundations/actions-and-fields
+      - foundations/namespace
       - foundations/notifications
       - foundations/timeouts-and-reminders

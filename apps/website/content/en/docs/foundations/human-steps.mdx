@@ -138,6 +138,7 @@ Both `requestHuman` and `waitForHuman({ … })` accept these create options:
 | `actions` | `HumanActions` | Yes | Built with [`actions()`](/docs/foundations/actions-and-fields) |
 | `context` | `Record<string, unknown>` | No | Opaque metadata stored with the request |
 | `channel` | `string` | No | Adapter id or `adapter_id:destination`; defaults to first configured adapter |
+| `namespace` | `string` | No | [Inbox partition](/docs/foundations/namespace) for `list` / `count`; defaults to `"global"` |
 | `after` | `HumanResult \| TimelineAnchor` | No | Post under the same chat thread as a prior step |
 | `items` | `HumanItem[]` | No | Batch mode: one reviewer decision per item |
 | `defaultsActionId` | `string` | No | Batch defaults target when no approve action exists |
