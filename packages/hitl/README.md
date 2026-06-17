@@ -29,6 +29,9 @@ Install channel adapters for the platforms:
 ```bash
 # adapter for vercel's chat sdk
 npm install @hitl-sdk/adapter-chat-sdk
+
+# adapter for LINE Messaging API
+npm install @hitl-sdk/adapter-line @line/bot-sdk
 ```
 
 ## Usage
@@ -109,3 +112,5 @@ npm install @hitl-sdk/adapter-chat-sdk chat @chat-adapter/slack
 - WhatsApp: `@chat-adapter/whatsapp`
 
 See the [Chat SDK packages](https://github.com/vercel/chat/tree/main/packages) for the full, up-to-date list.
+
+For LINE Official Accounts, use `@hitl-sdk/adapter-line` with `@line/bot-sdk` instead of the Chat SDK adapter. See [`packages/adapter-line/README.md`](packages/adapter-line/README.md).

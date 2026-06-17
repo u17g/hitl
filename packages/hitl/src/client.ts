@@ -22,6 +22,7 @@ import { expandReminderSchedule } from "./schedule";
 import type { Notification, TimelineAnchor } from "./types";
 
 export const DEFAULT_BASE_PATH = "/.well-known/hitl/v1";
+export const CHANNELS_BASE_PATH = `${DEFAULT_BASE_PATH}/channels`;
 
 const HumanPendingBrand = Symbol.for("hitl.HumanPending");
 

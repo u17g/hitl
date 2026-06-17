@@ -21,10 +21,9 @@ import type {
 // - POST {base}/batches/:id/timeout and /remind work like the approval ones
 // - POST {base}/notifications routes a notify
 // - malformed JSON on an internal route -> 400
-// - POST with no matching internal route -> 404 (channel callbacks and inbox
-//   paths are not served; resolve via hitl.inbox from your own handlers)
-// - hitl.inbox reads/writes resolve approvals and resume the engine
-// - routeHandlers.POST and the Node handler delegate to the same fetch logic
+// - POST with no matching internal route -> 404
+// - GET/POST under {base}/channels/{channelKey}/* -> adapter.fetch when configured
+// - routeHandlers.GET/POST and the Node handler delegate to the same fetch logic
 
 const BASE = "http://x/.well-known/hitl/v1";
 
@@ -411,6 +410,31 @@ describe("inbox facade", () => {
 });
 
 describe("adapters", () => {
+  it("delegates channel routes to adapter.fetch", async () => {
+    const resolver = new FakeResolver();
+    const channelAdapter: HitlAdapter = {
+      id: "test",
+      channelKey: "test-channel",
+      fetch: async (req) => new Response(req.method, { status: 200 }),
+      send: async () => ({ externalId: "x" }),
+      notify: async () => ({}),
+    };
+    const hitl = new Hitl({ resolver, adapters: [channelAdapter] });
+    const res = await hitl.fetch(
+      new Request(`${BASE}/channels/test-channel/feedback`, { method: "GET" }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("GET");
+  });
+
+  it("returns 404 for unknown channel routes", async () => {
+    const hitl = new Hitl({ resolver: new FakeResolver() });
+    const res = await hitl.fetch(
+      new Request(`${BASE}/channels/unknown/feedback`, { method: "GET" }),
+    );
+    expect(res.status).toBe(404);
+  });
+
   it("routeHandlers delegate to fetch", async () => {
     const { hitl } = setup();
     const res = await hitl.routeHandlers.POST(

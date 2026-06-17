@@ -100,6 +100,16 @@ export interface HitlBatchCallback {
 export interface HitlAdapter {
   /** Routing key used by `waitForHuman({ channel })` / `notify({ channel })`. */
   id: string;
+  /**
+   * HTTP jurisdiction key under `/.well-known/hitl/v1/channels/{channelKey}/`.
+   * Omit when the adapter has no channel HTTP routes.
+   */
+  channelKey?: string;
+  /**
+   * Handle requests under this adapter's channel prefix.
+   * Called only after `channelKey` matches the request path.
+   */
+  fetch?(req: Request): Promise<Response>;
   /** Default destination when the routing key is adapter id only. Adapter-specific format. */
   defaultChannel?: string;
   /** Render and deliver a human step request. */

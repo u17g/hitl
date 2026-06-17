@@ -17,6 +17,7 @@ import { INBOX_CHANNEL_ID, inboxChannel } from "./inbox-channel";
 import { createInbox, type HitlInbox } from "./inbox";
 import { validateActions } from "./human-actions";
 import { defaultInMemoryState, type State } from "./state";
+import { CHANNELS_BASE_PATH } from "./client";
 import type { HitlAdapter } from "./types";
 
 export interface HitlOptions {
@@ -43,8 +44,9 @@ export interface HitlInstance {
   fetch(req: Request): Promise<Response>;
   /** Node/Express-style handler. */
   handler(req: IncomingMessage, res: ServerResponse): Promise<void>;
-  /** Next.js route handlers: `export const { POST } = hitl.routeHandlers`. */
+  /** Next.js route handlers: `export const { GET, POST } = hitl.routeHandlers`. */
   readonly routeHandlers: {
+    GET(req: Request): Promise<Response>;
     POST(req: Request): Promise<Response>;
   };
   readonly runtime: HitlRuntime;
@@ -68,12 +70,34 @@ function buildRuntime(options: HitlOptions): HitlRuntime {
   };
 }
 
+function isChannelPath(pathname: string): boolean {
+  return pathname === CHANNELS_BASE_PATH || pathname.startsWith(`${CHANNELS_BASE_PATH}/`);
+}
+
+function findChannelAdapter(pathname: string, adapters: readonly HitlAdapter[]): HitlAdapter | undefined {
+  const prefix = `${CHANNELS_BASE_PATH}/`;
+  if (!pathname.startsWith(prefix)) return undefined;
+  const rest = pathname.slice(CHANNELS_BASE_PATH.length + 1);
+  const channelKey = rest.split("/")[0];
+  if (!channelKey) return undefined;
+  return adapters.find((adapter) => adapter.channelKey === channelKey && adapter.fetch);
+}
+
 function createFetchHandler(runtime: HitlRuntime, secret?: string): HitlInstance["fetch"] {
   return async (req: Request): Promise<Response> => {
+    const pathname = new URL(req.url).pathname;
+    if (isChannelPath(pathname)) {
+      const channelAdapter = findChannelAdapter(pathname, runtime.adapters);
+      if (channelAdapter?.fetch) {
+        return channelAdapter.fetch(req);
+      }
+      return json({ error: "Not found" }, 404);
+    }
+
     if (req.method !== "POST") {
       return json({ error: "Method not allowed" }, 405);
     }
-    const segments = new URL(req.url).pathname.split("/").filter(Boolean);
+    const segments = pathname.split("/").filter(Boolean);
     const route = matchInternalRoute(segments);
     if (!route) {
       return json({ error: "Not found" }, 404);
@@ -102,7 +126,7 @@ export class Hitl implements HitlInstance {
     const secret = options.secret ?? process.env.HITL_SECRET;
     const fetchHandler = createFetchHandler(this.runtime, secret);
     this.fetch = fetchHandler;
-    this.routeHandlers = { POST: fetchHandler };
+    this.routeHandlers = { GET: fetchHandler, POST: fetchHandler };
     this.handler = (req, res) => nodeHandler(fetchHandler, req, res);
   }
 }
