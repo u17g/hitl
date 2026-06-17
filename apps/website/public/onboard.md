@@ -35,6 +35,7 @@ Chat SDK and web inbox are **not** mutually exclusive. `new Hitl()` always inclu
    - None yet → recommend Workflow SDK (https://workflow-sdk.dev/)
 2. Chat platform needed?
    - None / custom UI only → web inbox only
+   - Line → also fetch channels/line doc
    - Slack, Teams, Discord, etc. → also fetch chat-sdk doc
 3. Database / state backend?
    - None yet → recommend SQLite
@@ -115,6 +116,7 @@ Fetch prose from docs: one page per axis, not one page per combination.
 
 - https://hitl-sdk.dev/docs/channels/web-inbox (default; always fetch)
 - https://hitl-sdk.dev/docs/channels/chat-sdk (also fetch if chat platforms are needed)
+- https://hitl-sdk.dev/docs/channels/line
 
 **Host** (fetch host-integration; use the section matching the user's framework):
 
