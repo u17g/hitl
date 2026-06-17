@@ -1,0 +1,41 @@
+{
+  "name": "@hitl-sdk/adapter-line",
+  "version": "0.0.1",
+  "description": "LINE Messaging API channel plugin for hitl: deliver approvals via Flex Messages and postback webhooks.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-lib.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hitl-sdk/hitl": "workspace:*"
+  },
+  "peerDependencies": {
+    "@line/bot-sdk": "^9.0.0 || ^10.0.0"
+  },
+  "devDependencies": {
+    "@line/bot-sdk": "^10.0.0",
+    "@types/node": "^25.9.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
