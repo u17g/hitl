@@ -186,7 +186,7 @@ const CODE_LINES: CodeLine[] = [
     parts: [
       { text: "await", className: "text-violet-400" },
       { text: " notify({ message: " },
-      { text: '"Done."', className: "text-emerald-400" },
+      { text: '"Done!"', className: "text-emerald-400" },
       { text: " });" },
     ],
   },
