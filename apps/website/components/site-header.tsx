@@ -45,7 +45,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <LocaleSwitcher />
-          <ThemeToggle />
+          <ThemeToggle className="hidden sm:inline-flex" />
           <Button variant="ghost" size="icon" className="hidden sm:inline-flex" asChild>
             <a
               href="https://github.com/u17g/hitl"

@@ -5,10 +5,11 @@ import { useTheme } from "next-themes";
 import * as React from "react";
 import { useInlineTranslation } from "@/i18n/use-inline-translation";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const THEME_CYCLE = ["system", "light", "dark"] as const;
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const t = useInlineTranslation();
   const [mounted, setMounted] = React.useState(false);
@@ -16,7 +17,7 @@ export function ThemeToggle() {
   React.useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <Button variant="ghost" size="icon" aria-hidden className="opacity-0" />;
+    return <Button variant="ghost" size="icon" aria-hidden className={cn("opacity-0", className)} />;
   }
 
   const currentTheme = THEME_CYCLE.includes(theme as (typeof THEME_CYCLE)[number])
@@ -42,6 +43,7 @@ export function ThemeToggle() {
       size="icon"
       aria-label={ariaLabel}
       onClick={cycleTheme}
+      className={className}
     >
       {currentTheme === "system" ? (
         <Monitor className="h-4 w-4" />
