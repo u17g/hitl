@@ -4,6 +4,7 @@ export const snippets = {
   installResolverWorkflow: `npm i @hitl-sdk/resolver-workflow-sdk`,
   installResolverInngest: `npm i @hitl-sdk/resolver-inngest`,
   installResolverTemporal: `npm i @hitl-sdk/resolver-temporal`,
+  installResolverUpstash: `npm i @hitl-sdk/resolver-upstash-workflow`,
   installStatePg: `npm i @hitl-sdk/state-pg`,
   installStateSqlite: `npm i @hitl-sdk/state-sqlite`,
   installStateRedis: `npm i @hitl-sdk/state-ioredis`,

@@ -22,6 +22,9 @@ npm install @hitl-sdk/resolver-inngest
 
 # for temporal
 npm install @hitl-sdk/resolver-temporal
+
+# for upstash workflow
+npm install @hitl-sdk/resolver-upstash-workflow
 ```
 
 Install channel adapters for the platforms:
@@ -82,6 +85,7 @@ export async function handleInboundLead(input: { email: string; }) {
 - [Vercel Workflow SDK](https://workflow-sdk.dev): `@hitl-sdk/resolver-workflow-sdk`
 - [Inngest](https://www.inngest.com): `@hitl-sdk/resolver-inngest`
 - [Temporal](https://temporal.io): `@hitl-sdk/resolver-temporal`
+- [Upstash Workflow](https://upstash.com/docs/workflow): `@hitl-sdk/resolver-upstash-workflow`
 
 ## Supported backends for persistence
 

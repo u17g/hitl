@@ -1,0 +1,132 @@
+---
+title: Upstash Workflow
+description: Bind Hitl to Upstash Workflow. Use context.invoke for waitForHuman and notify to resume.
+---
+
+# Upstash Workflow
+
+Bind Hitl to [Upstash Workflow](https://upstash.com/docs/workflow). Hitl uses the same two-process split as [Overview](/docs/overview): workflows suspend and wait, and your server persists requests, delivers to channels, and resumes the run when a human decides.
+
+Upstash Workflow models each Hitl primitive (`waitForHuman`, `requestHuman`, `notify`) as its own invokable workflow with durable steps inside. Parent workflows call them via `context.invoke`. When a reviewer resolves, `upstashWorkflowResolver` on the server calls `notify` to resume the waiting run.
+
+If you are following the [Quickstart](/docs/quickstart), swap Workflow SDK for the Upstash packages below. The server-side Hitl setup and inbox flow stay the same.
+
+## Install
+
+Install the core Hitl SDK, the Upstash Workflow resolver binding, and the `@upstash/workflow` peer dependency. State backends and channel adapters are configured on the server only.
+
+```bash
+npm i @hitl-sdk/hitl @hitl-sdk/resolver-upstash-workflow @upstash/workflow
+```
+
+## Register Hitl workflows with Upstash
+
+`createHitlUpstashWorkflows` registers `waitForHuman`, `requestHuman`, and `notify` as first-class invokable workflows. Each export wraps Hitl's suspend, sleep, and fetch logic in Upstash durable steps. You invoke them from your own workflows with `context.invoke`, not by importing a workflow client directly.
+
+Pass the `createWorkflow` from your framework adapter (`@upstash/workflow/nextjs`, `/hono`, …) so the binding stays framework-agnostic. Create `workflow/hitl.ts` and paste the following:
+
+```typescript
+// workflow/hitl.ts
+import { createWorkflow } from "@upstash/workflow/nextjs";
+import { createHitlUpstashWorkflows } from "@hitl-sdk/resolver-upstash-workflow";
+
+export const { waitForHuman, requestHuman, notify } = createHitlUpstashWorkflows(createWorkflow);
+```
+
+Then register all three Hitl workflows with `serveMany` alongside your own. Upstash needs them in the same app so invokes and notifications land in one place. Create or update `app/api/workflow/route.ts`:
+
+```typescript
+// app/api/workflow/route.ts
+import { serveMany } from "@upstash/workflow/nextjs";
+import { waitForHuman, requestHuman, notify } from "@/workflow/hitl";
+import { sendEmail } from "@/workflow/send-email";
+
+export const { POST } = serveMany({ sendEmail, waitForHuman, requestHuman, notify });
+```
+
+## Set up the Hitl server
+
+On the server, `upstashWorkflowResolver({ client })` is the resume path. When a reviewer resolves a request in the inbox or via a channel adapter, the resolver calls `client.notify`, which unblocks the invoked `waitForHuman` workflow.
+
+The `client` is an `@upstash/workflow` `Client` constructed with your QStash token. The same deployment must expose both the Upstash route (for workflow execution) and `/.well-known/hitl/v1` (for the durable fetch inside invoked workflows).
+
+Create `lib/hitl.ts` and paste the following:
+
+```typescript
+// lib/hitl.ts
+import { Hitl } from "@hitl-sdk/hitl";
+import { upstashWorkflowResolver } from "@hitl-sdk/resolver-upstash-workflow";
+import { Client } from "@upstash/workflow";
+
+const client = new Client({ token: process.env.QSTASH_TOKEN! });
+
+export const hitl = new Hitl({
+  state, // see State docs
+  resolver: upstashWorkflowResolver({ client }),
+});
+```
+
+## Call waitForHuman from your workflows
+
+Do not call a low-level Hitl client directly from app workflows. Use `context.invoke` to call the registered `waitForHuman` workflow. Upstash records the invoke as a durable step: if your parent run retries, the wait is not duplicated.
+
+`context.invoke` crosses a JSON boundary, so TypeScript cannot infer `HumanResult` from inline `body`. Pull `actions` into a variable and assert the result type so `isResolved` and `approval.feedbacks` stay typed.
+
+In your app workflow (for example `workflow/send-email.ts`), invoke `waitForHuman` like this:
+
+```typescript
+import { createWorkflow } from "@upstash/workflow/nextjs";
+import { actions, isResolved, type HumanResult } from "@hitl-sdk/hitl";
+import { waitForHuman } from "./hitl";
+
+export const sendEmail = createWorkflow<{ email: string; subject: string; body: string }>(
+  async (context) => {
+    const { email, subject, body } = context.requestPayload;
+    const actionsDef = actions().approve().deny().build();
+
+    const { body: approval } = await context.invoke("approve-send", {
+      workflow: waitForHuman,
+      body: {
+        message: `Send email to: ${email}?`,
+        actions: actionsDef,
+        timeout: "72h",
+      },
+    });
+
+    if (!isResolved(approval as HumanResult<typeof actionsDef>, "approve")) return;
+
+    await context.run("deliver-email", () => deliverEmail({ to: email, subject, body }));
+  },
+);
+```
+
+## Register /.well-known/hitl/v1
+
+`lib/hitl.ts` alone is not enough. Register the internal API at `/.well-known/hitl/v1` on your HTTP server so invoked Hitl workflows can POST. **This step is required.** Without it, `waitForHuman` fails and nothing reaches your Hitl instance. Your deployment must expose both this route and your Upstash Workflow route.
+
+```typescript
+// app/.well-known/hitl/v1/[[...path]]/route.ts  (Next.js example)
+import { hitl } from "@/lib/hitl";
+
+export const { POST } = hitl.routeHandlers;
+```
+
+Using Express, Hono, or Fastify? See [Host integration](/docs/host-integration) for mount patterns on each framework.
+
+## Environment
+
+Invoked Hitl workflows run in the Upstash Workflow runtime and POST to your Hitl server from inside a durable `context.run` fetch. The server notifies runs with the `@upstash/workflow` `Client`.
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `HITL_URL` | Workflow runtime | Base URL for the durable fetch to the Hitl server. Set when the workflow runs against a different host than production (local dev, preview deploys). |
+| `HITL_SECRET` | Workflow runtime | Bearer token for the internal API when you configure `secret` on `new Hitl()`. |
+| `QSTASH_TOKEN` | Hitl server | Token for the `Client` used by `upstashWorkflowResolver` to notify runs. |
+
+## Advanced
+
+For tests or custom `context.run` wrappers, use `createUpstashWorkflowHitlClient({ context, url })` to wire Hitl primitives manually. Prefer `context.invoke` in application code; it keeps waits as separate workflows with clear step boundaries and durable resume.
+
+## How tokens work
+
+The resume token is the `waitForEvent` event id, namespaced as `` `${context.workflowRunId}:hitl-wait-N` ``. It is globally unique because `notify` resumes every run waiting on a given event id; the `workflowRunId` prefix keeps runs isolated and the per-call-site counter keeps it stable across replays.

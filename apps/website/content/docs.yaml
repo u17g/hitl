@@ -26,6 +26,7 @@ navigation:
           - workflow-engines/workflow-sdk
           - workflow-engines/temporal
           - workflow-engines/inngest
+          - workflow-engines/upstash-workflow
       - group:
           en: State
           ja: ステート
