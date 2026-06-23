@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/resolver-upstash-workflow",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Upstash Workflow binding for hitl.",
   "license": "MIT",
   "repository": {
