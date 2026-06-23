@@ -1,0 +1,40 @@
+{
+  "name": "@hitl-sdk/resolver-upstash-workflow",
+  "version": "1.0.0",
+  "description": "Upstash Workflow binding for hitl.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/u17g/hitl.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-lib.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@hitl-sdk/hitl": "workspace:*",
+    "@upstash/workflow": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@hitl-sdk/hitl": "workspace:*",
+    "@types/node": "^25.9.3",
+    "@upstash/workflow": "^1.3.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
