@@ -16,6 +16,7 @@ import {
   RedisLogo,
   SQLiteLogo,
   TemporalLogo,
+  UpstashWorkflowLogo,
   WorkflowDevKitLogo,
 } from "@/components/ui/icons/integration-logos";
 import {
@@ -120,6 +121,11 @@ export function StackSection() {
           name: "Temporal",
           Logo: TemporalLogo,
           install: snippets.installResolverTemporal,
+        },
+        {
+          name: "Upstash Workflow",
+          Logo: UpstashWorkflowLogo,
+          install: snippets.installResolverUpstash,
         },
       ],
     },

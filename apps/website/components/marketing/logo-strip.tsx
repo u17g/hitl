@@ -22,6 +22,7 @@ import {
   RedisLogo,
   SQLiteLogo,
   TemporalLogo,
+  UpstashWorkflowLogo,
   WorkflowDevKitLogo,
 } from "@/components/ui/icons/integration-logos";
 
@@ -84,6 +85,7 @@ export function LogoStrip() {
     { name: "Vercel Workflow SDK", Logo: WorkflowDevKitLogo },
     { name: "Inngest", Logo: InngestLogo },
     { name: "Temporal", Logo: TemporalLogo },
+    { name: "Upstash Workflow", Logo: UpstashWorkflowLogo },
   ] as const;
 
   const persistenceStores = [
