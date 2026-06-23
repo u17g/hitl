@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@hitl-sdk/hitl": "workspace:*",
+    "@hitl-sdk/hitl": "workspace:^",
     "@upstash/workflow": ">=1.0.0"
   },
   "devDependencies": {
