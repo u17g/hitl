@@ -1,6 +1,6 @@
 {
   "name": "@hitl-sdk/resolver-inngest",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Inngest binding for hitl.",
   "license": "MIT",
   "repository": {
